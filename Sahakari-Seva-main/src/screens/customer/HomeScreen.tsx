@@ -10,19 +10,22 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/common/Header';
 import { WorkerCard } from '../../components/common/WorkerCard';
 import { Footer } from '../../components/common/Footer';
 import { ApiClient } from '../../services/apiClient';
 import { MobileLocationService } from '../../services/locationService';
 import { ServiceCategory, NearbyWorkerResult } from '../../types';
-import { FadeInView, PulseView, ScalePressable } from '../../animations';
+import { FadeInView, PulseView, ScalePressable, PulseDot } from '../../animations';
 import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { getTradeTheme } from '../../theme/tradeThemes';
 import {
   Zap,
   Wrench,
@@ -36,7 +39,8 @@ import {
   Flower2,
   MapPin,
   Map,
-  ShieldCheck
+  Clock,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const categoryIcons: Record<string, any> = {
@@ -49,13 +53,13 @@ const categoryIcons: Record<string, any> = {
   'Appliance Repair': Tv,
   'AC Repair & Servicing': AirVent,
   'Driver Services': Car,
-  'Caregiving & Nursing': HeartPulse
+  'Caregiving & Nursing': HeartPulse,
 };
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [nearbyWorkers, setNearbyWorkers] = useState<NearbyWorkerResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +76,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       const [cats, workers] = await Promise.all([
         ApiClient.getCategories(),
-        ApiClient.getNearbyWorkers(loc.coords.latitude, loc.coords.longitude, 15)
+        ApiClient.getNearbyWorkers(loc.coords.latitude, loc.coords.longitude, 15),
       ]);
       setCategories(cats);
       setNearbyWorkers(workers);
@@ -97,48 +101,81 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
       >
-        {/* GPS Location Bar */}
+        {/* GPS Live Radar Location Bar */}
         <FadeInView delay={0} distance={10} duration={320}>
           <TouchableOpacity
             style={styles.locationBanner}
             onPress={() => navigation.navigate('Map')}
+            activeOpacity={0.82}
           >
             <View style={styles.locationLeft}>
-              <MapPin size={16} color={colors.primary} />
-              <Text style={styles.locationText} numberOfLines={1}>
-                {locationName}
-              </Text>
+              <View style={styles.radarWrap}>
+                <PulseDot color="#10b981" size={8} ringScale={2.4} duration={1600} />
+              </View>
+              <View style={styles.locationTextWrap}>
+                <Text style={styles.locationLabel}>{t('home.current_location', 'LIVE GPS COVERAGE')}</Text>
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {locationName}
+                </Text>
+              </View>
             </View>
             <View style={styles.mapLink}>
-              <Map size={14} color={colors.primary} />
+              <Map size={13} color={colors.primary} />
               <Text style={styles.mapLinkText}>{t('home.view_map')}</Text>
             </View>
           </TouchableOpacity>
         </FadeInView>
 
-        {/* Emergency Service Banner */}
+        {/* Dynamic Emergency Service Banner with LinearGradient & Pulsing Beacon */}
         <FadeInView delay={80} distance={12} duration={340}>
-          <PulseView scaleTo={1.015} duration={1800}>
-            <View style={styles.emergencyCard}>
+          <PulseView scaleTo={1.012} duration={2200}>
+            <LinearGradient
+              colors={isDark ? ['#3b0712', '#1f040a'] : ['#fff1f2', '#ffe4e6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emergencyCard}
+            >
+              <View style={styles.emergencyHeaderRow}>
+                <View style={styles.emergencyTagRow}>
+                  <PulseDot color={colors.danger} size={7} ringScale={2.4} duration={1200} />
+                  <Text style={styles.emergencyTagText}>EMERGENCY 24/7</Text>
+                </View>
+                <View style={styles.emergencySlaBadge}>
+                  <Clock size={11} color={colors.dangerDark} />
+                  <Text style={styles.emergencySlaText}>&lt; 15 min response</Text>
+                </View>
+              </View>
+
               <Text style={styles.emergencyTitle}>{t('home.emergency_banner_title')}</Text>
               <Text style={styles.emergencyDesc}>{t('home.emergency_banner_desc')}</Text>
-              <ScalePressable onPress={() => navigation.navigate('Search', { emergencyOnly: true })}>
-                <View style={styles.emergencyBtn}>
-                  <Zap size={16} color={colors.danger} fill={colors.danger} />
+
+              <ScalePressable onPress={() => navigation.navigate('Search', { emergencyOnly: true })} scaleTo={0.97}>
+                <LinearGradient
+                  colors={['#e11d48', '#be123c']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.emergencyBtn}
+                >
+                  <Zap size={16} color="#ffffff" fill="#ffffff" />
                   <Text style={styles.emergencyBtnText}>{t('home.emergency_btn')}</Text>
-                </View>
+                  <ChevronRight size={14} color="#ffffff" />
+                </LinearGradient>
               </ScalePressable>
-            </View>
+            </LinearGradient>
           </PulseView>
         </FadeInView>
 
-        {/* Categories Grid */}
+        {/* Categories Grid with Trade-Specific Vibrant Gradients */}
         <FadeInView delay={160} distance={14} duration={360}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('home.categories_title')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+              <View style={styles.sectionTitleRow}>
+                <View style={[styles.sectionAccentBar, { backgroundColor: colors.primary }]} />
+                <Text style={styles.sectionTitle}>{t('home.categories_title')}</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.seeAllBtn}>
                 <Text style={styles.seeAllText}>{t('home.see_all')}</Text>
+                <ChevronRight size={13} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
@@ -146,18 +183,28 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {categories.slice(0, 8).map((cat, idx) => {
                 const IconComp = categoryIcons[cat.name] || Zap;
                 const title = translateTrade(cat.name);
+                const tradeTheme = getTradeTheme(cat.name, isDark);
 
                 return (
-                  <FadeInView key={cat.id} delay={200 + idx * 55} distance={10} duration={300} style={styles.categoryCardWrap}>
-                    <ScalePressable onPress={() => navigation.navigate('Search', { selectedCategory: cat.name })}>
-                      <View style={styles.categoryCard}>
-                        <View style={styles.iconCircle}>
-                          <IconComp size={20} color={colors.primary} />
-                        </View>
+                  <FadeInView key={cat.id} delay={180 + idx * 50} distance={10} duration={280} style={styles.categoryCardWrap}>
+                    <ScalePressable onPress={() => navigation.navigate('Search', { selectedCategory: cat.name })} scaleTo={0.92}>
+                      <View style={[styles.categoryCard, { borderColor: tradeTheme.border }]}>
+                        <LinearGradient
+                          colors={tradeTheme.gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.iconCircle}
+                        >
+                          <IconComp size={18} color="#ffffff" />
+                        </LinearGradient>
                         <Text style={styles.catTitle} numberOfLines={2}>
                           {title}
                         </Text>
-                        <Text style={styles.catPrice}>₹{cat.base_price}</Text>
+                        <View style={[styles.catPriceBadge, { backgroundColor: tradeTheme.badgeBg }]}>
+                          <Text style={[styles.catPrice, { color: tradeTheme.badgeText }]}>
+                            ₹{cat.base_price}
+                          </Text>
+                        </View>
                       </View>
                     </ScalePressable>
                   </FadeInView>
@@ -167,13 +214,17 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </FadeInView>
 
-        {/* Nearby Workers Section */}
+        {/* Nearby Workers Section with Lively Match Badges */}
         <FadeInView delay={280} distance={14} duration={360}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('home.nearby_title')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Map')}>
+              <View style={styles.sectionTitleRow}>
+                <View style={[styles.sectionAccentBar, { backgroundColor: colors.secondary }]} />
+                <Text style={styles.sectionTitle}>{t('home.nearby_title')}</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.seeAllBtn}>
                 <Text style={styles.seeAllText}>{t('home.view_map')}</Text>
+                <ChevronRight size={13} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
@@ -202,137 +253,218 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   );
 };
 
-const createStyles = (colors: Palette) => StyleSheet.create({
+const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background
+    backgroundColor: colors.background,
   },
   scrollView: {
-    flex: 1
+    flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32
+    paddingBottom: 32,
   },
   locationBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 13,
+    borderRadius: 14,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   locationLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flex: 1
+    gap: 10,
+    flex: 1,
+  },
+  radarWrap: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationTextWrap: {
+    flex: 1,
+  },
+  locationLabel: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: '#10b981',
+    marginBottom: 1,
   },
   locationText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12.5,
+    fontWeight: '700',
     color: colors.textPrimary,
-    flex: 1
   },
   mapLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: 4,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   mapLinkText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: colors.primary
+    color: colors.primaryDark,
   },
   emergencyCard: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    marginBottom: 20
+    borderWidth: 1.5,
+    borderColor: isDark ? '#7f1d1d' : '#fca5a5',
+    marginBottom: 20,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  emergencyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  emergencyTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  emergencyTagText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    color: colors.danger,
+  },
+  emergencySlaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#ffe4e6',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  emergencySlaText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.dangerDark,
   },
   emergencyTitle: {
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '800',
-    color: colors.dangerDark
+    color: colors.textPrimary,
   },
   emergencyDesc: {
     fontSize: 12,
-    color: colors.dangerDark,
+    color: colors.textSecondary,
     marginTop: 4,
-    lineHeight: 17
+    lineHeight: 17,
   },
   emergencyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    marginTop: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.danger,
-    gap: 6
+    marginTop: 13,
+    paddingVertical: 10.5,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
   },
   emergencyBtnText: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.danger
+    color: '#ffffff',
   },
   section: {
-    marginBottom: 20
+    marginBottom: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 12,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  sectionAccentBar: {
+    width: 4,
+    height: 16,
+    borderRadius: 2,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.textPrimary
+    color: colors.textPrimary,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   seeAllText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: colors.primary
+    color: colors.primary,
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: 10,
+    rowGap: 11,
   },
   categoryCardWrap: {
-    width: '22.8%',
+    width: '23%',
   },
   categoryCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 4,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
   catTitle: {
     fontSize: 10.5,
@@ -343,10 +475,15 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     lineHeight: 14,
     paddingHorizontal: 1,
   },
+  catPriceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    marginTop: 4,
+  },
   catPrice: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
-    color: colors.primary,
-    marginTop: 2,
-  }
+  },
 });
+

@@ -1,7 +1,3 @@
-// ==============================================================================
-// WORKER HOME SCREEN — EARNINGS, WELFARE CORPUS & AVAILABILITY STATUS
-// ==============================================================================
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert
+  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Worker, AvailabilityStatus } from '../../types';
@@ -20,16 +17,17 @@ import {
   ShieldCheck,
   DollarSign,
   HeartHandshake,
-  MapPin
+  MapPin,
+  Sparkles,
 } from 'lucide-react-native';
-import { FadeInView, ScalePressable, AnimatedNumber } from '../../animations';
+import { FadeInView, ScalePressable, AnimatedNumber, PulseDot } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 
 export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
   const [worker, setWorker] = useState<Worker | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<AvailabilityStatus>('available');
@@ -70,28 +68,48 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Availability Toggle Box */}
+        {/* Availability Toggle Box with Live Pulsing Indicators */}
         <FadeInView distance={12} duration={320}>
           <View style={styles.statusCard}>
-            <Text style={styles.statusHeading}>{t('worker.online_status')}</Text>
+            <View style={styles.statusHeadingRow}>
+              <Text style={styles.statusHeading}>{t('worker.online_status')}</Text>
+              <View style={styles.liveIndicatorRow}>
+                {status === 'available' && <PulseDot color="#10b981" size={7} ringScale={2.4} duration={1400} />}
+                {status === 'emergency_only' && <PulseDot color="#ef4444" size={7} ringScale={2.4} duration={1200} />}
+                <Text style={styles.liveIndicatorText}>
+                  {status === 'available' ? 'DISPATCH READY' : status === 'emergency_only' ? 'SOS PRIORITY' : 'STANDBY'}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.statusPills}>
-              <ScalePressable onPress={() => handleToggleStatus('available')} style={styles.statusPillFlex}>
+              <ScalePressable onPress={() => handleToggleStatus('available')} style={styles.statusPillFlex} scaleTo={0.95}>
                 <View style={[styles.statusPill, status === 'available' && styles.statusPillActive]}>
+                  {status === 'available' && (
+                    <View style={styles.pillDotWrap}>
+                      <PulseDot color="#ffffff" size={6} ringScale={2} duration={1200} />
+                    </View>
+                  )}
                   <Text style={[styles.statusPillText, status === 'available' && styles.statusTextActive]}>
                     {t('worker.online_ready')}
                   </Text>
                 </View>
               </ScalePressable>
 
-              <ScalePressable onPress={() => handleToggleStatus('emergency_only')} style={styles.statusPillFlex}>
+              <ScalePressable onPress={() => handleToggleStatus('emergency_only')} style={styles.statusPillFlex} scaleTo={0.95}>
                 <View style={[styles.statusPill, status === 'emergency_only' && styles.emergencyPillActive]}>
+                  {status === 'emergency_only' && (
+                    <View style={styles.pillDotWrap}>
+                      <PulseDot color="#ffffff" size={6} ringScale={2} duration={1000} />
+                    </View>
+                  )}
                   <Text style={[styles.statusPillText, status === 'emergency_only' && { color: colors.textInverse }]}>
                     {t('worker.emergency_24_7')}
                   </Text>
                 </View>
               </ScalePressable>
 
-              <ScalePressable onPress={() => handleToggleStatus('offline')} style={styles.statusPillFlex}>
+              <ScalePressable onPress={() => handleToggleStatus('offline')} style={styles.statusPillFlex} scaleTo={0.95}>
                 <View style={[styles.statusPill, status === 'offline' && styles.offlinePillActive]}>
                   <Text style={[styles.statusPillText, status === 'offline' && { color: colors.textInverse }]}>
                     {t('worker.offline')}
@@ -102,10 +120,15 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           </View>
         </FadeInView>
 
-        {/* Earnings & Welfare Cards */}
+        {/* Dynamic Earnings & Welfare Cards with Gradient Accents */}
         <FadeInView delay={100} distance={12} duration={320}>
           <View style={styles.metricsGrid}>
-            <View style={styles.metricBox}>
+            <LinearGradient
+              colors={isDark ? ['#1e1b4b', '#0f172a'] : ['#eef2ff', '#ffffff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.metricBox, { borderColor: isDark ? '#3730a3' : '#c7d2fe' }]}
+            >
               <View style={styles.metricIconWrap}>
                 <DollarSign size={20} color={colors.primary} />
               </View>
@@ -117,9 +140,14 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 style={styles.metricAmount}
               />
               <Text style={styles.metricTitle}>{t('worker.direct_earnings')}</Text>
-            </View>
+            </LinearGradient>
 
-            <View style={styles.metricBox}>
+            <LinearGradient
+              colors={isDark ? ['#451a03', '#0f172a'] : ['#fffbeb', '#ffffff']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.metricBox, { borderColor: isDark ? '#78350f' : '#fde68a' }]}
+            >
               <View style={[styles.metricIconWrap, { backgroundColor: colors.secondaryLight }]}>
                 <HeartHandshake size={20} color={colors.secondaryDark} />
               </View>
@@ -132,7 +160,7 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 style={[styles.metricAmount, { color: colors.secondaryDark }]}
               />
               <Text style={styles.metricTitle}>{t('worker.welfare_corpus')}</Text>
-            </View>
+            </LinearGradient>
           </View>
         </FadeInView>
 
@@ -170,71 +198,111 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   );
 };
 
-const createStyles = (colors: Palette) => StyleSheet.create({
+const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background
+    backgroundColor: colors.background,
   },
   scrollView: {
-    flex: 1
+    flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40
+    paddingBottom: 40,
   },
   statusCard: {
     backgroundColor: colors.surface,
     padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  statusHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
   statusHeading: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.textPrimary,
-    marginBottom: 10
+  },
+  liveIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.surfaceSubtle,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  liveIndicatorText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: colors.textSecondary,
   },
   statusPills: {
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
   },
   statusPillFlex: {
     flex: 1,
   },
   statusPill: {
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row',
+    paddingVertical: 9.5,
+    borderRadius: 10,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
     alignItems: 'center',
-    backgroundColor: colors.surfaceSubtle
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSubtle,
+  },
+  pillDotWrap: {
+    marginRight: 5,
   },
   statusPillActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
   emergencyPillActive: {
     backgroundColor: colors.danger,
-    borderColor: colors.danger
+    borderColor: colors.danger,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
   offlinePillActive: {
     backgroundColor: colors.textSecondary,
-    borderColor: colors.textSecondary
+    borderColor: colors.textSecondary,
   },
   statusPillText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   statusTextActive: {
-    color: colors.textInverse
+    color: colors.textInverse,
   },
   metricsGrid: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16
+    marginBottom: 16,
   },
   metricBox: {
     flex: 1,

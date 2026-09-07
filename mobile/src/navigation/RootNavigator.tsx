@@ -77,19 +77,53 @@ export const AuthContext = createContext<{
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-const makeTabBarBase = (colors: Palette) => ({
+const makeTabBarBase = (colors: Palette, isDark: boolean) => ({
   headerShown: false,
   tabBarActiveTintColor: colors.primary,
   tabBarInactiveTintColor: colors.textMuted,
   tabBarStyle: {
     backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    height: 64,
+    borderTopWidth: 1.2,
+    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    height: 66,
     paddingBottom: 8,
     paddingTop: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 8,
   },
 });
+
+function TabIcon({
+  icon: Icon,
+  color,
+  size,
+  focused,
+  colors,
+}: {
+  icon: any;
+  color: string;
+  size: number;
+  focused: boolean;
+  colors: Palette;
+}) {
+  return (
+    <View
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 2.5,
+        borderRadius: 12,
+        backgroundColor: focused ? colors.primaryLight : 'transparent',
+      }}
+    >
+      <Icon size={size} color={color} strokeWidth={focused ? 2.5 : 2} />
+    </View>
+  );
+}
 
 // Smooth cross-fade between stack screens — part of the app-wide motion system
 const stackScreenOptions = {
@@ -102,8 +136,8 @@ const stackScreenOptions = {
 // -----------------------------------------------------------------------------
 function CustomerTabNavigator() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const tabBarBase = makeTabBarBase(colors);
+  const { colors, isDark } = useTheme();
+  const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
@@ -111,8 +145,8 @@ function CustomerTabNavigator() {
         ...tabBarBase,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '700'
-        }
+          fontWeight: '700',
+        },
       }}
     >
       <Tab.Screen
@@ -120,7 +154,9 @@ function CustomerTabNavigator() {
         component={HomeScreen}
         options={{
           tabBarLabel: t('tabs.home'),
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Home} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -128,7 +164,9 @@ function CustomerTabNavigator() {
         component={WorkerSearchScreen}
         options={{
           tabBarLabel: t('tabs.services'),
-          tabBarIcon: ({ color, size }) => <Search size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Search} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -136,7 +174,9 @@ function CustomerTabNavigator() {
         component={WorkerMapScreen}
         options={{
           tabBarLabel: t('tabs.map'),
-          tabBarIcon: ({ color, size }) => <MapPin size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={MapPin} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -144,7 +184,9 @@ function CustomerTabNavigator() {
         component={CustomerBookingsScreen}
         options={{
           tabBarLabel: t('tabs.bookings'),
-          tabBarIcon: ({ color, size }) => <Calendar size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Calendar} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -168,8 +210,8 @@ function CustomerStackNavigator() {
 // -----------------------------------------------------------------------------
 function WorkerTabNavigator() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const tabBarBase = makeTabBarBase(colors);
+  const { colors, isDark } = useTheme();
+  const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
@@ -177,8 +219,8 @@ function WorkerTabNavigator() {
         ...tabBarBase,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '700'
-        }
+          fontWeight: '700',
+        },
       }}
     >
       <Tab.Screen
@@ -186,7 +228,9 @@ function WorkerTabNavigator() {
         component={WorkerHomeScreen}
         options={{
           tabBarLabel: t('tabs.dashboard'),
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Home} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -194,7 +238,9 @@ function WorkerTabNavigator() {
         component={WorkerJobsScreen}
         options={{
           tabBarLabel: t('tabs.jobs'),
-          tabBarIcon: ({ color, size }) => <Briefcase size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Briefcase} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -202,7 +248,9 @@ function WorkerTabNavigator() {
         component={WorkerWelfareScreen}
         options={{
           tabBarLabel: t('tabs.welfare'),
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Heart} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -210,7 +258,9 @@ function WorkerTabNavigator() {
         component={WorkerProfileScreen}
         options={{
           tabBarLabel: t('tabs.credentials'),
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={User} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -218,7 +268,9 @@ function WorkerTabNavigator() {
         component={WorkerLocationScreen}
         options={{
           tabBarLabel: t('tabs.gps'),
-          tabBarIcon: ({ color, size }) => <NavIcon size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={NavIcon} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -230,8 +282,8 @@ function WorkerTabNavigator() {
 // -----------------------------------------------------------------------------
 function AdminTabNavigator() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const tabBarBase = makeTabBarBase(colors);
+  const { colors, isDark } = useTheme();
+  const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
       detachInactiveScreens={false}
@@ -239,8 +291,8 @@ function AdminTabNavigator() {
         ...tabBarBase,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '700'
-        }
+          fontWeight: '700',
+        },
       }}
     >
       <Tab.Screen
@@ -248,7 +300,9 @@ function AdminTabNavigator() {
         component={AdminDashboardScreen}
         options={{
           tabBarLabel: t('tabs.federation'),
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Users} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -256,7 +310,9 @@ function AdminTabNavigator() {
         component={AdminVerificationScreen}
         options={{
           tabBarLabel: t('tabs.verify_kyc'),
-          tabBarIcon: ({ color, size }) => <UserCheck size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={UserCheck} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -264,7 +320,9 @@ function AdminTabNavigator() {
         component={AdminForecastScreen}
         options={{
           tabBarLabel: t('tabs.forecast'),
-          tabBarIcon: ({ color, size }) => <TrendingUp size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={TrendingUp} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
       <Tab.Screen
@@ -272,7 +330,9 @@ function AdminTabNavigator() {
         component={AdminAllocationScreen}
         options={{
           tabBarLabel: t('tabs.allocation'),
-          tabBarIcon: ({ color, size }) => <ShieldCheck size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={ShieldCheck} color={color} size={size} focused={focused} colors={colors} />
+          ),
         }}
       />
     </Tab.Navigator>
