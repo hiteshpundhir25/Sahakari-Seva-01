@@ -285,6 +285,16 @@ export class ApiClient {
         customer: customerInfo,
       } as any;
       MOCK_BOOKINGS.unshift(booking);
+      MOCK_NOTIFICATIONS.customer.unshift({
+        id: 'notif-c-' + Date.now(),
+        user_id: bookingPayload.customer_id || 'p0000000-0000-0000-0000-000000000002',
+        type: 'booking',
+        title: `Booking Confirmed! 🎉 (${booking.booking_code})`,
+        message: `Your booking for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} on ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'} has been confirmed.`,
+        read: false,
+        action_url: '/bookings',
+        created_at: new Date().toISOString(),
+      });
       return booking;
     }
   }

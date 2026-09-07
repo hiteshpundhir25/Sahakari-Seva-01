@@ -20,6 +20,9 @@ import { ApiClient } from '../../services/apiClient';
 import { ShieldCheck, Calendar, Clock, MapPin, Zap } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { BookingConfirmedModal } from '../../components/common/BookingConfirmedModal';
+import { useRole } from '../../context/RoleContext';
+import type { Booking } from '../../types';
 
 const localToday = () => {
   const now = new Date();
@@ -38,6 +41,9 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
+
+  const { refresh: refreshNotifications } = useRole();
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   const [date, setDate] = useState(localToday);
   const [time, setTime] = useState('10:00 AM');
@@ -82,20 +88,8 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
       };
 
       const result = await ApiClient.createBooking(payload);
-
-      Alert.alert(
-        t('booking.confirmed_title'),
-        t('booking.confirmed_msg', {
-          code: result.booking_code || 'BK-2026-NEW',
-          name: worker.name || t('bookingDetail.worker_fallback')
-        }),
-        [
-          {
-            text: t('booking.view_bookings'),
-            onPress: () => navigation.navigate('CustomerTabs', { screen: 'Bookings' })
-          }
-        ]
-      );
+      setConfirmedBooking(result);
+      void refreshNotifications();
     } catch (err: any) {
       Alert.alert(t('booking.error_title'), err.message || t('booking.error_title'));
     } finally {
@@ -228,6 +222,20 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <BookingConfirmedModal
+        visible={!!confirmedBooking}
+        booking={confirmedBooking}
+        worker={worker}
+        onClose={() => {
+          setConfirmedBooking(null);
+          navigation.navigate('CustomerTabs', { screen: 'Bookings' });
+        }}
+        onViewBookings={() => {
+          setConfirmedBooking(null);
+          navigation.navigate('CustomerTabs', { screen: 'Bookings' });
+        }}
+      />
     </View>
   );
 };
