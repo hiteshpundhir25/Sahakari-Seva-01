@@ -171,9 +171,15 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
                 <View style={[styles.sectionAccentBar, { backgroundColor: colors.primary }]} />
-                <Text style={styles.sectionTitle}>{t('home.categories_title')}</Text>
+                <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
+                  {t('home.categories_title')}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.seeAllBtn}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Search')}
+                style={styles.seeAllBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Text style={styles.seeAllText}>{t('home.see_all')}</Text>
                 <ChevronRight size={13} color={colors.primary} />
               </TouchableOpacity>
@@ -220,9 +226,15 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
                 <View style={[styles.sectionAccentBar, { backgroundColor: colors.secondary }]} />
-                <Text style={styles.sectionTitle}>{t('home.nearby_title')}</Text>
+                <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
+                  {t('home.nearby_title')}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.seeAllBtn}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Map')}
+                style={styles.seeAllBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Text style={styles.seeAllText}>{t('home.view_map')}</Text>
                 <ChevronRight size={13} color={colors.primary} />
               </TouchableOpacity>
@@ -410,21 +422,26 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
+    flex: 1,
+    marginRight: 10,
   },
   sectionAccentBar: {
     width: 4,
     height: 16,
     borderRadius: 2,
+    flexShrink: 0,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   seeAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
+    flexShrink: 0,
   },
   seeAllText: {
     fontSize: 12.5,

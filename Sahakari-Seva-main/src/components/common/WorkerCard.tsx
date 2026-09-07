@@ -64,28 +64,28 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook,
           <View style={styles.footerRow}>
             <View style={styles.metricsBadge}>
               <View style={styles.distanceBadge}>
-                <Text style={styles.distanceText}>
+                <Text style={styles.distanceText} numberOfLines={1}>
                   {t('common.km_away', { km: worker.distance_km })}
                 </Text>
               </View>
               {/* Energetic Emerald Match Score Chip */}
               <View style={styles.matchScoreBadge}>
                 <Sparkles size={11} color="#059669" />
-                <Text style={styles.scoreText}>
+                <Text style={styles.scoreText} numberOfLines={1}>
                   {t('common.match', { score: worker.matchScore })}
                 </Text>
               </View>
             </View>
 
-            <ScalePressable onPress={onBook} scaleTo={0.93}>
+            <ScalePressable onPress={onBook} scaleTo={0.93} style={styles.bookBtnWrap}>
               <LinearGradient
                 colors={['#4f46e5', '#4338ca']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.bookBtn}
               >
-                <Zap size={12} color="#ffffff" />
-                <Text style={styles.bookBtnText}>
+                <Zap size={11} color="#ffffff" />
+                <Text style={styles.bookBtnText} numberOfLines={1}>
                   {t('common.book', { rate: worker.hourly_rate })}
                 </Text>
               </LinearGradient>
@@ -194,13 +194,14 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    flex: 1,
+    flexShrink: 1,
   },
   distanceBadge: {
     backgroundColor: colors.surfaceSubtle,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
+    flexShrink: 0,
   },
   distanceText: {
     fontSize: 10.5,
@@ -217,18 +218,23 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
+    flexShrink: 0,
   },
   scoreText: {
     fontSize: 10.5,
     fontWeight: '800',
     color: isDark ? '#6ee7b7' : '#047857',
   },
+  bookBtnWrap: {
+    flexShrink: 0,
+    marginLeft: 8,
+  },
   bookBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 13,
-    paddingVertical: 7.5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderRadius: 9,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
@@ -237,7 +243,7 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     elevation: 2,
   },
   bookBtnText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#ffffff',
   },
