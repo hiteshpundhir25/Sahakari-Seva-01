@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/common/Header';
-import { LanguageModal } from '../../components/common/LanguageModal';
 import { WorkerCard } from '../../components/common/WorkerCard';
 import { ApiClient } from '../../services/apiClient';
 import { MobileLocationService } from '../../services/locationService';
@@ -31,7 +30,6 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
   const initialCat = route.params?.selectedCategory || 'all';
   const initialEmergency = route.params?.emergencyOnly || false;
 
-  const [langModalVisible, setLangModalVisible] = useState(false);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCat, setSelectedCat] = useState<string>(initialCat);
   const [emergencyOnly, setEmergencyOnly] = useState<boolean>(initialEmergency);
@@ -79,7 +77,6 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
       <Header
         title={t('tabs.services')}
         subtitle={t('search.verified_nearby', { count: workers.length })}
-        onPressLanguage={() => setLangModalVisible(true)}
       />
 
       {/* Filter Chips Bar */}
@@ -154,8 +151,6 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
           ))
         )}
       </ScrollView>
-
-      <LanguageModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
     </View>
   );
 };

@@ -11,6 +11,7 @@ import {
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Badge } from '../../components/ui';
+import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Welfare, Worker } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -60,15 +61,18 @@ export const WorkerWelfareScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <FadeInView distance={12} duration={320}>
-        <View style={styles.header}>
-          <Text style={styles.badgeText}>{t('welfare.dignity_badge')}</Text>
-          <Text style={styles.title}>{t('welfare.title')}</Text>
-          <Text style={styles.subtitle}>{t('welfare.subtitle')}</Text>
-        </View>
-      </FadeInView>
+    <View style={styles.screenWrapper}>
+      <Header
+        title={t('welfare.title')}
+        subtitle={t('welfare.subtitle')}
+      />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Dignity Badge Banner */}
+        <FadeInView distance={12} duration={320}>
+          <View style={styles.header}>
+            <Text style={styles.badgeText}>{t('welfare.dignity_badge')}</Text>
+          </View>
+        </FadeInView>
 
       {/* Primary KPI Cards */}
       <View style={styles.kpiContainer}>
@@ -164,11 +168,16 @@ export const WorkerWelfareScreen: React.FC = () => {
           </View>
         </View>
       </FadeInView>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>, isDark: boolean) => StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

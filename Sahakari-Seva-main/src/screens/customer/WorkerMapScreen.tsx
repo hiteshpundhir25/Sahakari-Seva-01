@@ -6,7 +6,6 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/common/Header';
-import { LanguageModal } from '../../components/common/LanguageModal';
 import { MobileMapView } from '../../components/map/MobileMapView';
 import { ApiClient } from '../../services/apiClient';
 import { MobileLocationService } from '../../services/locationService';
@@ -18,7 +17,6 @@ export const WorkerMapScreen: React.FC<{ navigation: any }> = ({ navigation }) =
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const [langModalVisible, setLangModalVisible] = useState(false);
   const [userLocation, setUserLocation] = useState({ latitude: 28.6315, longitude: 77.2167 });
   const [workers, setWorkers] = useState<NearbyWorkerResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +49,6 @@ export const WorkerMapScreen: React.FC<{ navigation: any }> = ({ navigation }) =
       <Header
         title={t('map.title')}
         subtitle={t('map.subtitle')}
-        onPressLanguage={() => setLangModalVisible(true)}
       />
 
       {loading ? (
@@ -70,8 +67,6 @@ export const WorkerMapScreen: React.FC<{ navigation: any }> = ({ navigation }) =
           }}
         />
       )}
-
-      <LanguageModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
     </View>
   );
 };

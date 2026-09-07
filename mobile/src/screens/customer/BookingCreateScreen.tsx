@@ -108,7 +108,6 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
       <Header
         title={t('booking.book_worker')}
         subtitle={worker.name || worker.worker_code}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

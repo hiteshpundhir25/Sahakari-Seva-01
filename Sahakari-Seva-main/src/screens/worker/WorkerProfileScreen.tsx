@@ -13,6 +13,7 @@ import {
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
+import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Worker } from '../../types';
 import { useTranslation } from 'react-i18next';
@@ -104,8 +105,13 @@ export const WorkerProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Cooperative Digital ID Card */}
+    <View style={styles.screenWrapper}>
+      <Header
+        title={worker?.profile?.full_name || 'Rahul Sharma'}
+        subtitle={t('worker.federation_member')}
+      />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Cooperative Digital ID Card */}
       <Card style={styles.idCard}>
         <View style={styles.idCardHeader}>
           <View style={styles.idAvatar}>
@@ -237,11 +243,16 @@ export const WorkerProfileScreen: React.FC = () => {
         onPress={handleSave}
         style={{ marginTop: spacing.md }}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>, isDark: boolean) => StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -80,7 +80,6 @@ export const WorkerLocationScreen: React.FC = () => {
       <Header
         title={t('workerLocation.title')}
         subtitle={t('workerLocation.subtitle')}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

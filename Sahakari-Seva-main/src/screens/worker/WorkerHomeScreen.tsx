@@ -67,7 +67,6 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
       <Header
         title={worker?.profile?.full_name || 'Rahul Sharma'}
         subtitle={t('worker.federation_member')}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

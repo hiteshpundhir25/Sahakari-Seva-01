@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/common/Header';
-import { LanguageModal } from '../../components/common/LanguageModal';
 import { ApiClient } from '../../services/apiClient';
 import { WorkforceAllocation, AllocationStatus } from '../../types';
 import {
@@ -41,7 +40,6 @@ export const AdminAllocationScreen: React.FC<{ navigation: any }> = ({ navigatio
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | AllocationStatus>('all');
   const [mobilizedZones, setMobilizedZones] = useState<Record<string, boolean>>({});
-  const [langModalVisible, setLangModalVisible] = useState(false);
 
   const loadAllocations = async () => {
     try {
@@ -122,7 +120,6 @@ export const AdminAllocationScreen: React.FC<{ navigation: any }> = ({ navigatio
       <Header
         title={t('admin.allocation_title')}
         subtitle={t('admin.allocation_subtitle')}
-        onPressLanguage={() => setLangModalVisible(true)}
       />
 
       <ScrollView
@@ -267,11 +264,6 @@ export const AdminAllocationScreen: React.FC<{ navigation: any }> = ({ navigatio
           })
         )}
       </ScrollView>
-
-      <LanguageModal
-        visible={langModalVisible}
-        onClose={() => setLangModalVisible(false)}
-      />
     </View>
   );
 };

@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/common/Header';
-import { LanguageModal } from '../../components/common/LanguageModal';
 import { WorkerCard } from '../../components/common/WorkerCard';
 import { Footer } from '../../components/common/Footer';
 import { ApiClient } from '../../services/apiClient';
@@ -57,7 +56,6 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const [langModalVisible, setLangModalVisible] = useState(false);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [nearbyWorkers, setNearbyWorkers] = useState<NearbyWorkerResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,7 +90,7 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Header onPressLanguage={() => setLangModalVisible(true)} />
+      <Header />
 
       <ScrollView
         style={styles.scrollView}
@@ -200,8 +198,6 @@ export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Footer />
         </FadeInView>
       </ScrollView>
-
-      <LanguageModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
     </View>
   );
 };

@@ -62,7 +62,6 @@ export const WorkerJobsScreen: React.FC = () => {
       <Header
         title={t('tabs.jobs')}
         subtitle={t('worker.assigned_bookings', { count: jobs.length })}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView

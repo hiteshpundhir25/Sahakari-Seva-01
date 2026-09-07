@@ -62,7 +62,6 @@ export const CustomerBookingsScreen: React.FC = () => {
       <Header
         title={t('tabs.bookings')}
         subtitle={t('bookingsList.service_requests', { count: bookings.length })}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView

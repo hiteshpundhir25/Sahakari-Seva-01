@@ -70,7 +70,6 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
       <Header
         title={worker.profile?.full_name || worker.worker_code}
         subtitle={`${translateTrade(worker.skill_category)} • ${t('workerDetail.yrs_exp', { years: worker.experience_years })}`}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

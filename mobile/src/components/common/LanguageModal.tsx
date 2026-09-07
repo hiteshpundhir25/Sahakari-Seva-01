@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Check, X, Globe } from 'lucide-react-native';
 import { FadeInView, useLanguageSwitch } from '../../animations';
@@ -41,9 +41,9 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ visible, onClose }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.modalBox}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('common.close')}>
+        <Pressable style={styles.modalBox} onPress={e => e.stopPropagation()}>
           <View style={styles.modalHeader}>
             <View style={styles.titleRow}>
               <Globe size={18} color={colors.primary} />
@@ -86,8 +86,8 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ visible, onClose }
               );
             })}
           </ScrollView>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };

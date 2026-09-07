@@ -60,7 +60,6 @@ export const AdminForecastScreen: React.FC = () => {
       <Header
         title={t('admin.forecast_tab')}
         subtitle={t('admin.grounding', { count: totalEvents })}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView

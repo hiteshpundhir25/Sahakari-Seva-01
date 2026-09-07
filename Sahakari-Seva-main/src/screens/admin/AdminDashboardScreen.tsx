@@ -57,7 +57,6 @@ export const AdminDashboardScreen: React.FC<{ navigation: any }> = ({ navigation
       <Header
         title={t('admin.title')}
         subtitle={`${t('invoice.coop_name')} (Reg. 8842)`}
-        onPressLanguage={() => {}}
       />
 
       <ScrollView

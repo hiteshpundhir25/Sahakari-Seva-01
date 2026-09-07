@@ -46,10 +46,13 @@ export const Header: React.FC<HeaderProps> = ({
   const [langModalVisible, setLangModalVisible] = useState(false);
 
   const handleLanguageToggle = () => {
+    setLangModalVisible(true);
     if (onPressLanguage) {
-      onPressLanguage();
-    } else {
-      setLangModalVisible(true);
+      try {
+        onPressLanguage();
+      } catch (err) {
+        console.warn('onPressLanguage error:', err);
+      }
     }
   };
 
@@ -85,6 +88,8 @@ export const Header: React.FC<HeaderProps> = ({
             style={styles.langBtn}
             onPress={handleLanguageToggle}
             accessibilityLabel={t('common.language')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Globe size={14} color={colors.primary} />
             <Text style={styles.langBtnText}>
