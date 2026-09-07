@@ -18,9 +18,10 @@ import {
   TouchableOpacity,
   Animated,
   FlatList,
-  Easing,
   Pressable,
   Modal,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -35,7 +36,6 @@ import {
   CheckCheck,
   X,
   ChevronRight,
-  ArrowRight,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -109,6 +109,7 @@ export const NotificationBar: React.FC = () => {
   const styles = createStyles(colors, isDark);
   const navigation = useNavigation<any>();
   const { role, notifications, unreadCount, markRead, markAllRead } = useRole();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
 
   const [open, setOpen] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
@@ -128,8 +129,12 @@ export const NotificationBar: React.FC = () => {
     }
   }, [open, anim]);
 
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] });
-  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] });
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
+
+  // Compute adaptive sizing so the panel never exceeds screen bounds
+  const panelMaxHeight = Math.min(screenHeight * 0.78, 560);
+  const panelMaxWidth = Math.min(screenWidth - 24, 400);
 
   const safeNavigate = (screenName: string, params?: any) => {
     try {
@@ -261,35 +266,63 @@ export const NotificationBar: React.FC = () => {
             <Animated.View
               style={[
                 styles.panel,
-                { opacity: anim, transform: [{ translateY }, { scale }] },
+                {
+                  maxHeight: panelMaxHeight,
+                  maxWidth: panelMaxWidth,
+                  opacity: anim,
+                  transform: [{ translateY }, { scale }],
+                },
               ]}
             >
+              {/* Top Header Bar */}
               <View style={styles.panelHeader}>
-                <View>
-                  <Text style={styles.panelTitle}>{t('notifications.title')}</Text>
-                  <Text style={styles.panelSub}>
+                <View style={styles.headerTitleWrap}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.panelTitle}>{t('notifications.title')}</Text>
+                    {unreadCount > 0 && (
+                      <View style={styles.unreadCountChip}>
+                        <Text style={styles.unreadCountText}>{unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.panelSub} numberOfLines={1} ellipsizeMode="tail">
                     {role ? t(`roles.${role}`) : ''} • {t('notifications.subtitle')}
                   </Text>
                 </View>
+
                 <View style={styles.panelHeaderActions}>
                   {unreadCount > 0 && (
-                    <TouchableOpacity style={styles.markAllBtn} onPress={() => markAllRead()}>
-                      <CheckCheck size={14} color={colors.primaryDark} />
+                    <TouchableOpacity
+                      style={styles.markAllBtn}
+                      onPress={() => markAllRead()}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                    >
+                      <CheckCheck size={13} color={colors.primaryDark} />
                       <Text style={styles.markAllText}>{t('notifications.mark_all_read')}</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.closeBtn} onPress={() => setOpen(false)}>
-                    <X size={16} color={colors.textMuted} />
+                  {/* Dedicated Close Button — ALWAYS visible and clickable */}
+                  <TouchableOpacity
+                    style={styles.closeBtn}
+                    onPress={() => setOpen(false)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.close', 'Close')}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <X size={17} color={colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
 
+              {/* Scrollable Notification List */}
               <FlatList
                 data={notifications}
                 keyExtractor={item => item.id}
                 style={styles.list}
                 contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
                 ListEmptyComponent={
                   <View style={styles.emptyBox}>
                     <Text style={styles.emptyIcon}>🔔</Text>
@@ -333,6 +366,23 @@ export const NotificationBar: React.FC = () => {
                   </Pressable>
                 )}
               />
+
+              {/* Pinned Bottom Footer Bar */}
+              <View style={styles.panelFooter}>
+                <Text style={styles.footerNote}>
+                  {notifications.length} {notifications.length === 1 ? 'alert' : 'alerts'}
+                  {unreadCount > 0 ? ` • ${unreadCount} unread` : ' • all read'}
+                </Text>
+                <TouchableOpacity
+                  style={styles.footerCloseBtn}
+                  onPress={() => setOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.close', 'Close')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.footerCloseText}>{t('common.close', 'Close')}</Text>
+                </TouchableOpacity>
+              </View>
             </Animated.View>
           </Pressable>
         </Pressable>
@@ -378,28 +428,26 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(8, 10, 20, 0.45)',
+    backgroundColor: 'rgba(8, 10, 20, 0.52)',
   },
   modalStage: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 72,
+    paddingTop: Platform.OS === 'ios' ? 64 : 54,
     paddingHorizontal: 12,
   },
   panel: {
     width: '100%',
-    maxWidth: 390,
-    maxHeight: '82%',
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.22)' : '#94a3b8',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.28,
-    shadowRadius: 22,
-    elevation: 24,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    elevation: 28,
     overflow: 'hidden',
   },
   panelHeader: {
@@ -407,68 +455,97 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: 13,
+    borderBottomWidth: 1.2,
+    borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
     backgroundColor: colors.surface,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginRight: 10,
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
   },
   panelTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.textPrimary,
   },
+  unreadCountChip: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 10,
+  },
+  unreadCountText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
   panelSub: {
     fontSize: 11,
     color: colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
   panelHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   markAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5.5,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: isDark ? 'transparent' : '#c7d2fe',
   },
   markAllText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
     color: colors.primaryDark,
   },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#cbd5e1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   list: {
-    maxHeight: 460,
+    flexShrink: 1,
+    flexGrow: 0,
   },
   listContent: {
-    padding: 12,
+    paddingHorizontal: 13,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 11,
     padding: 12,
     borderRadius: 14,
-    marginBottom: 8,
+    marginBottom: 9,
     backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
   },
   itemUnread: {
     backgroundColor: isDark ? '#1e293b' : '#eff6ff',
-    borderColor: isDark ? '#3b82f6' : colors.primaryLight,
+    borderColor: isDark ? '#3b82f6' : '#bfdbfe',
   },
   itemIcon: {
     width: 38,
@@ -536,6 +613,34 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '700',
     color: colors.primaryDark,
+  },
+  panelFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderTopWidth: 1.2,
+    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.96)' : '#f8fafc',
+  },
+  footerNote: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  footerCloseBtn: {
+    paddingHorizontal: 13,
+    paddingVertical: 5.5,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#cbd5e1',
+  },
+  footerCloseText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
   emptyBox: {
     alignItems: 'center',
