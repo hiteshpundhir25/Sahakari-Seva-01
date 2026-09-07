@@ -471,9 +471,18 @@
     "just_now": "Just now",
     "minutes_ago": "{{count}} min ago",
     "hours_ago": "{{count}} hr ago",
-    "days_ago": "{{count}} d ago"
+    "days_ago": "{{count}} d ago",
+    "action_view_booking": "View Booking",
+    "action_view_invoice": "View Receipt",
+    "action_view_welfare": "View Welfare",
+    "action_rate_service": "Rate Pro",
+    "action_view_job": "View Job",
+    "action_emergency_job": "Emergency Job",
+    "action_verify_queue": "Review KYC",
+    "action_open": "Open"
   },
   "common": {
+    "back": "Back",
     "offline_banner": "You are currently offline. Showing cached records.",
     "retry_btn": "Retry Connection",
     "language": "Language",

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import { ArrowLeft } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
@@ -151,9 +152,34 @@ export const BookingDetailScreen: React.FC = () => {
   const finalPrice = booking.final_amount || booking.estimated_amount;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header Info */}
-      <View style={styles.header}>
+    <View style={styles.screenWrapper}>
+      {/* Top Header / Back Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('CustomerTabs');
+            }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back', 'Back')}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ArrowLeft size={20} color={colors.textPrimary} />
+          <Text style={styles.backButtonText}>{t('common.back', 'Back')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle} numberOfLines={1}>
+          {booking.booking_code}
+        </Text>
+        <View style={styles.topBarRightPlaceholder} />
+      </View>
+
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Header Info */}
+        <View style={styles.header}>
         <View>
           <Text style={styles.codeText}>{booking.booking_code}</Text>
           <Text style={styles.serviceTitle}>
@@ -350,11 +376,49 @@ export const BookingDetailScreen: React.FC = () => {
         onClose={() => setRatingModalVisible(false)}
         onSubmitted={() => fetchBooking()}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>) => StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    minWidth: 60,
+  },
+  backButtonText: {
+    ...typography.fontBodySm,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  topBarTitle: {
+    ...typography.fontTitle,
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    flex: 1,
+  },
+  topBarRightPlaceholder: {
+    minWidth: 60,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,

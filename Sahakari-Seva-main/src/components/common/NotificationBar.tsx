@@ -23,10 +23,24 @@ import {
   Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Bell, CalendarCheck, Wallet, HeartHandshake, Zap, ShieldCheck, TrendingUp, CheckCheck, X } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import {
+  Bell,
+  CalendarCheck,
+  Wallet,
+  HeartHandshake,
+  Zap,
+  ShieldCheck,
+  TrendingUp,
+  CheckCheck,
+  X,
+  ChevronRight,
+  ArrowRight,
+} from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { useRole } from '../../context/RoleContext';
+import type { Notification } from '../../types';
 
 function timeAgo(iso: string, t: (k: string, opts?: any) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -60,10 +74,40 @@ function typeTint(type: string, colors: Palette): string {
   }
 }
 
+function getActionLabel(item: Notification, t: (k: string, opts?: any) => string): string {
+  const id = item.id;
+  const msg = item.message || '';
+  const type = item.type || '';
+
+  if (id === 'notif-c-01' || msg.includes('BK-2026-JPR-001')) {
+    return t('notifications.action_view_booking', 'View Booking');
+  }
+  if (id === 'notif-c-02' || msg.includes('BK-2026-JPR-004') || type === 'payment') {
+    return t('notifications.action_view_invoice', 'View Receipt');
+  }
+  if (id === 'notif-c-03' || type === 'welfare') {
+    return t('notifications.action_view_welfare', 'View Welfare');
+  }
+  if (id === 'notif-c-04' || msg.includes('BK-2026-JPR-005') || msg.includes('rate')) {
+    return t('notifications.action_rate_service', 'Rate Pro');
+  }
+  if (type === 'emergency' || type === 'booking' || id.startsWith('notif-w-')) {
+    return t('notifications.action_view_job', 'View Job');
+  }
+  if (type === 'forecast') {
+    return t('notifications.action_view_forecast', 'View Forecast');
+  }
+  if (id === 'notif-a-01' || msg.includes('Verification')) {
+    return t('notifications.action_verify_queue', 'Review KYC');
+  }
+  return t('notifications.action_open', 'Open');
+}
+
 export const NotificationBar: React.FC = () => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
+  const navigation = useNavigation<any>();
   const { role, notifications, unreadCount, markRead, markAllRead } = useRole();
 
   const [open, setOpen] = useState(false);
@@ -87,9 +131,104 @@ export const NotificationBar: React.FC = () => {
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] });
   const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
 
+  const safeNavigate = (screenName: string, params?: any) => {
+    try {
+      navigation.navigate(screenName, params);
+      return;
+    } catch {
+      try {
+        navigation.navigate('CustomerTabs', { screen: screenName, params });
+        return;
+      } catch {
+        try {
+          const parent = navigation.getParent();
+          if (parent) {
+            parent.navigate(screenName, params);
+            return;
+          }
+        } catch (parentErr) {
+          console.warn('Navigation error:', parentErr);
+        }
+      }
+    }
+  };
+
+  const navigateForNotification = (item: Notification) => {
+    if (!navigation) return;
+    const id = item.id;
+    const msg = item.message || '';
+    const type = item.type || '';
+    const url = item.action_url || '';
+
+    // 1. CUSTOMER ROLE DESTINATIONS
+    if (role === 'customer' || !role) {
+      if (id === 'notif-c-01' || msg.includes('BK-2026-JPR-001')) {
+        safeNavigate('BookingDetail', { bookingId: 'bk-demo-1' });
+        return;
+      }
+      if (id === 'notif-c-02' || msg.includes('BK-2026-JPR-004')) {
+        safeNavigate('Invoice', { bookingId: 'bk-demo-4' });
+        return;
+      }
+      if (id === 'notif-c-03' || type === 'welfare') {
+        safeNavigate('Invoice', { bookingId: 'bk-demo-4' });
+        return;
+      }
+      if (id === 'notif-c-04' || msg.includes('BK-2026-JPR-005') || msg.includes('rate')) {
+        safeNavigate('BookingDetail', { bookingId: 'bk-demo-5' });
+        return;
+      }
+      if (url.includes('bookings') || type === 'booking') {
+        safeNavigate('Bookings');
+        return;
+      }
+      safeNavigate('Home');
+      return;
+    }
+
+    // 2. WORKER ROLE DESTINATIONS
+    if (role === 'worker') {
+      if (id === 'notif-w-01' || id === 'notif-w-02' || type === 'emergency' || type === 'booking' || url.includes('jobs')) {
+        safeNavigate('WorkerJobs');
+        return;
+      }
+      if (id === 'notif-w-03' || id === 'notif-w-04' || type === 'welfare' || type === 'payment' || url.includes('welfare')) {
+        safeNavigate('WorkerWelfare');
+        return;
+      }
+      safeNavigate('WorkerHome');
+      return;
+    }
+
+    // 3. ADMIN ROLE DESTINATIONS
+    if (role === 'admin') {
+      if (id === 'notif-a-01' || url.includes('verification') || msg.includes('Verification')) {
+        safeNavigate('AdminVerification');
+        return;
+      }
+      if (id === 'notif-a-02' || type === 'forecast' || url.includes('forecast')) {
+        safeNavigate('Forecast');
+        return;
+      }
+      if (id === 'notif-a-04' || url.includes('allocation')) {
+        safeNavigate('Allocation');
+        return;
+      }
+      safeNavigate('AdminDashboard');
+      return;
+    }
+  };
+
+  const handleNotificationPress = (item: Notification) => {
+    markRead(item.id);
+    setOpen(false);
+    setTimeout(() => {
+      navigateForNotification(item);
+    }, 140);
+  };
+
   return (
     <>
-      {/* Bell button with animated unread count */}
       <TouchableOpacity
         style={[styles.bellBtn, open && styles.bellBtnOpen]}
         onPress={() => setOpen(o => !o)}
@@ -103,7 +242,6 @@ export const NotificationBar: React.FC = () => {
         )}
       </TouchableOpacity>
 
-      {/* Pop-up panel — true Modal overlay so it hovers above every screen */}
       <Modal
         visible={open}
         transparent
@@ -111,13 +249,11 @@ export const NotificationBar: React.FC = () => {
         statusBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
-        {/* Backdrop: taps outside close the panel */}
         <Pressable
           style={styles.backdrop}
           onPress={() => setOpen(false)}
           accessibilityLabel={t('common.close')}
         >
-          {/* Stop propagation so panel taps don't close it */}
           <Pressable
             style={styles.modalStage}
             onPress={e => e.stopPropagation()}
@@ -153,6 +289,7 @@ export const NotificationBar: React.FC = () => {
                 keyExtractor={item => item.id}
                 style={styles.list}
                 contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <View style={styles.emptyBox}>
                     <Text style={styles.emptyIcon}>🔔</Text>
@@ -163,10 +300,11 @@ export const NotificationBar: React.FC = () => {
                 renderItem={({ item }) => (
                   <Pressable
                     key={item.id}
-                    onPress={() => markRead(item.id)}
+                    onPress={() => handleNotificationPress(item)}
                     style={({ pressed }) => [
                       styles.item,
-                      { opacity: pressed ? 0.7 : 1 },
+                      !item.read && styles.itemUnread,
+                      { opacity: pressed ? 0.75 : 1 },
                     ]}
                   >
                     <View style={[styles.itemIcon, { backgroundColor: typeTint(item.type, colors) }]}>
@@ -179,10 +317,18 @@ export const NotificationBar: React.FC = () => {
                         </Text>
                         {!item.read && <View style={styles.unreadDot} />}
                       </View>
-                      <Text style={styles.itemMsg} numberOfLines={2}>
+                      <Text style={styles.itemMsg} numberOfLines={3}>
                         {item.message}
                       </Text>
-                      <Text style={styles.itemTime}>{timeAgo(item.created_at, t)}</Text>
+                      <View style={styles.itemFooterRow}>
+                        <Text style={styles.itemTime}>{timeAgo(item.created_at, t)}</Text>
+                        <View style={styles.actionChip}>
+                          <Text style={styles.actionChipText}>
+                            {getActionLabel(item, t)}
+                          </Text>
+                          <ChevronRight size={12} color={colors.primaryDark} />
+                        </View>
+                      </View>
                     </View>
                   </Pressable>
                 )}
@@ -195,7 +341,7 @@ export const NotificationBar: React.FC = () => {
   );
 };
 
-const createStyles = (colors: Palette) => StyleSheet.create({
+const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
   bellBtn: {
     width: 34,
     height: 34,
@@ -230,29 +376,29 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     fontWeight: '800',
     color: colors.textInverse,
   },
-  // Full-screen backdrop inside the Modal — dims the app behind the panel.
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(8, 10, 20, 0.35)',
+    backgroundColor: 'rgba(8, 10, 20, 0.45)',
   },
-  // Anchors the panel to the top-right of the screen, below the header.
   modalStage: {
     flex: 1,
-    alignItems: 'flex-end',
-    paddingTop: 78,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 72,
     paddingHorizontal: 12,
   },
   panel: {
-    width: 340,
-    maxWidth: '100%',
+    width: '100%',
+    maxWidth: 390,
+    maxHeight: '82%',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
     elevation: 24,
     overflow: 'hidden',
   },
@@ -260,19 +406,19 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
   panelTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: colors.textPrimary,
   },
   panelSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textMuted,
     marginTop: 1,
   },
@@ -284,46 +430,53 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   markAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
     borderRadius: 8,
   },
   markAllText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     color: colors.primaryDark,
   },
   closeBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   list: {
-    maxHeight: 380,
+    maxHeight: 460,
   },
   listContent: {
-    padding: 10,
+    padding: 12,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 6,
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 8,
     backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  itemUnread: {
+    backgroundColor: isDark ? '#1e293b' : '#eff6ff',
+    borderColor: isDark ? '#3b82f6' : colors.primaryLight,
   },
   itemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   itemBody: {
     flex: 1,
@@ -331,13 +484,14 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   itemTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 6,
   },
   itemTitle: {
-    flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: colors.textSecondary,
+    flexShrink: 1,
   },
   itemTitleUnread: {
     color: colors.textPrimary,
@@ -352,14 +506,36 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   itemMsg: {
     fontSize: 12,
     color: colors.textSecondary,
-    lineHeight: 16,
-    marginTop: 2,
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  itemFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 0.8,
+    borderTopColor: colors.border,
   },
   itemTime: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.textMuted,
-    marginTop: 4,
     fontWeight: '600',
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+  },
+  actionChipText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
   emptyBox: {
     alignItems: 'center',
