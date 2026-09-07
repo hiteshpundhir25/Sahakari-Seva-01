@@ -343,7 +343,7 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
-    height: 28,
+    minHeight: 28,
     lineHeight: 14,
     paddingHorizontal: 1,
   },

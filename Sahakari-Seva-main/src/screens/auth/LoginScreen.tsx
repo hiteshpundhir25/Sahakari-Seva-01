@@ -234,12 +234,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
                         color: isActive ? '#ffffff' : colors.primary,
                       })}
                     </View>
-                    <Text style={[styles.roleChipTitle, !isActive && { color: colors.textPrimary }]}>
-                      {t(`roles.${role.key}`)}
-                    </Text>
-                    <Text style={[styles.roleChipDesc, !isActive && { color: colors.textMuted }]} numberOfLines={1}>
-                      {roleDescs[role.key]}
-                    </Text>
+                    <View style={styles.roleTitleWrap}>
+                      <Text
+                        style={[styles.roleChipTitle, !isActive && { color: colors.textPrimary }]}
+                        numberOfLines={2}
+                      >
+                        {t(`roles.${role.key}`)}
+                      </Text>
+                    </View>
+                    <View style={styles.roleDescWrap}>
+                      <Text
+                        style={[styles.roleChipDesc, !isActive && { color: colors.textSecondary }]}
+                        numberOfLines={2}
+                      >
+                        {roleDescs[role.key]}
+                      </Text>
+                    </View>
                   </LinearGradient>
                 </ScalePressable>
               </FadeInView>
@@ -302,19 +312,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
               <ScalePressable onPress={() => handleQuickDemoLogin('customer')} style={styles.demoBtnFlex}>
                 <View style={styles.demoBtn}>
                   <User size={13} color={colors.secondaryDark} />
-                  <Text style={styles.demoBtnText}>{t('auth.demo_btn_customer')}</Text>
+                  <Text
+                    style={styles.demoBtnText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    {t('auth.demo_btn_customer')}
+                  </Text>
                 </View>
               </ScalePressable>
               <ScalePressable onPress={() => handleQuickDemoLogin('worker')} style={styles.demoBtnFlex}>
                 <View style={styles.demoBtn}>
                   <Wrench size={13} color={colors.secondaryDark} />
-                  <Text style={styles.demoBtnText}>{t('auth.demo_btn_worker')}</Text>
+                  <Text
+                    style={styles.demoBtnText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    {t('auth.demo_btn_worker')}
+                  </Text>
                 </View>
               </ScalePressable>
               <ScalePressable onPress={() => handleQuickDemoLogin('admin')} style={styles.demoBtnFlex}>
                 <View style={styles.demoBtn}>
                   <Shield size={13} color={colors.secondaryDark} />
-                  <Text style={styles.demoBtnText}>{t('auth.demo_btn_admin')}</Text>
+                  <Text
+                    style={styles.demoBtnText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    {t('auth.demo_btn_admin')}
+                  </Text>
                 </View>
               </ScalePressable>
             </View>
@@ -482,32 +513,45 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   },
   roleChip: {
     borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 96,
+    justifyContent: 'flex-start',
+    minHeight: 126,
   },
   roleChipIcon: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 7,
+  },
+  roleTitleWrap: {
+    minHeight: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+    width: '100%',
   },
   roleChipTitle: {
-    fontSize: 12.5,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#ffffff',
     textAlign: 'center',
+    lineHeight: 14.5,
+  },
+  roleDescWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   roleChipDesc: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
+    fontSize: 9.5,
+    color: 'rgba(255,255,255,0.88)',
     textAlign: 'center',
-    paddingHorizontal: 2,
+    lineHeight: 12.5,
   },
   // --- OTP Card ---
   loginCard: {
@@ -556,7 +600,7 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: 14,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     height: 52,
     marginBottom: 14,
     backgroundColor: colors.surfaceSubtle,
@@ -578,9 +622,12 @@ const createStyles = (colors: Palette) => StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15.5,
     color: colors.textPrimary,
     fontWeight: '600',
+    paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   loginBtn: {
     borderRadius: 14,
@@ -634,14 +681,16 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.secondary,
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 4,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    minHeight: 40,
   },
   demoBtnText: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.secondaryDark,
+    textAlign: 'center',
   },
 });
 
