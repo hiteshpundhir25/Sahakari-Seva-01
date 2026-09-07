@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.coop.sahakariseva",
@@ -17,7 +22,7 @@
       "package": "com.coop.sahakariseva",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4f46e5"
+        "backgroundColor": "#ffffff"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -40,7 +45,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#4f46e5",
+          "backgroundColor": "#ffffff",
           "image": "./assets/splash.png",
           "imageWidth": 200
         }
