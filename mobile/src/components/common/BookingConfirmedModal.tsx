@@ -461,10 +461,12 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                 <View style={styles.stepLine} />
 
                 {/* Step 4: Done */}
-                <View style={styles.stepCirclePending}>
-                  <ShieldCheck size={12} color={colors.textMuted} />
+                <View style={styles.stepItem}>
+                  <View style={styles.stepCirclePending}>
+                    <ShieldCheck size={12} color={colors.textMuted} />
+                  </View>
+                  <Text style={styles.stepLabel}>Done</Text>
                 </View>
-                <Text style={styles.stepLabel}>Done</Text>
               </View>
             </View>
 
@@ -676,11 +678,12 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     stepperTrackRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
     },
     stepItem: {
       alignItems: 'center',
+      minWidth: 52,
     },
     stepCircle: {
       width: 24,
@@ -688,7 +691,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderRadius: 12,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     stepCircleDone: {
       backgroundColor: '#059669',
@@ -707,12 +710,13 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderColor: colors.border,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 6,
     },
     stepLabel: {
       fontSize: 11,
       fontWeight: '600',
       color: colors.textMuted,
+      textAlign: 'center',
     },
     stepLabelActive: {
       color: colors.successDark,
@@ -722,8 +726,8 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flex: 1,
       height: 2,
       backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border,
-      marginHorizontal: 4,
-      marginBottom: 16,
+      marginHorizontal: 3,
+      marginTop: 11,
     },
     stepLineActive: {
       backgroundColor: '#059669',
