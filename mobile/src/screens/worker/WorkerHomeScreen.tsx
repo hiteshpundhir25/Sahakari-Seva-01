@@ -83,35 +83,46 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             </View>
 
             <View style={styles.statusPills}>
-              <ScalePressable onPress={() => handleToggleStatus('available')} style={styles.statusPillFlex} scaleTo={0.95}>
+              <ScalePressable
+                onPress={() => handleToggleStatus('available')}
+                style={styles.statusPillFlexReady}
+                scaleTo={0.95}
+              >
                 <View style={[styles.statusPill, status === 'available' && styles.statusPillActive]}>
-                  {status === 'available' && (
-                    <View style={styles.pillDotWrap}>
-                      <PulseDot color="#ffffff" size={6} ringScale={2} duration={1200} />
-                    </View>
-                  )}
-                  <Text style={[styles.statusPillText, status === 'available' && styles.statusTextActive]}>
+                  <Text
+                    style={[styles.statusPillText, status === 'available' && styles.statusTextActive]}
+                    numberOfLines={1}
+                  >
                     {t('worker.online_ready')}
                   </Text>
                 </View>
               </ScalePressable>
 
-              <ScalePressable onPress={() => handleToggleStatus('emergency_only')} style={styles.statusPillFlex} scaleTo={0.95}>
+              <ScalePressable
+                onPress={() => handleToggleStatus('emergency_only')}
+                style={styles.statusPillFlexEmergency}
+                scaleTo={0.95}
+              >
                 <View style={[styles.statusPill, status === 'emergency_only' && styles.emergencyPillActive]}>
-                  {status === 'emergency_only' && (
-                    <View style={styles.pillDotWrap}>
-                      <PulseDot color="#ffffff" size={6} ringScale={2} duration={1000} />
-                    </View>
-                  )}
-                  <Text style={[styles.statusPillText, status === 'emergency_only' && { color: colors.textInverse }]}>
+                  <Text
+                    style={[styles.statusPillText, status === 'emergency_only' && { color: colors.textInverse }]}
+                    numberOfLines={1}
+                  >
                     {t('worker.emergency_24_7')}
                   </Text>
                 </View>
               </ScalePressable>
 
-              <ScalePressable onPress={() => handleToggleStatus('offline')} style={styles.statusPillFlex} scaleTo={0.95}>
+              <ScalePressable
+                onPress={() => handleToggleStatus('offline')}
+                style={styles.statusPillFlexOffline}
+                scaleTo={0.95}
+              >
                 <View style={[styles.statusPill, status === 'offline' && styles.offlinePillActive]}>
-                  <Text style={[styles.statusPillText, status === 'offline' && { color: colors.textInverse }]}>
+                  <Text
+                    style={[styles.statusPillText, status === 'offline' && { color: colors.textInverse }]}
+                    numberOfLines={1}
+                  >
                     {t('worker.offline')}
                   </Text>
                 </View>
@@ -253,21 +264,25 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  statusPillFlex: {
-    flex: 1,
+  statusPillFlexReady: {
+    flex: 1.05,
+  },
+  statusPillFlexEmergency: {
+    flex: 1.3,
+  },
+  statusPillFlexOffline: {
+    flex: 0.85,
   },
   statusPill: {
     flexDirection: 'row',
     paddingVertical: 9.5,
+    paddingHorizontal: 6,
     borderRadius: 10,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceSubtle,
-  },
-  pillDotWrap: {
-    marginRight: 5,
   },
   statusPillActive: {
     backgroundColor: colors.primary,
@@ -292,9 +307,10 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     borderColor: colors.textSecondary,
   },
   statusPillText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   statusTextActive: {
     color: colors.textInverse,
