@@ -1,0 +1,227 @@
+// ==============================================================================
+// CUSTOMER BOOKINGS SCREEN — BOOKING LIFECYCLE & STATUS TRACKING
+// ==============================================================================
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
+import { Header } from '../../components/common/Header';
+import { ApiClient } from '../../services/apiClient';
+import { Booking } from '../../types';
+import { Clock, MapPin } from 'lucide-react-native';
+import { FadeInView, ScalePressable } from '../../animations';
+import { useTheme } from '../../theme';
+import type { Palette } from '../../theme';
+
+const makeStatusColors = (colors: Palette): Record<string, { bg: string; text: string }> => ({
+  pending: { bg: colors.warningLight, text: colors.warningDark },
+  accepted: { bg: colors.infoLight, text: colors.infoDark },
+  in_progress: { bg: colors.violetLight, text: colors.violetDark },
+  completed: { bg: colors.successLight, text: colors.successDark },
+  cancelled: { bg: colors.surfaceSubtle, text: colors.textSecondary }
+});
+
+export const CustomerBookingsScreen: React.FC = () => {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  const statusColors = makeStatusColors(colors);
+  const navigation = useNavigation<any>();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadBookings = async () => {
+    try {
+      setLoading(true);
+      const data = await ApiClient.getBookings('p0000000-0000-0000-0000-000000000002');
+      setBookings(data);
+    } catch (err) {
+      console.warn('Bookings load failed:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Header
+        title={t('tabs.bookings')}
+        subtitle={t('bookingsList.service_requests', { count: bookings.length })}
+        onPressLanguage={() => {}}
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadBookings(); }} />}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 40 }} />
+        ) : bookings.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTitle}>{t('bookingsList.empty_title')}</Text>
+            <Text style={styles.emptySubtitle}>{t('bookingsList.empty_sub')}</Text>
+          </View>
+        ) : (
+          bookings.map((booking, idx) => {
+            const statusStyle = statusColors[booking.status] || { bg: colors.surfaceSubtle, text: colors.textSecondary };
+
+            return (
+              <FadeInView key={booking.id} delay={idx * 70} distance={14} duration={320}>
+                <ScalePressable onPress={() => navigation.navigate('BookingDetail', { bookingId: booking.id })}>
+                  <View style={styles.bookingCard}>
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.bookingCode}>{booking.booking_code}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                        <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                          {booking.status.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.descText} numberOfLines={2}>
+                      {booking.service_description}
+                    </Text>
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
+                        <Clock size={12} color={colors.textMuted} />
+                        <Text style={styles.metaText}>
+                          {booking.booking_date} {t('bookingsList.at')} {booking.booking_time}
+                        </Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <MapPin size={12} color={colors.textMuted} />
+                        <Text style={styles.metaText}>{booking.pincode}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.amountText}>{t('bookingsList.amount')}: ₹{booking.final_amount}</Text>
+                      <Text style={styles.paymentStatusText}>
+                        {booking.payment_status === 'paid' ? t('bookingsList.paid') : t('bookingsList.payment_on_completion')}
+                      </Text>
+                    </View>
+                  </View>
+                </ScalePressable>
+              </FadeInView>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+const createStyles = (colors: Palette) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  scrollView: {
+    flex: 1
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40
+  },
+  bookingCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  bookingCode: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textPrimary
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  descText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 10
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 12
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  metaText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: '500'
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border
+  },
+  amountText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.success
+  },
+  emptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 4,
+    textAlign: 'center'
+  }
+});

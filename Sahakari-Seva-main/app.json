@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Sahakari Seva",
+    "slug": "sahakari-seva",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.coop.sahakariseva",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Sahakari Seva needs your location to match you with nearby verified cooperative skilled professionals."
+      }
+    },
+    "android": {
+      "package": "com.coop.sahakariseva",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4f46e5"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sahakari Seva matches verified local gig workers based on your device GPS coordinates."
+        }
+      ],
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#4f46e5",
+          "image": "./assets/splash.png",
+          "imageWidth": 200
+        }
+      ]
+    ]
+  }
+}
