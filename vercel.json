@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm --prefix Sahakari-Seva-main run build:web",
+  "outputDirectory": "Sahakari-Seva-main/dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
