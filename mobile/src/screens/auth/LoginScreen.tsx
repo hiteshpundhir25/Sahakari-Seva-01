@@ -84,23 +84,23 @@ const GoogleIcon = () => (
   </Svg>
 );
 
-// Official Apple vector icon (upright)
-const AppleIcon = () => (
+// Official Apple vector icon (adapts to light/dark)
+const AppleIcon = ({ isDark }: { isDark: boolean }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24">
     <Path
-      fill="#ffffff"
+      fill={isDark ? '#ffffff' : '#000000'}
       d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.96c.66-.8 1.11-1.92.99-3.04-.96.04-2.12.64-2.8 1.44-.61.71-1.14 1.86-1 2.96 1.07.08 2.15-.56 2.81-1.36z"
     />
   </Svg>
 );
 
-// Silhouette of Indian landmark monuments (India Gate, Red Fort, domes & minarets)
-const SkylineSilhouette = () => (
+// Silhouette of Indian landmark monuments (adapts to light/dark)
+const SkylineSilhouette = ({ isDark }: { isDark: boolean }) => (
   <Svg viewBox="0 0 400 50" width="100%" height={50} preserveAspectRatio="none">
     <Path
       d="M 0 50 L 0 38 L 12 38 L 12 32 L 18 32 L 18 24 L 22 24 L 22 32 L 28 32 L 28 38 L 40 38 L 40 30 L 46 30 L 46 22 L 48 18 L 50 22 L 50 30 L 56 30 L 56 38 L 75 38 L 75 33 L 80 33 L 80 26 L 85 22 L 90 26 L 90 33 L 95 33 L 95 38 L 120 38 L 120 28 L 125 28 L 125 18 L 128 13 L 131 18 L 131 28 L 135 28 L 135 38 L 155 38 L 155 32 L 160 32 L 160 22 L 165 22 L 165 14 L 170 10 L 175 14 L 175 22 L 180 22 L 180 32 L 185 32 L 185 38 L 215 38 L 215 32 L 220 32 L 220 22 L 225 22 L 225 14 L 230 10 L 235 14 L 235 22 L 240 22 L 240 32 L 245 32 L 245 38 L 265 38 L 265 28 L 270 28 L 270 18 L 273 13 L 276 18 L 276 28 L 280 28 L 280 38 L 305 38 L 305 33 L 310 33 L 310 26 L 315 22 L 320 26 L 320 33 L 325 33 L 325 38 L 344 38 L 344 30 L 350 30 L 350 22 L 352 18 L 354 22 L 354 30 L 360 30 L 360 38 L 372 38 L 372 32 L 378 32 L 378 24 L 382 24 L 382 32 L 388 32 L 388 38 L 400 38 L 400 50 Z"
-      fill="#0c172e"
-      opacity="0.75"
+      fill={isDark ? '#0c172e' : '#cbd5e1'}
+      opacity={isDark ? 0.75 : 0.65}
     />
   </Svg>
 );
@@ -128,7 +128,8 @@ const TricolorWave = () => (
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   const { t, i18n } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const styles = React.useMemo(() => createStyles(isDark), [isDark]);
   const insets = useSafeAreaInsets();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [langModalVisible, setLangModalVisible] = useState(false);
@@ -252,15 +253,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
 
   return (
     <View style={styles.screenContainer}>
-      {/* Deep dark seamless gradient canvas */}
+      {/* Dynamic Theme Gradient Canvas */}
       <LinearGradient
-        colors={['#060d1b', '#071024', '#050a17', '#040712']}
+        colors={
+          isDark
+            ? ['#060d1b', '#071024', '#050a17', '#040712']
+            : ['#f8fafc', '#f1f5f9', '#e8edf5', '#f8fafc']
+        }
         locations={[0, 0.35, 0.75, 1]}
         style={StyleSheet.absoluteFill}
       />
 
       {/* Perfectly centered, seamless India Map with fading bottom and live activity dots */}
-      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 4 }]} />
+      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 4 }]} isDark={isDark} />
 
       {/* Top Header Bar */}
       <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 14) }]}>
@@ -271,7 +276,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             onPress={() => setLangModalVisible(true)}
             activeOpacity={0.75}
           >
-            <Globe size={13} color="#2dd4bf" />
+            <Globe size={13} color={isDark ? "#2dd4bf" : "#0d9488"} />
             <Text style={styles.langPillText}>
               {NATIVE_SHORT[i18n.language] || 'English'}
             </Text>
@@ -284,7 +289,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           <Text style={styles.bharatSub}>Works Together</Text>
           <View style={styles.tricolorPill}>
             <View style={[styles.tricolorBar, { backgroundColor: '#FF9933' }]} />
-            <View style={[styles.tricolorBar, { backgroundColor: '#FFFFFF' }]} />
+            <View style={[styles.tricolorBar, { backgroundColor: '#FFFFFF' }, !isDark && { borderWidth: 0.5, borderColor: '#cbd5e1' }]} />
             <View style={[styles.tricolorBar, { backgroundColor: '#138808' }]} />
           </View>
         </View>
@@ -336,7 +341,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             >
               <User
                 size={16}
-                color={selectedRole === 'customer' ? '#ffffff' : '#94a3b8'}
+                color={selectedRole === 'customer' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')}
                 style={{ marginRight: 6 }}
               />
               <Text
@@ -359,7 +364,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             >
               <Wrench
                 size={16}
-                color={selectedRole === 'worker' ? '#ffffff' : '#94a3b8'}
+                color={selectedRole === 'worker' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')}
                 style={{ marginRight: 6 }}
               />
               <Text
@@ -415,7 +420,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             <TextInput
               style={styles.phoneTextInput}
               placeholder="Enter your mobile number"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
               keyboardType="phone-pad"
               maxLength={10}
               value={phoneNumber}
@@ -468,7 +473,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             onPress={() => handleQuickDemoLogin(selectedRole)}
             activeOpacity={0.8}
           >
-            <AppleIcon />
+            <AppleIcon isDark={isDark} />
             <Text style={styles.socialBtnText}>Apple</Text>
           </TouchableOpacity>
         </View>
@@ -528,7 +533,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         <View style={styles.scrollIndicatorWrap}>
           <Text style={styles.scrollIndicatorText}>Scroll to explore</Text>
           <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-            <ChevronDown size={18} color="#94a3b8" />
+            <ChevronDown size={18} color={isDark ? "#94a3b8" : "#64748b"} />
           </Animated.View>
         </View>
 
@@ -579,7 +584,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
 
         {/* Indian Landmark Skyline Silhouette */}
         <View style={styles.skylineWrap}>
-          <SkylineSilhouette />
+          <SkylineSilhouette isDark={isDark} />
         </View>
 
         {/* Tricolor Bottom Wave & Slogan Footer */}
@@ -608,10 +613,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (isDark: boolean) => StyleSheet.create({
   screenContainer: {
     flex: 1,
-    backgroundColor: '#040712',
+    backgroundColor: isDark ? '#040712' : '#f8fafc',
   },
   mapOverlay: {
     position: 'absolute',
@@ -647,14 +652,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 16,
-    backgroundColor: 'rgba(45, 212, 191, 0.12)',
+    backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : 'rgba(13, 148, 136, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.25)',
+    borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(13, 148, 136, 0.25)',
   },
   langPillText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2dd4bf',
+    color: isDark ? '#2dd4bf' : '#0f766e',
   },
   bharatBadge: {
     alignItems: 'flex-end',
@@ -662,13 +667,13 @@ const styles = StyleSheet.create({
   bharatTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: isDark ? '#f8fafc' : '#0f172a',
     letterSpacing: 0.3,
   },
   bharatSub: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#64748b',
     marginTop: -1,
   },
   tricolorPill: {
@@ -692,14 +697,14 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 42,
-    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.14)' : 'rgba(16, 185, 129, 0.15)',
     borderWidth: 1.5,
-    borderColor: 'rgba(45, 212, 191, 0.35)',
+    borderColor: isDark ? 'rgba(45, 212, 191, 0.35)' : 'rgba(13, 148, 136, 0.28)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
+    shadowOpacity: isDark ? 0.45 : 0.25,
     shadowRadius: 18,
     elevation: 8,
     marginBottom: 14,
@@ -708,11 +713,15 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: 'rgba(10, 20, 42, 0.92)',
+    backgroundColor: isDark ? 'rgba(10, 20, 42, 0.92)' : '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.08,
+    shadowRadius: 6,
   },
   brandEmblemImage: {
     width: 52,
@@ -721,14 +730,14 @@ const styles = StyleSheet.create({
   brandHeading: {
     fontSize: 27,
     fontWeight: '900',
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#0f172a',
     letterSpacing: 0.4,
     textAlign: 'center',
   },
   brandHindiHeading: {
     fontSize: 19,
     fontWeight: '700',
-    color: '#f1f5f9',
+    color: isDark ? '#f1f5f9' : '#334155',
     marginTop: 2,
     marginBottom: 8,
     textAlign: 'center',
@@ -736,7 +745,7 @@ const styles = StyleSheet.create({
   brandTagline: {
     fontSize: 12.5,
     fontWeight: '400',
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#64748b',
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 310,
@@ -751,11 +760,16 @@ const styles = StyleSheet.create({
   segmentedToggle: {
     flexDirection: 'row',
     width: '100%',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
     borderRadius: 24,
     padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   segmentBtn: {
     flex: 1,
@@ -776,7 +790,7 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#64748b',
   },
   segmentTextActive: {
     color: '#ffffff',
@@ -790,18 +804,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.07)' : '#e2e8f0',
   },
   adminPillActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.35)',
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.15)',
+    borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.40)',
   },
   adminPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748b',
+    color: isDark ? '#64748b' : '#64748b',
   },
   adminPillTextActive: {
     color: '#10b981',
@@ -811,13 +825,18 @@ const styles = StyleSheet.create({
   phoneCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: 'rgba(11, 18, 34, 0.88)',
+    backgroundColor: isDark ? 'rgba(11, 18, 34, 0.88)' : '#ffffff',
     borderRadius: 24,
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
     paddingHorizontal: 16,
     paddingVertical: 4,
     marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   phoneCardFocused: {
     borderColor: '#10b981',
@@ -842,18 +861,18 @@ const styles = StyleSheet.create({
   countryCodeText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: isDark ? '#f8fafc' : '#0f172a',
   },
   inputDivider: {
     width: 1,
     height: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)',
     marginHorizontal: 12,
   },
   phoneTextInput: {
     flex: 1,
     fontSize: 14.5,
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#0f172a',
     paddingVertical: 0,
   },
   // --- Send OTP Button ---
@@ -893,11 +912,11 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
   },
   orText: {
     fontSize: 12,
-    color: '#64748b',
+    color: isDark ? '#64748b' : '#94a3b8',
     paddingHorizontal: 12,
   },
   socialRow: {
@@ -914,25 +933,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   socialBtnText: {
     fontSize: 13.5,
     fontWeight: '600',
-    color: '#f8fafc',
+    color: isDark ? '#f8fafc' : '#1e293b',
   },
   // --- Demo Profiles ---
   demoSection: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#ffffff',
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 6,
+    elevation: 2,
     marginBottom: 16,
   },
   demoHeader: {
@@ -945,7 +974,7 @@ const styles = StyleSheet.create({
   demoHeaderText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: isDark ? '#e2e8f0' : '#0f172a',
   },
   demoPillsRow: {
     flexDirection: 'row',
@@ -960,7 +989,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 4,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
     borderWidth: 1,
   },
   demoDot: {
@@ -971,7 +1000,7 @@ const styles = StyleSheet.create({
   demoPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: isDark ? '#cbd5e1' : '#334155',
   },
   // --- Legal Notice ---
   legalRow: {
@@ -986,7 +1015,7 @@ const styles = StyleSheet.create({
   },
   legalLink: {
     fontSize: 11.5,
-    color: '#2dd4bf',
+    color: isDark ? '#2dd4bf' : '#0d9488',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
@@ -999,7 +1028,7 @@ const styles = StyleSheet.create({
   scrollIndicatorText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#64748b',
     letterSpacing: 0.2,
   },
   // --- Features Section ---
@@ -1012,13 +1041,18 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.78)' : '#ffffff',
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.09)',
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.09)' : '#e2e8f0',
     alignItems: 'flex-start',
     gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   featureIconWrap: {
     width: 44,
@@ -1033,17 +1067,17 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#0f172a',
   },
   featureTagline: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2dd4bf',
+    color: isDark ? '#2dd4bf' : '#0d9488',
     marginVertical: 2,
   },
   featureDesc: {
     fontSize: 11.5,
-    color: '#94a3b8',
+    color: isDark ? '#94a3b8' : '#475569',
     lineHeight: 16,
   },
   // --- Skyline & Footer ---
@@ -1063,13 +1097,13 @@ const styles = StyleSheet.create({
   footerSlogan: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: isDark ? '#f8fafc' : '#334155',
     letterSpacing: 0.8,
   },
   footerHindi: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: isDark ? '#cbd5e1' : '#64748b',
     marginTop: 2,
   },
   footerMinistry: {

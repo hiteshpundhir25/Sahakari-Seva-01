@@ -4,5 +4,6 @@
     "strict": true,
     "skipLibCheck": true,
     "types": ["node"]
-  }
+  },
+  "exclude": ["scratch", "node_modules"]
 }

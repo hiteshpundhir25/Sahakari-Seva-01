@@ -1,9 +1,10 @@
 // ==============================================================================
-// INDIA MAP OVERLAY — SEAMLESS BLEND & PERFECT CENTERING
-// - Perfectly centered horizontally and vertically: viewBox="60 16 880 932"
+// INDIA MAP OVERLAY — DUAL THEME (DARK & LIGHT)
+// - Seamlessly adapts between Dark Mode (cyan/emerald on midnight) and
+//   Light Mode (architectural royal teal on airy ivory canvas).
+// - Perfectly centered: viewBox="60 16 880 932"
 // - Full geographic outline (Kashmir to Kanyakumari, Gujarat to Arunachal) without clipping
 // - Bottommost outline dissolves smoothly to 0 opacity via linear gradient stroke
-// - Zero abrupt hue cuts or horizontal seams
 // ==============================================================================
 
 import React, { useEffect, useRef } from 'react';
@@ -18,6 +19,7 @@ import Svg, {
   RadialGradient,
   Stop,
 } from 'react-native-svg';
+import { useTheme } from '../../theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 const AnimatedLine = Animated.createAnimatedComponent(Line);
@@ -79,9 +81,13 @@ const NETWORK_LINKS: [string, string][] = [
 
 interface IndiaMapOverlayProps {
   style?: ViewStyle | ViewStyle[];
+  isDark?: boolean;
 }
 
-export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
+export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style, isDark: propIsDark }) => {
+  const theme = useTheme();
+  const isDark = propIsDark !== undefined ? propIsDark : (theme ? theme.isDark : true);
+
   // Staggered breathing animations for 4 phases
   const pulseA = useRef(new Animated.Value(0)).current;
   const pulseB = useRef(new Animated.Value(0)).current;
@@ -156,6 +162,8 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
     }
   };
 
+  const primaryStrokeColor = isDark ? '#2dd4bf' : '#0d9488';
+
   return (
     <View style={[styles.container, style]} pointerEvents="none">
       <Svg
@@ -167,38 +175,38 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
         <Defs>
           {/* Smooth vertical gradient fading the stroke into complete transparency at the bottom */}
           <SvgLinearGradient id="outlineStrokeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.80" />
-            <Stop offset="45%" stopColor="#2dd4bf" stopOpacity="0.75" />
-            <Stop offset="62%" stopColor="#2dd4bf" stopOpacity="0.52" />
-            <Stop offset="74%" stopColor="#2dd4bf" stopOpacity="0.25" />
-            <Stop offset="84%" stopColor="#2dd4bf" stopOpacity="0.08" />
-            <Stop offset="90%" stopColor="#2dd4bf" stopOpacity="0.0" />
-            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="0%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.80 : 0.72} />
+            <Stop offset="45%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.75 : 0.68} />
+            <Stop offset="62%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.52 : 0.45} />
+            <Stop offset="74%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.25 : 0.20} />
+            <Stop offset="84%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.08 : 0.05} />
+            <Stop offset="90%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
+            <Stop offset="100%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
           </SvgLinearGradient>
 
           {/* Glowing aura gradient fading out at bottom */}
           <SvgLinearGradient id="outlineAuraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.18" />
-            <Stop offset="50%" stopColor="#2dd4bf" stopOpacity="0.12" />
-            <Stop offset="72%" stopColor="#2dd4bf" stopOpacity="0.03" />
-            <Stop offset="85%" stopColor="#2dd4bf" stopOpacity="0.0" />
-            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="0%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.18 : 0.14} />
+            <Stop offset="50%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.12 : 0.08} />
+            <Stop offset="72%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.03 : 0.02} />
+            <Stop offset="85%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
+            <Stop offset="100%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
           </SvgLinearGradient>
 
           {/* Soft interior fill gradient fading out completely in south */}
           <SvgLinearGradient id="outlineFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.04" />
-            <Stop offset="45%" stopColor="#2dd4bf" stopOpacity="0.03" />
-            <Stop offset="70%" stopColor="#2dd4bf" stopOpacity="0.01" />
-            <Stop offset="84%" stopColor="#2dd4bf" stopOpacity="0.0" />
-            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="0%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.04 : 0.035} />
+            <Stop offset="45%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.03 : 0.022} />
+            <Stop offset="70%" stopColor={primaryStrokeColor} stopOpacity={isDark ? 0.01 : 0.008} />
+            <Stop offset="84%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
+            <Stop offset="100%" stopColor={primaryStrokeColor} stopOpacity={0.0} />
           </SvgLinearGradient>
 
           {/* Soft ambient center radial glow */}
           <RadialGradient id="mapAmbient" cx="50%" cy="40%" r="55%">
-            <Stop offset="0%" stopColor="#10b981" stopOpacity="0.08" />
-            <Stop offset="50%" stopColor="#0ea5e9" stopOpacity="0.03" />
-            <Stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.0" />
+            <Stop offset="0%" stopColor={isDark ? '#10b981' : '#0d9488'} stopOpacity={isDark ? 0.08 : 0.06} />
+            <Stop offset="50%" stopColor={isDark ? '#0ea5e9' : '#3b82f6'} stopOpacity={isDark ? 0.03 : 0.02} />
+            <Stop offset="100%" stopColor={isDark ? '#0ea5e9' : '#3b82f6'} stopOpacity={0.0} />
           </RadialGradient>
         </Defs>
 
@@ -219,7 +227,7 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
           strokeLinejoin="round"
         />
 
-        {/* Crisp neon cyan outer perimeter — dissolves to 0 opacity before the southern tip */}
+        {/* Crisp outer perimeter — dissolves to 0 opacity before the southern tip */}
         <Path
           d={INDIA_OUTLINE_PATH}
           fill="none"
@@ -235,7 +243,6 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
           const end = NETWORK_NODES.find((n) => n.id === endId);
           if (!start || !end) return null;
 
-          // Compute fade factor based on vertical position
           const avgY = (start.y + end.y) / 2;
           const fadeFactor = avgY > 750 ? 0.35 : 1.0;
 
@@ -246,12 +253,12 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
               y1={start.y}
               x2={end.x}
               y2={end.y}
-              stroke="#2dd4bf"
+              stroke={primaryStrokeColor}
               strokeWidth="1.2"
               strokeDasharray="4,4"
               strokeOpacity={lineGlow.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 0.45 * fadeFactor],
+                outputRange: [0, (isDark ? 0.45 : 0.38) * fadeFactor],
               })}
             />
           );
@@ -261,8 +268,12 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
         {NETWORK_NODES.map((node) => {
           const anim = getPhaseAnim(node.phase);
           const isWorker = node.type === 'worker';
-          const coreColor = isWorker ? '#10b981' : '#f43f5e';
-          const ringColor = isWorker ? 'rgba(16, 185, 129, 0.5)' : 'rgba(244, 63, 94, 0.5)';
+          const coreColor = isWorker
+            ? (isDark ? '#10b981' : '#059669')
+            : (isDark ? '#f43f5e' : '#e11d48');
+          const ringColor = isWorker
+            ? (isDark ? 'rgba(16, 185, 129, 0.5)' : 'rgba(5, 150, 105, 0.45)')
+            : (isDark ? 'rgba(244, 63, 94, 0.5)' : 'rgba(225, 29, 72, 0.45)');
 
           const haloRadius = anim.interpolate({
             inputRange: [0, 1],
@@ -274,7 +285,6 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
             outputRange: [0.75, 0.35, 0.0],
           });
 
-          // Soften southernmost dots so they blend harmoniously
           const nodeFade = node.y > 800 ? 0.6 : 1.0;
 
           return (
@@ -292,7 +302,7 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
               <Circle
                 r={6}
                 fill={coreColor}
-                opacity={0.32}
+                opacity={isDark ? 0.32 : 0.25}
               />
 
               {/* Bright center pin */}

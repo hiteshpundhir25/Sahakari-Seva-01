@@ -40,7 +40,7 @@ export const ThemeToggle: React.FC = () => {
 
   const trackBorder = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#c7d2fe', darkColors.border],
+    outputRange: [lightColors.border, darkColors.border],
   });
 
   const thumbBg = progress.interpolate({
