@@ -602,5 +602,29 @@
     "tagline": "ਕਿਰਤ ਦਾ ਸਤਿਕਾਰ • ਲੋਕਤੰਤਰੀ ਨਿਯੰਤਰਣ • ਆਪਸੀ ਭਾਈਚਾਰਾ",
     "show_more": "ਹੋਰ ਵੇਖੋ",
     "show_less": "ਘੱਟ ਵੇਖੋ"
+  },
+  "calendar": {
+    "title": "ਸਵੀਕਾਰ ਕੀਤੇ ਅਤੇ ਨਿਰਧਾਰਤ ਕੰਮ",
+    "subtitle": "ਇਸ ਮਹੀਨੇ {{count}} ਕੰਮ ਨਿਰਧਾਰਤ ਹਨ",
+    "today": "ਅੱਜ",
+    "next_job": "ਅਗਲਾ ਕੰਮ",
+    "no_jobs_date": "ਇਸ ਮਿਤੀ 'ਤੇ ਕੋਈ ਕੰਮ ਨਿਰਧਾਰਤ ਨਹੀਂ ਹੈ",
+    "no_jobs_sub": "ਤੁਸੀਂ ਐਮਰਜੈਂਸੀ ਕਾਲਾਂ ਜਾਂ ਆਰਾਮ ਲਈ ਉਪਲਬਧ ਹੋ।",
+    "jump_to_next": "{{date}} ({{code}}) 'ਤੇ ਜਾਓ",
+    "manage_job": "ਕੰਮ ਪ੍ਰਬੰਧਿਤ ਕਰੋ",
+    "reschedule": "ਸਮਾਂ ਬਦਲੋ",
+    "reschedule_title": "ਸੇਵਾ ਦਾ ਸਮਾਂ ਬਦਲੋ",
+    "select_new_date": "ਨਵੀਂ ਮਿਤੀ ਚੁਣੋ",
+    "select_new_time": "ਨਵਾਂ ਸਮਾਂ ਸਲਾਟ ਚੁਣੋ",
+    "confirm_reschedule": "ਸਮਾਂ ਪੱਕਾ ਕਰੋ",
+    "rescheduled_success": "ਕੰਮ ਦਾ ਸਮਾਂ ਸਫਲਤਾਪੂਰਵਕ ਬਦਲਿਆ ਗਿਆ! ✅",
+    "reschedule_error": "ਸਮਾਂ ਨਹੀਂ ਬਦਲਿਆ ਜਾ ਸਕਿਆ। ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "view_in_jobs": "ਕੰਮਾਂ ਦੀ ਸੂਚੀ ਵਿੱਚ ਵੇਖੋ",
+    "customer_details": "ਗਾਹਕ ਵੇਰਵੇ",
+    "scheduled_for": "ਨਿਰਧਾਰਤ ਸਮਾਂ",
+    "morning": "ਸਵੇਰ (10:00 AM)",
+    "afternoon": "ਦੁਪਹਿਰ (02:00 PM)",
+    "evening": "ਸ਼ਾਮ (05:30 PM)",
+    "close": "ਬੰਦ ਕਰੋ"
   }
 }

@@ -493,5 +493,29 @@
     "match": "{{score}}% मैच",
     "book": "बुक (₹{{rate}})",
     "at": "पर"
+  },
+  "calendar": {
+    "title": "स्वीकृत और निर्धारित कार्य",
+    "subtitle": "इस महीने {{count}} कार्य निर्धारित हैं",
+    "today": "आज",
+    "next_job": "अगला कार्य",
+    "no_jobs_date": "इस तारीख पर कोई कार्य निर्धारित नहीं है",
+    "no_jobs_sub": "आप आपातकालीन अनुरोधों या विश्राम के लिए स्वतंत्र हैं।",
+    "jump_to_next": "{{date}} ({{code}}) पर जाएं",
+    "manage_job": "कार्य प्रबंधित करें",
+    "reschedule": "समय बदलें",
+    "reschedule_title": "सेवा कार्य का समय बदलें",
+    "select_new_date": "नई तारीख चुनें",
+    "select_new_time": "नया समय स्लॉट चुनें",
+    "confirm_reschedule": "नया समय पक्का करें",
+    "rescheduled_success": "कार्य का समय सफलतापूर्वक बदल दिया गया! ✅",
+    "reschedule_error": "समय नहीं बदला जा सका। कृपया पुनः प्रयास करें।",
+    "view_in_jobs": "कार्य सूची में देखें",
+    "customer_details": "ग्राहक विवरण",
+    "scheduled_for": "निर्धारित समय",
+    "morning": "सुबह (10:00 AM)",
+    "afternoon": "दोपहर (02:00 PM)",
+    "evening": "शाम (05:30 PM)",
+    "close": "बंद करें"
   }
 }

@@ -528,5 +528,29 @@
     "tagline": "Dignity of Labor • Democratic Control • Solidarity",
     "show_more": "Show more",
     "show_less": "Show less"
+  },
+  "calendar": {
+    "title": "Accepted & Scheduled Work",
+    "subtitle": "{{count}} jobs scheduled this month",
+    "today": "Today",
+    "next_job": "Next Job",
+    "no_jobs_date": "No jobs scheduled on this date",
+    "no_jobs_sub": "You are free for on-demand emergency calls or rest.",
+    "jump_to_next": "Jump to {{date}} ({{code}})",
+    "manage_job": "Manage Job",
+    "reschedule": "Reschedule",
+    "reschedule_title": "Reschedule Service Job",
+    "select_new_date": "Select New Date",
+    "select_new_time": "Select New Time Slot",
+    "confirm_reschedule": "Confirm Reschedule",
+    "rescheduled_success": "Job rescheduled successfully! ✅",
+    "reschedule_error": "Could not reschedule job. Please try again.",
+    "view_in_jobs": "View in Jobs Stream",
+    "customer_details": "Customer Details",
+    "scheduled_for": "Scheduled for",
+    "morning": "Morning (10:00 AM)",
+    "afternoon": "Afternoon (02:00 PM)",
+    "evening": "Evening (05:30 PM)",
+    "close": "Close"
   }
 }

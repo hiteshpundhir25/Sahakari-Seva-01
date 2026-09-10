@@ -602,5 +602,29 @@
     "tagline": "श्रम के सम्मान • लोकतांत्रिक नियंत्रण • एकजुटता",
     "show_more": "अउरी देखीं",
     "show_less": "कम देखीं"
+  },
+  "calendar": {
+    "title": "स्वीकार कइल आ तय काम",
+    "subtitle": "एह महीना {{count}} गो काम तय बा",
+    "today": "आजु",
+    "next_job": "अगिला काम",
+    "no_jobs_date": "एह तारीख पर कवनो काम तय नइखे",
+    "no_jobs_sub": "रउआ इमरजेंसी काल भा आराम खातिर खाली बानी।",
+    "jump_to_next": "{{date}} ({{code}}) पर जाईं",
+    "manage_job": "काम संभालीं",
+    "reschedule": "समय बदलीं",
+    "reschedule_title": "काम के समय बदलीं",
+    "select_new_date": "नया तारीख चुनीं",
+    "select_new_time": "नया समय चुनीं",
+    "confirm_reschedule": "पक्का करीं",
+    "rescheduled_success": "काम के समय सफलतापूर्वक बदल गइल! ✅",
+    "reschedule_error": "समय ना बदल पावल। फेरु से कोशिश करीं।",
+    "view_in_jobs": "काम के लिस्ट में देखीं",
+    "customer_details": "ग्राहक के जानकारी",
+    "scheduled_for": "तय समय",
+    "morning": "सबेरे (10:00 AM)",
+    "afternoon": "दुपहरिया (02:00 PM)",
+    "evening": "सांझ (05:30 PM)",
+    "close": "बंद करीं"
   }
 }

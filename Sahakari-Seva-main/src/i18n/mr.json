@@ -493,5 +493,29 @@
     "match": "मॅच: {{score}}/100",
     "book": "बुक करा (₹{{rate}})",
     "at": "वाजता"
+  },
+  "calendar": {
+    "title": "स्वीकृत आणि नियोजित कामे",
+    "subtitle": "या महिन्यात {{count}} कामे नियोजित आहेत",
+    "today": "आज",
+    "next_job": "पुढील काम",
+    "no_jobs_date": "या तारखेला कोणतेही काम नियोजित नाही",
+    "no_jobs_sub": "आपण आणीबाणी सेवा किंवा विश्रांतीसाठी उपलब्ध आहात.",
+    "jump_to_next": "{{date}} ({{code}}) वर जा",
+    "manage_job": "काम व्यवस्थापित करा",
+    "reschedule": "वेळ बदला",
+    "reschedule_title": "कामाची वेळ पुन्हा ठरवा",
+    "select_new_date": "नवीन तारीख निवडा",
+    "select_new_time": "नवीन वेळ निवडा",
+    "confirm_reschedule": "बदल निश्चित करा",
+    "rescheduled_success": "कामाची वेळ यशस्वीरित्या बदलली! ✅",
+    "reschedule_error": "वेळ बदलता आली नाही. कृपया पुन्हा प्रयत्न करा.",
+    "view_in_jobs": "काम सूचीत पहा",
+    "customer_details": "ग्राहक माहिती",
+    "scheduled_for": "नियोजित वेळ",
+    "morning": "सकाळ (10:00 AM)",
+    "afternoon": "दुपार (02:00 PM)",
+    "evening": "संध्याकाळ (05:30 PM)",
+    "close": "बंद करा"
   }
 }

@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/common/Header';
+import { WorkerScheduleCalendar } from '../../components/worker/WorkerScheduleCalendar';
 import { ApiClient } from '../../services/apiClient';
 import { Worker, AvailabilityStatus } from '../../types';
 import {
@@ -203,6 +204,14 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             </Text>
             <Text style={styles.insurancePolicy}>{t('worker.insurance_policy')}</Text>
           </View>
+        </FadeInView>
+
+        {/* Accepted & Scheduled Work Calendar */}
+        <FadeInView delay={360} distance={12} duration={320}>
+          <WorkerScheduleCalendar
+            workerId={worker?.id || 'w0000000-0000-0000-0000-000000000001'}
+            navigation={navigation}
+          />
         </FadeInView>
       </ScrollView>
     </View>

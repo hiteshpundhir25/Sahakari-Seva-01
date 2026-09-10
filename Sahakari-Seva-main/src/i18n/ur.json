@@ -602,5 +602,29 @@
     "tagline": "محنت کی عظمت • جمہوری کنٹرول • یکجہتی",
     "show_more": "مزید دیکھیں",
     "show_less": "کم دیکھیں"
+  },
+  "calendar": {
+    "title": "قبول شدہ اور طے شدہ کام",
+    "subtitle": "اس مہینے {{count}} کام طے ہیں",
+    "today": "آج",
+    "next_job": "اگلا کام",
+    "no_jobs_date": "اس تاریخ پر کوئی کام طے نہیں ہے",
+    "no_jobs_sub": "آپ ہنگامی کالز یا آرام کے لیے دستیاب ہیں۔",
+    "jump_to_next": "{{date}} ({{code}}) پر جائیں",
+    "manage_job": "کام کا انتظام کریں",
+    "reschedule": "وقت تبدیل کریں",
+    "reschedule_title": "کام کا وقت تبدیل کریں",
+    "select_new_date": "نئی تاریخ منتخب کریں",
+    "select_new_time": "نیا وقت منتخب کریں",
+    "confirm_reschedule": "تبدیلی کی تصدیق کریں",
+    "rescheduled_success": "کام کا وقت کامیابی سے تبدیل ہو گیا! ✅",
+    "reschedule_error": "وقت تبدیل نہ ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+    "view_in_jobs": "کاموں کی فہرست میں دیکھیں",
+    "customer_details": "گاہک کی تفصیلات",
+    "scheduled_for": "طے شدہ وقت",
+    "morning": "صبح (10:00 AM)",
+    "afternoon": "دوپہر (02:00 PM)",
+    "evening": "شام (05:30 PM)",
+    "close": "بند کریں"
   }
 }

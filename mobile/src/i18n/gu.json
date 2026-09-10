@@ -493,5 +493,29 @@
     "match": "મેચ: {{score}}/100",
     "book": "બુક કરો (₹{{rate}})",
     "at": "વાગ્યે"
+  },
+  "calendar": {
+    "title": "સ્વીકારેલ અને સુનિશ્ચિત કામ",
+    "subtitle": "આ મહિને {{count}} કામ સુનિશ્ચિત છે",
+    "today": "આજે",
+    "next_job": "આગળનું કામ",
+    "no_jobs_date": "આ તારીખે કોઈ કામ સુનિશ્ચિત નથી",
+    "no_jobs_sub": "તમે કટોકટી સેવા અથવા આરામ માટે મુક્ત છો.",
+    "jump_to_next": "{{date}} ({{code}}) પર જાઓ",
+    "manage_job": "કામનું સંચાલન કરો",
+    "reschedule": "સમય બદલો",
+    "reschedule_title": "કામનો સમય ફરીથી નક્કી કરો",
+    "select_new_date": "નવી તારીખ પસંદ કરો",
+    "select_new_time": "નવો સમય પસંદ કરો",
+    "confirm_reschedule": "ફેરફાર કન્ફર્મ કરો",
+    "rescheduled_success": "કામનો સમય સફળતાપૂર્વક બદલાઈ ગયો! ✅",
+    "reschedule_error": "સમય બદલી શકાયો નથી. કૃપા કરીને ફરી પ્રયાસ કરો.",
+    "view_in_jobs": "કામની સૂચિમાં જુઓ",
+    "customer_details": "ગ્રાહક વિગતો",
+    "scheduled_for": "સુનિશ્ચિત સમય",
+    "morning": "સવાર (10:00 AM)",
+    "afternoon": "બપોર (02:00 PM)",
+    "evening": "સાંજ (05:30 PM)",
+    "close": "બંધ કરો"
   }
 }

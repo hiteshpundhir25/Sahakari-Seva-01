@@ -316,6 +316,28 @@ export class ApiClient {
     }
   }
 
+  public static async rescheduleBooking(
+    bookingId: string,
+    newDate: string,
+    newTime: string
+  ): Promise<Booking> {
+    try {
+      return await this.request<Booking>(`/bookings/${bookingId}/reschedule`, {
+        method: 'PATCH',
+        body: JSON.stringify({ booking_date: newDate, booking_time: newTime })
+      });
+    } catch {
+      const b = MOCK_BOOKINGS.find(x => x.id === bookingId);
+      if (b) {
+        b.booking_date = newDate;
+        b.booking_time = newTime;
+        b.updated_at = new Date().toISOString();
+        return { ...b };
+      }
+      return { id: bookingId, booking_date: newDate, booking_time: newTime } as any;
+    }
+  }
+
   // --- AI DEMAND FORECASTING ---
   public static async getDemandForecast(): Promise<{
     zone_forecasts: DemandForecastRecord[];
