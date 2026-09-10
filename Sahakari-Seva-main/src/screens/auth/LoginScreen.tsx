@@ -673,15 +673,14 @@ const styles = StyleSheet.create({
   },
   tricolorPill: {
     flexDirection: 'row',
-    width: 32,
-    height: 3,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginTop: 4,
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 5,
   },
   tricolorBar: {
-    flex: 1,
-    height: '100%',
+    width: 14,
+    height: 3.5,
+    borderRadius: 2,
   },
   // --- Brand Center ---
   brandCenter: {
