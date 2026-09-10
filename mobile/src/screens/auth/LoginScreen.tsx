@@ -1,8 +1,8 @@
 // ==============================================================================
-// LOGIN SCREEN — SAHAKARI SEVA (ANTTI-GRAVITY REDESIGN)
-// Transparent glowing India map with live activity dots, "Bharat Works Together" badge,
-// bilingual branding (सहकारी सेवा), segmented role toggle, OTP input, social logins,
-// 1-click evaluation profiles, and "Scroll to explore" feature showcase with tricolor wave.
+// LOGIN SCREEN — SAHAKARI SEVA (WORKABLE INTERACTIVE OTP LOGIN)
+// Supports interactive 6-digit OTP verification, simulated SMS notifications,
+// 1-tap autofill, live countdown timer, 1-click evaluation profiles, dual light/dark themes,
+// and glowing India map overlay with seamless bottom fade.
 // ==============================================================================
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -18,6 +18,7 @@ import {
   Easing,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,12 +30,17 @@ import {
   Wrench,
   Shield,
   ArrowRight,
+  ArrowLeft,
   Globe,
   Sparkles,
   ChevronDown,
   CheckCircle2,
   Users,
   Coins,
+  Clock,
+  CircleAlert,
+  Zap,
+  RotateCcw,
 } from 'lucide-react-native';
 import { LanguageModal } from '../../components/common/LanguageModal';
 import ThemeToggle from '../../components/common/ThemeToggle';
@@ -131,18 +137,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   const { colors, isDark } = useTheme();
   const styles = React.useMemo(() => createStyles(isDark), [isDark]);
   const insets = useSafeAreaInsets();
+
+  // Auth steps & data
+  const [authStep, setAuthStep] = useState<'phone' | 'otp'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
+  const [generatedOtp, setGeneratedOtp] = useState('582914');
+  const [resendTimer, setResendTimer] = useState(30);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [smsBannerVisible, setSmsBannerVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'customer' | 'worker' | 'admin'>('customer');
   const [inputFocused, setInputFocused] = useState(false);
 
-  // Soft bouncing down arrow animation for "Scroll to explore"
+  const otpInputRefs = useRef<(TextInput | null)[]>([]);
+
+  // Animations
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const arrowNudgeAnim = useRef(new Animated.Value(0)).current;
   const logoPulseAnim = useRef(new Animated.Value(1)).current;
+  const smsSlideAnim = useRef(new Animated.Value(-20)).current;
+  const smsOpacityAnim = useRef(new Animated.Value(0)).current;
 
+  // Resend Countdown Timer
   useEffect(() => {
-    // Smooth vertical bounce for the scroll indicator
+    let interval: any;
+    if (authStep === 'otp' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [authStep, resendTimer]);
+
+  // General animations
+  useEffect(() => {
     const bounceLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(bounceAnim, {
@@ -161,7 +192,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     );
     bounceLoop.start();
 
-    // Subtle breathing nudge on the Send OTP arrow
     const arrowLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(arrowNudgeAnim, {
@@ -180,7 +210,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     );
     arrowLoop.start();
 
-    // Gentle logo breathing pulse
     const logoLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(logoPulseAnim, {
@@ -206,23 +235,159 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     };
   }, [bounceAnim, arrowNudgeAnim, logoPulseAnim]);
 
+  // Animate SMS Banner when displayed
+  useEffect(() => {
+    if (smsBannerVisible) {
+      Animated.parallel([
+        Animated.timing(smsSlideAnim, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.back(1.5)),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(smsOpacityAnim, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    } else {
+      smsSlideAnim.setValue(-20);
+      smsOpacityAnim.setValue(0);
+    }
+  }, [smsBannerVisible, smsSlideAnim, smsOpacityAnim]);
+
+  // 1. Submit Phone -> Generate & Send OTP
   const handlePhoneSubmit = () => {
-    if (phoneNumber.length < 10) {
-      Alert.alert(t('auth.invalid_phone_title'), t('auth.invalid_phone_msg'));
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      Alert.alert(
+        t('auth.invalid_phone_title', 'Invalid Number'),
+        t('auth.invalid_phone_msg', 'Please enter a valid 10-digit Indian phone number.')
+      );
       return;
     }
-    onSelectRole(selectedRole, {
-      name:
-        selectedRole === 'worker'
-          ? 'Rajesh Sharma'
-          : selectedRole === 'admin'
-          ? 'Federation Admin'
-          : 'Demo Customer',
-      phone: phoneNumber,
-      role: selectedRole,
-    });
+
+    setIsSending(true);
+    setTimeout(() => {
+      // Generate realistic 6-digit OTP code
+      const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(newOtp);
+      setOtp(['', '', '', '', '', '']);
+      setOtpError(null);
+      setResendTimer(30);
+      setIsSending(false);
+      setAuthStep('otp');
+      setSmsBannerVisible(true);
+
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 250);
+    }, 450);
   };
 
+  // 2. Handle OTP Input Changes & Auto-Advance
+  const handleOtpChange = (text: string, index: number) => {
+    const cleaned = text.replace(/\D/g, '');
+
+    // Handle full paste
+    if (cleaned.length > 1) {
+      const digits = cleaned.slice(0, 6).split('');
+      const newOtp = ['', '', '', '', '', ''];
+      digits.forEach((d, i) => {
+        if (i < 6) newOtp[i] = d;
+      });
+      setOtp(newOtp);
+      setOtpError(null);
+      if (digits.length === 6) {
+        otpInputRefs.current[5]?.blur();
+        verifyOtpCode(digits.join(''));
+      } else {
+        otpInputRefs.current[Math.min(digits.length, 5)]?.focus();
+      }
+      return;
+    }
+
+    const newOtp = [...otp];
+    newOtp[index] = cleaned;
+    setOtp(newOtp);
+    setOtpError(null);
+
+    if (cleaned) {
+      if (index < 5) {
+        otpInputRefs.current[index + 1]?.focus();
+      } else {
+        // Last digit entered
+        const fullCode = newOtp.join('');
+        if (fullCode.length === 6) {
+          verifyOtpCode(fullCode);
+        }
+      }
+    }
+  };
+
+  // 3. Handle Backspace Key Press
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      if (!otp[index] && index > 0) {
+        const newOtp = [...otp];
+        newOtp[index - 1] = '';
+        setOtp(newOtp);
+        otpInputRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  // 4. Autofill Code from Simulated SMS
+  const handleAutofill = () => {
+    const digits = generatedOtp.split('');
+    setOtp(digits);
+    setOtpError(null);
+    verifyOtpCode(generatedOtp);
+  };
+
+  // 5. Verify OTP & Complete Login
+  const verifyOtpCode = (code: string) => {
+    if (code.length < 6) {
+      setOtpError('Please enter all 6 digits of the OTP.');
+      return;
+    }
+
+    // Accept generated OTP or universal master demo codes '123456' / '000000'
+    if (code === generatedOtp || code === '123456' || code === '000000') {
+      setIsVerifying(true);
+      setOtpError(null);
+      setTimeout(() => {
+        onSelectRole(selectedRole, {
+          name:
+            selectedRole === 'worker'
+              ? 'Rajesh Sharma'
+              : selectedRole === 'admin'
+              ? 'Federation Admin'
+              : 'Demo Customer',
+          phone: '+91 ' + phoneNumber,
+          role: selectedRole,
+        });
+      }, 500);
+    } else {
+      setOtpError('Invalid OTP code. Please check the code or tap "Autofill ⚡"');
+    }
+  };
+
+  // 6. Resend OTP Action
+  const handleResendOtp = () => {
+    const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(newCode);
+    setOtp(['', '', '', '', '', '']);
+    setOtpError(null);
+    setResendTimer(30);
+    setSmsBannerVisible(true);
+    setTimeout(() => {
+      otpInputRefs.current[0]?.focus();
+    }, 200);
+  };
+
+  // Quick 1-Click Evaluation profiles for Evaluators & Judges
   const handleQuickDemoLogin = (role: 'customer' | 'worker' | 'admin') => {
     if (role === 'customer') {
       onSelectRole('customer', {
@@ -402,53 +567,214 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Phone Input Card */}
-        <View
-          style={[
-            styles.phoneCard,
-            inputFocused && styles.phoneCardFocused,
-          ]}
-        >
-          <View style={styles.phoneInputRow}>
-            <View style={styles.countryCodeWrap}>
-              <Text style={styles.flagEmoji}>🇮🇳</Text>
-              <Text style={styles.countryCodeText}>+91</Text>
+        {/* ================================================================= */}
+        {/* STEP 1: PHONE NUMBER INPUT FORM */}
+        {/* ================================================================= */}
+        {authStep === 'phone' ? (
+          <>
+            <View
+              style={[
+                styles.phoneCard,
+                inputFocused && styles.phoneCardFocused,
+              ]}
+            >
+              <View style={styles.phoneInputRow}>
+                <View style={styles.countryCodeWrap}>
+                  <Text style={styles.flagEmoji}>🇮🇳</Text>
+                  <Text style={styles.countryCodeText}>+91</Text>
+                </View>
+
+                <View style={styles.inputDivider} />
+
+                <TextInput
+                  style={styles.phoneTextInput}
+                  placeholder="Enter your mobile number"
+                  placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
+                />
+              </View>
             </View>
 
-            <View style={styles.inputDivider} />
+            {/* Emerald "Send OTP →" Action Button */}
+            <TouchableOpacity
+              style={styles.sendOtpBtnShadow}
+              onPress={handlePhoneSubmit}
+              activeOpacity={0.88}
+              disabled={isSending}
+            >
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.sendOtpBtn}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Text style={styles.sendOtpBtnText}>Send OTP</Text>
+                    <Animated.View style={{ transform: [{ translateX: arrowNudgeAnim }] }}>
+                      <ArrowRight size={18} color="#ffffff" />
+                    </Animated.View>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
+        ) : (
+          /* ================================================================= */
+          /* STEP 2: WORKABLE OTP VERIFICATION CARD WITH SIMULATED SMS PROMPT  */
+          /* ================================================================= */
+          <View style={{ width: '100%', maxWidth: 360, alignItems: 'center' }}>
+            {/* Simulated SMS Notification Banner */}
+            {smsBannerVisible && (
+              <Animated.View
+                style={[
+                  styles.smsBanner,
+                  {
+                    transform: [{ translateY: smsSlideAnim }],
+                    opacity: smsOpacityAnim,
+                  },
+                ]}
+              >
+                <View style={styles.smsBannerTop}>
+                  <View style={styles.smsSenderWrap}>
+                    <Text style={styles.smsIcon}>📩</Text>
+                    <Text style={styles.smsSenderName}>VM-SAHAKAR</Text>
+                    <View style={styles.smsDot} />
+                    <Text style={styles.smsTimestamp}>Just now</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.autofillBadge}
+                    onPress={handleAutofill}
+                    activeOpacity={0.7}
+                  >
+                    <Zap size={11} color="#ffffff" />
+                    <Text style={styles.autofillBadgeText}>Autofill ⚡</Text>
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.smsMessageText}>
+                  Your Sahakari Seva login OTP is{' '}
+                  <Text style={styles.smsCodeHighlight}>{generatedOtp}</Text>. Valid for 10 minutes. Do not share.
+                </Text>
+              </Animated.View>
+            )}
 
-            <TextInput
-              style={styles.phoneTextInput}
-              placeholder="Enter your mobile number"
-              placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
-              keyboardType="phone-pad"
-              maxLength={10}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-            />
+            {/* OTP Verification Input Card */}
+            <View style={styles.otpCard}>
+              <View style={styles.otpCardHeader}>
+                <Text style={styles.otpTitle}>Enter Verification Code</Text>
+                <View style={styles.otpPhoneRow}>
+                  <Text style={styles.otpSubtitle}>
+                    Code sent to <Text style={styles.otpPhoneHighlight}>+91 {phoneNumber}</Text>
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAuthStep('phone');
+                      setOtpError(null);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.otpChangePhone}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* 6-Digit PIN Grid */}
+              <View style={styles.otpInputsRow}>
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => {
+                      otpInputRefs.current[index] = ref;
+                    }}
+                    style={[
+                      styles.otpBox,
+                      digit ? styles.otpBoxFilled : null,
+                      otpError ? styles.otpBoxError : null,
+                    ]}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    value={digit}
+                    onChangeText={(text) => handleOtpChange(text, index)}
+                    onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                    selectTextOnFocus
+                  />
+                ))}
+              </View>
+
+              {/* Error prompt if invalid OTP */}
+              {otpError && (
+                <View style={styles.errorRow}>
+                  <CircleAlert size={14} color="#f43f5e" />
+                  <Text style={styles.errorText}>{otpError}</Text>
+                </View>
+              )}
+
+              {/* Resend Timer / Action */}
+              <View style={styles.resendRow}>
+                {resendTimer > 0 ? (
+                  <View style={styles.resendTimerWrap}>
+                    <Clock size={13} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <Text style={styles.resendTimerText}>
+                      Resend OTP in 0:{resendTimer < 10 ? '0' : ''}{resendTimer}
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.resendActionBtn}
+                    onPress={handleResendOtp}
+                    activeOpacity={0.7}
+                  >
+                    <RotateCcw size={13} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                    <Text style={styles.resendActionText}>Resend OTP</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Verify & Login Button */}
+              <TouchableOpacity
+                style={styles.sendOtpBtnShadow}
+                onPress={() => verifyOtpCode(otp.join(''))}
+                activeOpacity={0.88}
+                disabled={isVerifying}
+              >
+                <LinearGradient
+                  colors={['#10b981', '#059669']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.sendOtpBtn}
+                >
+                  {isVerifying ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <>
+                      <Text style={styles.sendOtpBtnText}>Verify & Login</Text>
+                      <ArrowRight size={18} color="#ffffff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Change Phone Number Back Link */}
+              <TouchableOpacity
+                style={styles.backToPhoneBtn}
+                onPress={() => {
+                  setAuthStep('phone');
+                  setOtpError(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.backToPhoneText}>← Change mobile number</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-
-        {/* Emerald "Send OTP →" Action Button */}
-        <TouchableOpacity
-          style={styles.sendOtpBtnShadow}
-          onPress={handlePhoneSubmit}
-          activeOpacity={0.88}
-        >
-          <LinearGradient
-            colors={['#10b981', '#059669']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.sendOtpBtn}
-          >
-            <Text style={styles.sendOtpBtnText}>Send OTP</Text>
-            <Animated.View style={{ transform: [{ translateX: arrowNudgeAnim }] }}>
-              <ArrowRight size={18} color="#ffffff" />
-            </Animated.View>
-          </LinearGradient>
-        </TouchableOpacity>
+        )}
 
         {/* "or continue with" Divider */}
         <View style={styles.orDividerRow}>
@@ -529,40 +855,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           </View>
         </View>
 
-        {/* "Scroll to explore" Bounce Section */}
+        {/* Bouncing Scroll Indicator */}
         <View style={styles.scrollIndicatorWrap}>
           <Text style={styles.scrollIndicatorText}>Scroll to explore</Text>
           <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-            <ChevronDown size={18} color={isDark ? "#94a3b8" : "#64748b"} />
+            <ChevronDown size={17} color={isDark ? '#2dd4bf' : '#0d9488'} />
           </Animated.View>
         </View>
 
-        {/* Bottom Revealed Section: 3 Feature Highlight Cards */}
+        {/* Features Showcase Section */}
         <View style={styles.featureShowcase}>
-          {/* Feature 1: Verified Workers */}
+          {/* Feature 1: Fair Wages */}
           <View style={styles.featureCard}>
             <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
-              <ShieldCheck size={22} color="#10b981" />
+              <CheckCircle2 size={22} color="#10b981" />
             </View>
             <View style={styles.featureTextWrap}>
-              <Text style={styles.featureTitle}>Verified Workers</Text>
-              <Text style={styles.featureTagline}>Trusted. Skilled. Reliable.</Text>
+              <Text style={styles.featureTitle}>Fair Wages, Dignified Work</Text>
+              <Text style={styles.featureTagline}>Only 5% Federation Fee vs 25% Corporate.</Text>
               <Text style={styles.featureDesc}>
-                Aadhaar verified, background-checked, and trade-certified local professionals.
+                Gig workers keep 95% of every rupee earned. Democratic voting rights for every verified cooperative member.
               </Text>
             </View>
           </View>
 
-          {/* Feature 2: Fair Earnings */}
+          {/* Feature 2: AI Dispatch */}
           <View style={styles.featureCard}>
             <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.14)' }]}>
-              <Coins size={22} color="#f59e0b" />
+              <Sparkles size={22} color="#f59e0b" />
             </View>
             <View style={styles.featureTextWrap}>
-              <Text style={styles.featureTitle}>Fair Earnings</Text>
-              <Text style={styles.featureTagline}>Empowering Workers.</Text>
+              <Text style={styles.featureTitle}>Intelligent Dispatch</Text>
+              <Text style={styles.featureTagline}>Predictive Demand & Zero Middlemen.</Text>
               <Text style={styles.featureDesc}>
-                Workers retain 95% of customer payments. Zero predatory commission fees.
+                Proprietary AI matches local technicians in under 60 seconds with live GPS radar tracking and emergency dispatch.
               </Text>
             </View>
           </View>
@@ -900,6 +1226,200 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
     color: '#ffffff',
     letterSpacing: 0.2,
+  },
+  // --- Simulated SMS Notification Banner ---
+  smsBanner: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : '#ffffff',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : '#10b981',
+    marginBottom: 14,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  smsBannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  smsSenderWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  smsIcon: {
+    fontSize: 13,
+  },
+  smsSenderName: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: isDark ? '#2dd4bf' : '#047857',
+    letterSpacing: 0.4,
+  },
+  smsDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: isDark ? '#64748b' : '#94a3b8',
+  },
+  smsTimestamp: {
+    fontSize: 10.5,
+    color: isDark ? '#64748b' : '#94a3b8',
+  },
+  autofillBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#10b981',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  autofillBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  smsMessageText: {
+    fontSize: 11.5,
+    color: isDark ? '#cbd5e1' : '#334155',
+    lineHeight: 16,
+  },
+  smsCodeHighlight: {
+    fontWeight: '900',
+    color: isDark ? '#2dd4bf' : '#047857',
+    letterSpacing: 1,
+  },
+  // --- OTP Card Container ---
+  otpCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: isDark ? 'rgba(11, 18, 34, 0.92)' : '#ffffff',
+    borderRadius: 24,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  otpCardHeader: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  otpTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: isDark ? '#f8fafc' : '#0f172a',
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  otpPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  otpSubtitle: {
+    fontSize: 12,
+    color: isDark ? '#94a3b8' : '#64748b',
+  },
+  otpPhoneHighlight: {
+    fontWeight: '700',
+    color: isDark ? '#e2e8f0' : '#1e293b',
+  },
+  otpChangePhone: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: isDark ? '#2dd4bf' : '#0d9488',
+    textDecorationLine: 'underline',
+  },
+  // 6-Digit PIN Grid
+  otpInputsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+  },
+  otpBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
+    fontSize: 21,
+    fontWeight: '800',
+    textAlign: 'center',
+    color: isDark ? '#ffffff' : '#0f172a',
+  },
+  otpBoxFilled: {
+    borderColor: '#10b981',
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.10)' : '#ecfdf5',
+  },
+  otpBoxError: {
+    borderColor: '#f43f5e',
+    backgroundColor: isDark ? 'rgba(244, 63, 94, 0.10)' : '#fff1f2',
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 11.5,
+    color: '#f43f5e',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resendTimerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  resendTimerText: {
+    fontSize: 12,
+    color: isDark ? '#94a3b8' : '#64748b',
+    fontWeight: '500',
+  },
+  resendActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  resendActionText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: isDark ? '#2dd4bf' : '#0d9488',
+  },
+  backToPhoneBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  backToPhoneText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: isDark ? '#94a3b8' : '#64748b',
   },
   // --- Social Logins ---
   orDividerRow: {
