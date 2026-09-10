@@ -1,8 +1,13 @@
 // ==============================================================================
-// LOGIN SCREEN — SAHAKARI SEVA (WORKABLE INTERACTIVE OTP LOGIN)
-// Supports interactive 6-digit OTP verification, simulated SMS notifications,
-// 1-tap autofill, live countdown timer, 1-click evaluation profiles, dual light/dark themes,
-// and glowing India map overlay with seamless bottom fade.
+// LOGIN SCREEN — SAHAKARI SEVA (REFINED COMPOSITION & PROPORTIONS)
+// - Reduced India map vertical footprint by ~28% (height 390 vs 540)
+// - Moved Sahakari Seva logo & branding slightly upward (marginTop 18 vs 36)
+// - Repositioned login card upward into freed space
+// - Reduced tagline size by ~17% (10.8px / 15.5px line-height vs 12.5px / 18px)
+// - Refined button heights & tightened gaps (comfortable 44-48px touch targets)
+// - Tightened input fields & labels (height 44px)
+// - Reduced Terms & Privacy text by ~12% (10.2px)
+// - Preserves 100% of authentication logic, 6-digit OTP, animations, themes, and navigation.
 // ==============================================================================
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -70,7 +75,7 @@ const NATIVE_SHORT: Record<string, string> = {
 
 // Official Google 'G' 4-color vector logo
 const GoogleIcon = () => (
-  <Svg width={18} height={18} viewBox="0 0 24 24">
+  <Svg width={17} height={17} viewBox="0 0 24 24">
     <Path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -92,7 +97,7 @@ const GoogleIcon = () => (
 
 // Official Apple vector icon (adapts to light/dark)
 const AppleIcon = ({ isDark }: { isDark: boolean }) => (
-  <Svg width={18} height={18} viewBox="0 0 24 24">
+  <Svg width={17} height={17} viewBox="0 0 24 24">
     <Path
       fill={isDark ? '#ffffff' : '#000000'}
       d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.96c.66-.8 1.11-1.92.99-3.04-.96.04-2.12.64-2.8 1.44-.61.71-1.14 1.86-1 2.96 1.07.08 2.15-.56 2.81-1.36z"
@@ -102,7 +107,7 @@ const AppleIcon = ({ isDark }: { isDark: boolean }) => (
 
 // Silhouette of Indian landmark monuments (adapts to light/dark)
 const SkylineSilhouette = ({ isDark }: { isDark: boolean }) => (
-  <Svg viewBox="0 0 400 50" width="100%" height={50} preserveAspectRatio="none">
+  <Svg viewBox="0 0 400 50" width="100%" height={46} preserveAspectRatio="none">
     <Path
       d="M 0 50 L 0 38 L 12 38 L 12 32 L 18 32 L 18 24 L 22 24 L 22 32 L 28 32 L 28 38 L 40 38 L 40 30 L 46 30 L 46 22 L 48 18 L 50 22 L 50 30 L 56 30 L 56 38 L 75 38 L 75 33 L 80 33 L 80 26 L 85 22 L 90 26 L 90 33 L 95 33 L 95 38 L 120 38 L 120 28 L 125 28 L 125 18 L 128 13 L 131 18 L 131 28 L 135 28 L 135 38 L 155 38 L 155 32 L 160 32 L 160 22 L 165 22 L 165 14 L 170 10 L 175 14 L 175 22 L 180 22 L 180 32 L 185 32 L 185 38 L 215 38 L 215 32 L 220 32 L 220 22 L 225 22 L 225 14 L 230 10 L 235 14 L 235 22 L 240 22 L 240 32 L 245 32 L 245 38 L 265 38 L 265 28 L 270 28 L 270 18 L 273 13 L 276 18 L 276 28 L 280 28 L 280 38 L 305 38 L 305 33 L 310 33 L 310 26 L 315 22 L 320 26 L 320 33 L 325 33 L 325 38 L 344 38 L 344 30 L 350 30 L 350 22 L 352 18 L 354 22 L 354 30 L 360 30 L 360 38 L 372 38 L 372 32 L 378 32 L 378 24 L 382 24 L 382 32 L 388 32 L 388 38 L 400 38 L 400 50 Z"
       fill={isDark ? '#0c172e' : '#cbd5e1'}
@@ -113,7 +118,7 @@ const SkylineSilhouette = ({ isDark }: { isDark: boolean }) => (
 
 // Gentle Indian tricolor ribbon wave at base
 const TricolorWave = () => (
-  <Svg viewBox="0 0 400 22" width="100%" height={22} preserveAspectRatio="none">
+  <Svg viewBox="0 0 400 20" width="100%" height={20} preserveAspectRatio="none">
     <Path
       d="M 0 0 C 110 12 210 -4 400 8 L 400 13 C 210 1 110 17 0 5 Z"
       fill="#FF9933"
@@ -125,7 +130,7 @@ const TricolorWave = () => (
       opacity="0.8"
     />
     <Path
-      d="M 0 9 C 110 21 210 5 400 17 L 400 22 L 0 22 Z"
+      d="M 0 9 C 110 21 210 5 400 17 L 400 20 L 0 20 Z"
       fill="#138808"
       opacity="0.95"
     />
@@ -158,7 +163,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   const bounceAnim = useRef(new Animated.Value(0)).current;
   const arrowNudgeAnim = useRef(new Animated.Value(0)).current;
   const logoPulseAnim = useRef(new Animated.Value(1)).current;
-  const smsSlideAnim = useRef(new Animated.Value(-20)).current;
+  const smsSlideAnim = useRef(new Animated.Value(-16)).current;
   const smsOpacityAnim = useRef(new Animated.Value(0)).current;
 
   // Resend Countdown Timer
@@ -177,7 +182,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     const bounceLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(bounceAnim, {
-          toValue: 6,
+          toValue: 5,
           duration: 900,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: Platform.OS !== 'web',
@@ -213,7 +218,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     const logoLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(logoPulseAnim, {
-          toValue: 1.04,
+          toValue: 1.03,
           duration: 2200,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: Platform.OS !== 'web',
@@ -241,18 +246,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
       Animated.parallel([
         Animated.timing(smsSlideAnim, {
           toValue: 0,
-          duration: 400,
+          duration: 350,
           easing: Easing.out(Easing.back(1.5)),
           useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(smsOpacityAnim, {
           toValue: 1,
-          duration: 350,
+          duration: 300,
           useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     } else {
-      smsSlideAnim.setValue(-20);
+      smsSlideAnim.setValue(-16);
       smsOpacityAnim.setValue(0);
     }
   }, [smsBannerVisible, smsSlideAnim, smsOpacityAnim]);
@@ -282,8 +287,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
 
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
-      }, 250);
-    }, 450);
+      }, 200);
+    }, 400);
   };
 
   // 2. Handle OTP Input Changes & Auto-Advance
@@ -368,7 +373,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           phone: '+91 ' + phoneNumber,
           role: selectedRole,
         });
-      }, 500);
+      }, 450);
     } else {
       setOtpError('Invalid OTP code. Please check the code or tap "Autofill ⚡"');
     }
@@ -429,11 +434,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Perfectly centered, seamless India Map with fading bottom and live activity dots */}
-      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 4 }]} isDark={isDark} />
+      {/* Reduced footprint India Map with fading bottom and live activity dots */}
+      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 44 }]} isDark={isDark} />
 
       {/* Top Header Bar */}
-      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 14) }]}>
+      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 12) }]}>
         <View style={styles.topHeaderLeft}>
           <ThemeToggle />
           <TouchableOpacity
@@ -463,12 +468,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContainer,
-          { paddingBottom: insets.bottom + 36 },
+          { paddingBottom: insets.bottom + 28 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Central Logo & Branding */}
+        {/* Central Logo & Branding (Moved slightly upward) */}
         <View style={styles.brandCenter}>
           <Animated.View
             style={[
@@ -488,6 +493,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           <Text style={styles.brandHeading}>Sahakari Seva</Text>
           <Text style={styles.brandHindiHeading}>सहकारी सेवा</Text>
 
+          {/* Reduced tagline size by ~17% */}
           <Text style={styles.brandTagline}>
             India's First Worker-Owned Cooperative{'\n'}Platform for Urban & Household Gig Services
           </Text>
@@ -505,9 +511,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
               activeOpacity={0.85}
             >
               <User
-                size={16}
+                size={15}
                 color={selectedRole === 'customer' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')}
-                style={{ marginRight: 6 }}
+                style={{ marginRight: 5 }}
               />
               <Text
                 style={[
@@ -528,9 +534,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
               activeOpacity={0.85}
             >
               <Wrench
-                size={16}
+                size={15}
                 color={selectedRole === 'worker' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b')}
-                style={{ marginRight: 6 }}
+                style={{ marginRight: 5 }}
               />
               <Text
                 style={[
@@ -553,7 +559,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             activeOpacity={0.7}
           >
             <Shield
-              size={12}
+              size={11}
               color={selectedRole === 'admin' ? '#10b981' : '#64748b'}
             />
             <Text
@@ -568,7 +574,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         </View>
 
         {/* ================================================================= */}
-        {/* STEP 1: PHONE NUMBER INPUT FORM */}
+        {/* STEP 1: PHONE NUMBER INPUT FORM (Repositioned upward)            */}
         {/* ================================================================= */}
         {authStep === 'phone' ? (
           <>
@@ -619,7 +625,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
                   <>
                     <Text style={styles.sendOtpBtnText}>Send OTP</Text>
                     <Animated.View style={{ transform: [{ translateX: arrowNudgeAnim }] }}>
-                      <ArrowRight size={18} color="#ffffff" />
+                      <ArrowRight size={17} color="#ffffff" />
                     </Animated.View>
                   </>
                 )}
@@ -628,7 +634,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           </>
         ) : (
           /* ================================================================= */
-          /* STEP 2: WORKABLE OTP VERIFICATION CARD WITH SIMULATED SMS PROMPT  */
+          /* STEP 2: WORKABLE OTP VERIFICATION CARD                            */
           /* ================================================================= */
           <View style={{ width: '100%', maxWidth: 360, alignItems: 'center' }}>
             {/* Simulated SMS Notification Banner */}
@@ -711,7 +717,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
               {/* Error prompt if invalid OTP */}
               {otpError && (
                 <View style={styles.errorRow}>
-                  <CircleAlert size={14} color="#f43f5e" />
+                  <CircleAlert size={13} color="#f43f5e" />
                   <Text style={styles.errorText}>{otpError}</Text>
                 </View>
               )}
@@ -720,7 +726,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
               <View style={styles.resendRow}>
                 {resendTimer > 0 ? (
                   <View style={styles.resendTimerWrap}>
-                    <Clock size={13} color={isDark ? '#94a3b8' : '#64748b'} />
+                    <Clock size={12} color={isDark ? '#94a3b8' : '#64748b'} />
                     <Text style={styles.resendTimerText}>
                       Resend OTP in 0:{resendTimer < 10 ? '0' : ''}{resendTimer}
                     </Text>
@@ -731,7 +737,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
                     onPress={handleResendOtp}
                     activeOpacity={0.7}
                   >
-                    <RotateCcw size={13} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                    <RotateCcw size={12} color={isDark ? '#2dd4bf' : '#0d9488'} />
                     <Text style={styles.resendActionText}>Resend OTP</Text>
                   </TouchableOpacity>
                 )}
@@ -755,7 +761,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
                   ) : (
                     <>
                       <Text style={styles.sendOtpBtnText}>Verify & Login</Text>
-                      <ArrowRight size={18} color="#ffffff" />
+                      <ArrowRight size={17} color="#ffffff" />
                     </>
                   )}
                 </LinearGradient>
@@ -807,7 +813,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         {/* 1-Click Instant Demo Evaluation Pills */}
         <View style={styles.demoSection}>
           <View style={styles.demoHeader}>
-            <Sparkles size={13} color="#f59e0b" />
+            <Sparkles size={12} color="#f59e0b" />
             <Text style={styles.demoHeaderText}>1-Click Instant Evaluation</Text>
           </View>
 
@@ -841,7 +847,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           </View>
         </View>
 
-        {/* Terms of Service & Privacy Policy */}
+        {/* Terms of Service & Privacy Policy (10-15% smaller) */}
         <View style={styles.legalRow}>
           <Text style={styles.legalText}>By continuing, you agree to our </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -859,7 +865,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         <View style={styles.scrollIndicatorWrap}>
           <Text style={styles.scrollIndicatorText}>Scroll to explore</Text>
           <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-            <ChevronDown size={17} color={isDark ? '#2dd4bf' : '#0d9488'} />
+            <ChevronDown size={16} color={isDark ? '#2dd4bf' : '#0d9488'} />
           </Animated.View>
         </View>
 
@@ -868,7 +874,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           {/* Feature 1: Fair Wages */}
           <View style={styles.featureCard}>
             <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
-              <CheckCircle2 size={22} color="#10b981" />
+              <CheckCircle2 size={20} color="#10b981" />
             </View>
             <View style={styles.featureTextWrap}>
               <Text style={styles.featureTitle}>Fair Wages, Dignified Work</Text>
@@ -882,7 +888,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           {/* Feature 2: AI Dispatch */}
           <View style={styles.featureCard}>
             <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.14)' }]}>
-              <Sparkles size={22} color="#f59e0b" />
+              <Sparkles size={20} color="#f59e0b" />
             </View>
             <View style={styles.featureTextWrap}>
               <Text style={styles.featureTitle}>Intelligent Dispatch</Text>
@@ -896,7 +902,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           {/* Feature 3: Stronger Communities */}
           <View style={styles.featureCard}>
             <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.14)' }]}>
-              <Users size={22} color="#38bdf8" />
+              <Users size={20} color="#38bdf8" />
             </View>
             <View style={styles.featureTextWrap}>
               <Text style={styles.featureTitle}>Stronger Communities</Text>
@@ -944,23 +950,24 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flex: 1,
     backgroundColor: isDark ? '#040712' : '#f8fafc',
   },
+  // 1. Reduced vertical footprint by ~28% (height 390 vs 540)
   mapOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 540,
+    height: 390,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollContainer: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
   // --- Top Header ---
   topHeader: {
-    paddingHorizontal: 18,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -975,15 +982,15 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 14,
     backgroundColor: isDark ? 'rgba(45, 212, 191, 0.12)' : 'rgba(13, 148, 136, 0.10)',
     borderWidth: 1,
     borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(13, 148, 136, 0.25)',
   },
   langPillText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: isDark ? '#2dd4bf' : '#0f766e',
   },
@@ -991,13 +998,13 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'flex-end',
   },
   bharatTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     color: isDark ? '#f8fafc' : '#0f172a',
     letterSpacing: 0.3,
   },
   bharatSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '500',
     color: isDark ? '#94a3b8' : '#64748b',
     marginTop: -1,
@@ -1005,24 +1012,24 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   tricolorPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 5,
+    gap: 3.5,
+    marginTop: 4,
   },
   tricolorBar: {
-    width: 14,
-    height: 3.5,
-    borderRadius: 2,
+    width: 13,
+    height: 3,
+    borderRadius: 1.5,
   },
-  // --- Brand Center ---
+  // --- Brand Center (Moved slightly upward) ---
   brandCenter: {
     alignItems: 'center',
-    marginTop: 36,
-    marginBottom: 20,
+    marginTop: 18,
+    marginBottom: 14,
   },
   logoCircleGlow: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: isDark ? 'rgba(16, 185, 129, 0.14)' : 'rgba(16, 185, 129, 0.15)',
     borderWidth: 1.5,
     borderColor: isDark ? 'rgba(45, 212, 191, 0.35)' : 'rgba(13, 148, 136, 0.28)',
@@ -1031,14 +1038,14 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: isDark ? 0.45 : 0.25,
-    shadowRadius: 18,
-    elevation: 8,
-    marginBottom: 14,
+    shadowRadius: 16,
+    elevation: 6,
+    marginBottom: 10,
   },
   logoCircleInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: isDark ? 'rgba(10, 20, 42, 0.92)' : '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1047,54 +1054,55 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: isDark ? 0 : 0.08,
-    shadowRadius: 6,
+    shadowRadius: 5,
   },
   brandEmblemImage: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
   },
   brandHeading: {
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: '900',
     color: isDark ? '#ffffff' : '#0f172a',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
     textAlign: 'center',
   },
   brandHindiHeading: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '700',
     color: isDark ? '#f1f5f9' : '#334155',
-    marginTop: 2,
-    marginBottom: 8,
+    marginTop: 1,
+    marginBottom: 5,
     textAlign: 'center',
   },
+  // Reduced tagline size by ~17% (10.8px / 15.5px line-height)
   brandTagline: {
-    fontSize: 12.5,
+    fontSize: 10.8,
     fontWeight: '400',
     color: isDark ? '#94a3b8' : '#64748b',
     textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 310,
+    lineHeight: 15.5,
+    maxWidth: 290,
   },
   // --- Role Picker Card ---
   rolePickerCard: {
     width: '100%',
     maxWidth: 360,
-    marginBottom: 14,
+    marginBottom: 10,
     alignItems: 'center',
   },
   segmentedToggle: {
     flexDirection: 'row',
     width: '100%',
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
-    borderRadius: 24,
-    padding: 4,
+    borderRadius: 22,
+    padding: 3.5,
     borderWidth: 1,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.06,
-    shadowRadius: 8,
+    shadowOpacity: isDark ? 0 : 0.05,
+    shadowRadius: 6,
     elevation: 2,
   },
   segmentBtn: {
@@ -1102,19 +1110,19 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 11,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: 18,
   },
   segmentBtnActive: {
     backgroundColor: '#10b981',
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    shadowOpacity: 0.32,
+    shadowRadius: 5,
     elevation: 3,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     color: isDark ? '#94a3b8' : '#64748b',
   },
@@ -1125,11 +1133,11 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   adminPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 4,
+    marginTop: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 10,
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f1f5f9',
     borderWidth: 1,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.07)' : '#e2e8f0',
@@ -1139,7 +1147,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.40)',
   },
   adminPillText: {
-    fontSize: 11,
+    fontSize: 10.8,
     fontWeight: '600',
     color: isDark ? '#64748b' : '#64748b',
   },
@@ -1147,21 +1155,21 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     color: '#10b981',
     fontWeight: '700',
   },
-  // --- Phone Card ---
+  // --- Phone Card (Tightened vertical height) ---
   phoneCard: {
     width: '100%',
     maxWidth: 360,
     backgroundColor: isDark ? 'rgba(11, 18, 34, 0.88)' : '#ffffff',
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 8,
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 6,
     elevation: 2,
   },
   phoneCardFocused: {
@@ -1169,60 +1177,60 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowRadius: 8,
   },
   phoneInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
+    height: 44,
   },
   countryCodeWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   flagEmoji: {
-    fontSize: 18,
+    fontSize: 17,
   },
   countryCodeText: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
     color: isDark ? '#f8fafc' : '#0f172a',
   },
   inputDivider: {
     width: 1,
-    height: 22,
+    height: 20,
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.10)',
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   phoneTextInput: {
     flex: 1,
-    fontSize: 14.5,
+    fontSize: 14,
     color: isDark ? '#ffffff' : '#0f172a',
     paddingVertical: 0,
   },
-  // --- Send OTP Button ---
+  // --- Send OTP Button (Refined height & padding) ---
   sendOtpBtnShadow: {
     width: '100%',
     maxWidth: 360,
-    borderRadius: 24,
+    borderRadius: 22,
     shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
-    marginBottom: 16,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 5,
+    marginBottom: 12,
   },
   sendOtpBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 24,
+    gap: 7,
+    paddingVertical: 11.5,
+    borderRadius: 22,
   },
   sendOtpBtnText: {
-    fontSize: 15.5,
+    fontSize: 14.5,
     fontWeight: '800',
     color: '#ffffff',
     letterSpacing: 0.2,
@@ -1232,22 +1240,22 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : '#ffffff',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 14,
+    padding: 10,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(45, 212, 191, 0.4)' : '#10b981',
-    marginBottom: 14,
+    marginBottom: 10,
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 3,
   },
   smsBannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   smsSenderWrap: {
     flexDirection: 'row',
@@ -1255,10 +1263,10 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     gap: 5,
   },
   smsIcon: {
-    fontSize: 13,
+    fontSize: 12,
   },
   smsSenderName: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: isDark ? '#2dd4bf' : '#047857',
     letterSpacing: 0.4,
@@ -1270,27 +1278,27 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? '#64748b' : '#94a3b8',
   },
   smsTimestamp: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: isDark ? '#64748b' : '#94a3b8',
   },
   autofillBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3.5,
     backgroundColor: '#10b981',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 10,
   },
   autofillBadgeText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '800',
     color: '#ffffff',
   },
   smsMessageText: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: isDark ? '#cbd5e1' : '#334155',
-    lineHeight: 16,
+    lineHeight: 15.5,
   },
   smsCodeHighlight: {
     fontWeight: '900',
@@ -1302,35 +1310,35 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: isDark ? 'rgba(11, 18, 34, 0.92)' : '#ffffff',
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
-    padding: 18,
-    marginBottom: 16,
+    padding: 14,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 10,
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 8,
     elevation: 3,
   },
   otpCardHeader: {
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   otpTitle: {
-    fontSize: 17,
+    fontSize: 15.5,
     fontWeight: '800',
     color: isDark ? '#f8fafc' : '#0f172a',
     letterSpacing: 0.2,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   otpPhoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   otpSubtitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: isDark ? '#94a3b8' : '#64748b',
   },
   otpPhoneHighlight: {
@@ -1338,7 +1346,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#e2e8f0' : '#1e293b',
   },
   otpChangePhone: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: isDark ? '#2dd4bf' : '#0d9488',
     textDecorationLine: 'underline',
@@ -1348,16 +1356,16 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   otpBox: {
-    width: 44,
-    height: 52,
-    borderRadius: 12,
+    width: 42,
+    height: 46,
+    borderRadius: 10,
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : '#f8fafc',
     borderWidth: 1.5,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#cbd5e1',
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: '800',
     textAlign: 'center',
     color: isDark ? '#ffffff' : '#0f172a',
@@ -1375,10 +1383,10 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   errorText: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#f43f5e',
     fontWeight: '600',
     textAlign: 'center',
@@ -1387,37 +1395,37 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   resendTimerWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   resendTimerText: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: isDark ? '#94a3b8' : '#64748b',
     fontWeight: '500',
   },
   resendActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     paddingVertical: 2,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   resendActionText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
     color: isDark ? '#2dd4bf' : '#0d9488',
   },
   backToPhoneBtn: {
     alignItems: 'center',
-    paddingVertical: 6,
-    marginTop: 4,
+    paddingVertical: 5,
+    marginTop: 2,
   },
   backToPhoneText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     color: isDark ? '#94a3b8' : '#64748b',
   },
@@ -1427,7 +1435,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     maxWidth: 360,
-    marginVertical: 12,
+    marginVertical: 8,
   },
   orLine: {
     flex: 1,
@@ -1435,36 +1443,36 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
   },
   orText: {
-    fontSize: 12,
+    fontSize: 11,
     color: isDark ? '#64748b' : '#94a3b8',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   socialRow: {
     flexDirection: 'row',
     width: '100%',
     maxWidth: 360,
-    gap: 12,
-    marginBottom: 16,
+    gap: 10,
+    marginBottom: 12,
   },
   socialBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 7,
+    paddingVertical: 9.5,
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : '#ffffff',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 6,
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 5,
     elevation: 2,
   },
   socialBtnText: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '600',
     color: isDark ? '#f8fafc' : '#1e293b',
   },
@@ -1473,26 +1481,26 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.65)' : '#ffffff',
-    borderRadius: 18,
-    padding: 12,
+    borderRadius: 16,
+    padding: 10,
     borderWidth: 1,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.04,
-    shadowRadius: 6,
+    shadowOpacity: isDark ? 0 : 0.03,
+    shadowRadius: 5,
     elevation: 2,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   demoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginBottom: 10,
+    gap: 5,
+    marginBottom: 7,
   },
   demoHeaderText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     color: isDark ? '#e2e8f0' : '#0f172a',
   },
@@ -1505,36 +1513,37 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 7,
+    gap: 4,
+    paddingVertical: 5.5,
     paddingHorizontal: 4,
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
     borderWidth: 1,
   },
   demoDot: {
-    width: 6,
-    height: 6,
+    width: 5.5,
+    height: 5.5,
     borderRadius: 3,
   },
   demoPillText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
     color: isDark ? '#cbd5e1' : '#334155',
   },
-  // --- Legal Notice ---
+  // --- Legal Notice (10-15% smaller) ---
   legalRow: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
     paddingHorizontal: 16,
   },
   legalText: {
-    fontSize: 11.5,
+    fontSize: 10.2,
     color: '#64748b',
     textAlign: 'center',
+    lineHeight: 14.5,
   },
   legalLink: {
-    fontSize: 11.5,
+    fontSize: 10.2,
     color: isDark ? '#2dd4bf' : '#0d9488',
     fontWeight: '600',
     textDecorationLine: 'underline',
@@ -1542,11 +1551,11 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   // --- Scroll Indicator ---
   scrollIndicatorWrap: {
     alignItems: 'center',
-    gap: 4,
-    marginVertical: 14,
+    gap: 3,
+    marginVertical: 10,
   },
   scrollIndicatorText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: isDark ? '#94a3b8' : '#64748b',
     letterSpacing: 0.2,
@@ -1555,29 +1564,29 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   featureShowcase: {
     width: '100%',
     maxWidth: 360,
-    gap: 12,
-    marginTop: 10,
-    marginBottom: 24,
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 18,
   },
   featureCard: {
     flexDirection: 'row',
     backgroundColor: isDark ? 'rgba(15, 23, 42, 0.78)' : '#ffffff',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.09)' : '#e2e8f0',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.05,
-    shadowRadius: 10,
+    shadowOpacity: isDark ? 0 : 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
   featureIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1585,25 +1594,25 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flex: 1,
   },
   featureTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: isDark ? '#ffffff' : '#0f172a',
   },
   featureTagline: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     color: isDark ? '#2dd4bf' : '#0d9488',
-    marginVertical: 2,
+    marginVertical: 1.5,
   },
   featureDesc: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: isDark ? '#94a3b8' : '#475569',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   // --- Skyline & Footer ---
   skylineWrap: {
     width: '100%',
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: -6,
   },
   footerWrap: {
@@ -1612,24 +1621,24 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   footerContent: {
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   footerSlogan: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: isDark ? '#f8fafc' : '#334155',
     letterSpacing: 0.8,
   },
   footerHindi: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: isDark ? '#cbd5e1' : '#64748b',
     marginTop: 2,
   },
   footerMinistry: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: '#64748b',
-    marginTop: 6,
+    marginTop: 5,
     textAlign: 'center',
   },
 });
