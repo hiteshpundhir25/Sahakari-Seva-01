@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
@@ -38,6 +38,7 @@ export const BookingDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [respondingBill, setRespondingBill] = useState(false);
 
   const fetchBooking = async () => {
     if (!bookingId) return;
@@ -64,6 +65,57 @@ export const BookingDetailScreen: React.FC = () => {
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert(t('bookingDetail.call_failed_title'), t('bookingDetail.call_failed_msg', { phone }));
     });
+  };
+
+  const handleApproveBill = async () => {
+    if (!booking || !booking.supplemental_bill) return;
+    try {
+      setRespondingBill(true);
+      await ApiClient.respondSupplementalBill(booking.id, true);
+      Alert.alert(
+        'Additional Tasks Approved! 🎉',
+        `You have approved the additional repair estimate (+₹${booking.supplemental_bill.total_amount}). The professional has been authorized to proceed.`
+      );
+      await fetchBooking();
+    } catch (err: any) {
+      Alert.alert('Approval Failed', err.message || 'Could not approve supplemental bill.');
+    } finally {
+      setRespondingBill(false);
+    }
+  };
+
+  const handleDenyBill = async () => {
+    if (!booking || !booking.supplemental_bill) return;
+    Alert.alert(
+      'Decline Additional Tasks?',
+      'The service professional will only complete the originally scheduled base repair. Extra defects will not be serviced.',
+      [
+        { text: 'Keep Reviewing', style: 'cancel' },
+        {
+          text: 'Decline Extra Work',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setRespondingBill(true);
+              await ApiClient.respondSupplementalBill(
+                booking.id,
+                false,
+                'Customer chose base service only'
+              );
+              Alert.alert(
+                'Extra Tasks Declined',
+                'The professional has been notified to proceed with the base service only.'
+              );
+              await fetchBooking();
+            } catch (err: any) {
+              Alert.alert('Decline Failed', err.message || 'Could not decline bill.');
+            } finally {
+              setRespondingBill(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handlePayNow = async () => {
@@ -302,6 +354,175 @@ export const BookingDetailScreen: React.FC = () => {
         ) : null}
       </Card>
 
+      {/* Supplemental Bill / Extra Discovered Issues Review Card */}
+      {booking.supplemental_bill && (
+        <Card
+          style={[
+            styles.supplementalCard,
+            booking.supplemental_bill.status === 'pending_approval' && styles.supplementalCardPending,
+            booking.supplemental_bill.status === 'approved' && styles.supplementalCardApproved,
+            booking.supplemental_bill.status === 'denied' && styles.supplementalCardDenied,
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.suppHeaderRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              <View
+                style={[
+                  styles.suppIconBadge,
+                  booking.supplemental_bill.status === 'pending_approval' && { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
+                  booking.supplemental_bill.status === 'approved' && { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
+                  booking.supplemental_bill.status === 'denied' && { backgroundColor: 'rgba(244, 63, 94, 0.15)' },
+                ]}
+              >
+                {booking.supplemental_bill.status === 'pending_approval' ? (
+                  <AlertTriangle size={17} color="#f59e0b" />
+                ) : booking.supplemental_bill.status === 'approved' ? (
+                  <CheckCircle2 size={17} color="#10b981" />
+                ) : (
+                  <X size={17} color={colors.danger} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.suppTitle}>
+                  {booking.supplemental_bill.status === 'pending_approval'
+                    ? 'Extra Work Authorization Needed'
+                    : booking.supplemental_bill.status === 'approved'
+                    ? 'Extra Work Approved'
+                    : 'Extra Work Declined'}
+                </Text>
+                <Text style={styles.suppSub}>
+                  Reported by {worker?.profile?.full_name || 'Worker'} during inspection
+                </Text>
+              </View>
+            </View>
+
+            <Badge
+              label={
+                booking.supplemental_bill.status === 'pending_approval'
+                  ? 'ACTION NEEDED'
+                  : booking.supplemental_bill.status === 'approved'
+                  ? 'APPROVED'
+                  : 'DECLINED'
+              }
+              variant={
+                booking.supplemental_bill.status === 'approved'
+                  ? 'success'
+                  : booking.supplemental_bill.status === 'pending_approval'
+                  ? 'warning'
+                  : 'danger'
+              }
+              size="sm"
+            />
+          </View>
+
+          {/* Worker Diagnosis Quote */}
+          <View style={styles.diagnosisQuoteBox}>
+            <Text style={styles.diagnosisQuoteTitle}>WORKER'S INSPECTION REPORT:</Text>
+            <Text style={styles.diagnosisQuoteText}>
+              "{booking.supplemental_bill.diagnosis_notes}"
+            </Text>
+          </View>
+
+          {/* Itemized Tasks / Parts Table */}
+          <View style={styles.suppTable}>
+            <Text style={styles.suppTableHead}>ITEMIZED ADDITIONAL TASKS & PARTS</Text>
+            {booking.supplemental_bill.items.map((item, idx) => (
+              <View key={item.id || idx} style={styles.suppItemRow}>
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.suppItemTitle}>{item.title}</Text>
+                  {item.description ? (
+                    <Text style={styles.suppItemDesc}>{item.description}</Text>
+                  ) : null}
+                  <View style={styles.suppTypeTag}>
+                    <Text style={styles.suppTypeTagText}>
+                      {item.type === 'part' ? 'Spare Part' : item.type === 'labor' ? 'Labor' : 'Repair Work'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.suppItemCost}>₹{Number(item.cost).toFixed(2)}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Pricing Impact Calculation */}
+          <View style={styles.suppCalcBox}>
+            <View style={styles.suppCalcRow}>
+              <Text style={styles.suppCalcLabel}>Original Requested Service:</Text>
+              <Text style={styles.suppCalcVal}>₹{Number(booking.estimated_amount).toFixed(2)}</Text>
+            </View>
+            <View style={styles.suppCalcRow}>
+              <Text style={styles.suppCalcLabel}>
+                Supplemental Work ({booking.supplemental_bill.items.length} items):
+              </Text>
+              <Text style={[styles.suppCalcVal, { color: '#10b981', fontWeight: '800' }]}>
+                +₹{Number(booking.supplemental_bill.total_amount).toFixed(2)}
+              </Text>
+            </View>
+            <View style={styles.suppCalcDivider} />
+            <View style={styles.suppCalcTotalRow}>
+              <Text style={styles.suppCalcTotalLabel}>
+                {booking.supplemental_bill.status === 'approved' ? 'Authorized Total Bill:' : 'Revised Total Bill:'}
+              </Text>
+              <Text style={styles.suppCalcTotalVal}>
+                ₹{(Number(booking.estimated_amount) + Number(booking.supplemental_bill.total_amount)).toFixed(2)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Approval / Denial Action Buttons */}
+          {booking.supplemental_bill.status === 'pending_approval' && (
+            <View style={styles.suppActionRow}>
+              <TouchableOpacity
+                style={styles.suppDenyBtn}
+                onPress={handleDenyBill}
+                disabled={respondingBill}
+                activeOpacity={0.7}
+              >
+                <X size={15} color={colors.danger} />
+                <Text style={styles.suppDenyBtnText}>Decline Extra Work</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.suppApproveBtn}
+                onPress={handleApproveBill}
+                disabled={respondingBill}
+                activeOpacity={0.85}
+              >
+                {respondingBill ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <>
+                    <Check size={16} color="#ffffff" />
+                    <Text style={styles.suppApproveBtnText}>
+                      Approve & Proceed (+₹{booking.supplemental_bill.total_amount})
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {booking.supplemental_bill.status === 'approved' && (
+            <View style={styles.suppStatusFootnote}>
+              <CheckCircle2 size={13} color="#10b981" />
+              <Text style={styles.suppStatusFootnoteText}>
+                You approved this estimate. The professional has been authorized to proceed with the extra work.
+              </Text>
+            </View>
+          )}
+
+          {booking.supplemental_bill.status === 'denied' && (
+            <View style={styles.suppStatusFootnote}>
+              <AlertTriangle size={13} color={colors.danger} />
+              <Text style={[styles.suppStatusFootnoteText, { color: colors.danger }]}>
+                You declined the additional tasks. Only the base repair will be completed.
+              </Text>
+            </View>
+          )}
+        </Card>
+      )}
+
       {/* Cooperative Fair Split Pricing Card */}
       <Card style={styles.pricingCard}>
         <View style={styles.pricingHeader}>
@@ -433,6 +654,211 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
     alignItems: 'center',
     padding: spacing.xl,
     backgroundColor: colors.background,
+  },
+  // --- Supplemental Bill Card Styles ---
+  supplementalCard: {
+    marginBottom: spacing.md,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+  },
+  supplementalCardPending: {
+    borderColor: '#f59e0b',
+    backgroundColor: 'rgba(245, 158, 11, 0.04)',
+  },
+  supplementalCardApproved: {
+    borderColor: '#10b981',
+    backgroundColor: 'rgba(16, 185, 129, 0.04)',
+  },
+  supplementalCardDenied: {
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(244, 63, 94, 0.04)',
+  },
+  suppHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  suppIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suppTitle: {
+    ...typography.fontSubtitle,
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  suppSub: {
+    ...typography.fontCaption,
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  diagnosisQuoteBox: {
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderLeftWidth: 3,
+    borderLeftColor: '#f59e0b',
+    marginVertical: spacing.xs,
+  },
+  diagnosisQuoteTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#f59e0b',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  diagnosisQuoteText: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  suppTable: {
+    marginVertical: spacing.sm,
+  },
+  suppTableHead: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  suppItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suppItemTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  suppItemDesc: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  suppTypeTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(16, 185, 129, 0.10)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    marginTop: 3,
+  },
+  suppTypeTagText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#10b981',
+  },
+  suppItemCost: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  suppCalcBox: {
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginVertical: spacing.xs,
+  },
+  suppCalcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  suppCalcLabel: {
+    fontSize: 11.5,
+    color: colors.textMuted,
+  },
+  suppCalcVal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  suppCalcDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 6,
+  },
+  suppCalcTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  suppCalcTotalLabel: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  suppCalcTotalVal: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#10b981',
+  },
+  suppActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: spacing.sm,
+  },
+  suppDenyBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(244, 63, 94, 0.08)',
+  },
+  suppDenyBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: colors.danger,
+  },
+  suppApproveBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    backgroundColor: '#10b981',
+  },
+  suppApproveBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  suppStatusFootnote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.border,
+  },
+  suppStatusFootnoteText: {
+    fontSize: 11,
+    color: '#10b981',
+    fontWeight: '600',
+    flex: 1,
   },
   loadingText: {
     ...typography.fontBody,

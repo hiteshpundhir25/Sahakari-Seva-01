@@ -315,9 +315,34 @@ export const MOCK_BOOKINGS: Booking[] = [
     address: 'Flat 402, C-Scheme', city: 'Jaipur', state: 'Rajasthan', pincode: '302001',
     service_description: 'Ceiling fan sparking and switchboard loose in the living room.',
     estimated_amount: 349, final_amount: 349, is_emergency: false,
-    status: 'accepted', payment_status: 'pending',
+    status: 'in_progress', payment_status: 'pending',
     created_at: '2026-09-04T10:00:00Z', updated_at: '2026-09-05T08:12:00Z',
     worker: worker('w0000000-0000-0000-0000-000000000001'), customer: customer('p0000000-0000-0000-0000-000000000002'), service_category: cat('s0000000-0000-0000-0000-000000000001'),
+    supplemental_bill: {
+      id: 'sb-demo-1',
+      booking_id: 'bk-demo-1',
+      status: 'pending_approval',
+      diagnosis_notes: 'Upon physical inspection of the ceiling fan, discovered a burnt 2.5µF motor capacitor and melted internal wiring terminal requiring immediate replacement before the fan can safely operate.',
+      items: [
+        {
+          id: 'item-1',
+          title: 'Heavy-Duty 2.5µF Motor Capacitor',
+          description: 'Original ISI-marked flame-retardant replacement capacitor',
+          cost: 180,
+          type: 'part',
+        },
+        {
+          id: 'item-2',
+          title: 'Terminal Block Rewiring & Insulation',
+          description: 'High-temperature terminal block with silicone heat-shrink sleeve',
+          cost: 120,
+          type: 'repair',
+        },
+      ],
+      subtotal: 300,
+      total_amount: 300,
+      created_at: '2026-09-05T14:15:00Z',
+    },
   },
   {
     id: 'bk-demo-2', booking_code: 'BK-2026-JPR-002',
@@ -531,6 +556,7 @@ export const MOCK_INVOICES: Invoice[] = [
 
 export const MOCK_NOTIFICATIONS: Record<'customer' | 'worker' | 'admin', Notification[]> = {
   customer: [
+    { id: 'notif-c-sb1', user_id: 'p0000000-0000-0000-0000-000000000002', type: 'extra_bill', title: '⚠️ Supplemental Bill Received (₹300)', message: 'Rajesh Sharma reported additional defects for booking BK-2026-JPR-001. Please review and approve.', read: false, action_url: '/bookings', created_at: '2026-09-05T14:15:00Z' },
     { id: 'notif-c-01', user_id: 'p0000000-0000-0000-0000-000000000002', type: 'booking', title: 'Booking Accepted 🎉', message: 'Rajesh Sharma accepted your booking BK-2026-JPR-001. He will arrive at 2:00 PM on 5 Sep.', read: false, action_url: '/bookings', created_at: '2026-09-05T08:12:00Z' },
     { id: 'notif-c-02', user_id: 'p0000000-0000-0000-0000-000000000002', type: 'payment', title: 'Payment Received', message: 'Payment of ₹450 for BK-2026-JPR-004 settled. 85% went directly to the worker.', read: false, action_url: '/bookings', created_at: '2026-08-25T12:00:00Z' },
     { id: 'notif-c-03', user_id: 'p0000000-0000-0000-0000-000000000002', type: 'welfare', title: 'Welfare Contribution Added', message: '10% social security welfare credit was deposited into the cooperative pool.', read: true, action_url: '/welfare', created_at: '2026-08-25T12:01:00Z' },

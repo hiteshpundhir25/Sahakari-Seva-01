@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
-import { Clock, MapPin } from 'lucide-react-native';
+import { Clock, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -109,6 +109,24 @@ export const CustomerBookingsScreen: React.FC = () => {
                         <Text style={styles.metaText}>{booking.pincode}</Text>
                       </View>
                     </View>
+
+                    {/* Action Needed Badge for Supplemental Bill */}
+                    {booking.supplemental_bill?.status === 'pending_approval' && (
+                      <View style={styles.actionNeededPill}>
+                        <AlertTriangle size={11} color="#d97706" />
+                        <Text style={styles.actionNeededPillText}>
+                          Authorization Required: Extra Work Estimate (₹{booking.supplemental_bill.total_amount})
+                        </Text>
+                      </View>
+                    )}
+                    {booking.supplemental_bill?.status === 'approved' && (
+                      <View style={styles.approvedPill}>
+                        <CheckCircle2 size={11} color="#10b981" />
+                        <Text style={styles.approvedPillText}>
+                          Extra Work Approved (+₹{booking.supplemental_bill.total_amount})
+                        </Text>
+                      </View>
+                    )}
 
                     <View style={styles.cardFooter}>
                       <Text style={styles.amountText}>{t('bookingsList.amount')}: ₹{booking.final_amount}</Text>
@@ -222,5 +240,39 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     color: colors.textMuted,
     marginTop: 4,
     textAlign: 'center'
-  }
+  },
+  actionNeededPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+  },
+  actionNeededPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  approvedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+  },
+  approvedPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#10b981',
+  },
 });

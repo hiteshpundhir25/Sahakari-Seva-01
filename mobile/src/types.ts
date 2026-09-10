@@ -104,6 +104,30 @@ export interface NearbyWorkerResult {
   };
 }
 
+export type ExtraTaskType = 'part' | 'labor' | 'repair';
+export type SupplementalBillStatus = 'draft' | 'pending_approval' | 'approved' | 'denied';
+
+export interface ExtraTaskItem {
+  id: string;
+  title: string;
+  description?: string;
+  cost: number;
+  type: ExtraTaskType;
+}
+
+export interface SupplementalBill {
+  id: string;
+  booking_id: string;
+  status: SupplementalBillStatus;
+  diagnosis_notes: string;
+  items: ExtraTaskItem[];
+  subtotal: number;
+  total_amount: number;
+  created_at: string;
+  responded_at?: string;
+  denial_reason?: string;
+}
+
 export interface Booking {
   id: string;
   booking_code: string;
@@ -131,6 +155,7 @@ export interface Booking {
   customer?: Profile;
   worker?: Worker;
   service_category?: ServiceCategory;
+  supplemental_bill?: SupplementalBill;
 }
 
 export interface DemandForecastRecord {

@@ -17,7 +17,9 @@ import {
   Payment,
   Invoice,
   Welfare,
-  Notification
+  Notification,
+  ExtraTaskItem,
+  SupplementalBill
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -335,6 +337,100 @@ export class ApiClient {
         return { ...b };
       }
       return { id: bookingId, booking_date: newDate, booking_time: newTime } as any;
+    }
+  }
+
+  // --- SUPPLEMENTAL BILL (EXTRA TASKS & DEFECTS) ---
+  public static async sendSupplementalBill(
+    bookingId: string,
+    billData: {
+      diagnosis_notes: string;
+      items: ExtraTaskItem[];
+    }
+  ): Promise<Booking> {
+    const subtotal = billData.items.reduce((sum, it) => sum + (Number(it.cost) || 0), 0);
+    const supplementalBill: SupplementalBill = {
+      id: 'sb-' + Date.now(),
+      booking_id: bookingId,
+      status: 'pending_approval',
+      diagnosis_notes: billData.diagnosis_notes,
+      items: billData.items,
+      subtotal,
+      total_amount: subtotal,
+      created_at: new Date().toISOString(),
+    };
+
+    try {
+      return await this.request<Booking>(`/bookings/${bookingId}/supplemental-bill`, {
+        method: 'POST',
+        body: JSON.stringify(supplementalBill),
+      });
+    } catch {
+      const b = MOCK_BOOKINGS.find(x => x.id === bookingId);
+      if (b) {
+        b.supplemental_bill = supplementalBill;
+        b.updated_at = new Date().toISOString();
+
+        // Push real-time notification to Customer
+        MOCK_NOTIFICATIONS.customer.unshift({
+          id: 'notif-c-' + Date.now(),
+          user_id: b.customer_id,
+          type: 'extra_bill',
+          title: `⚠️ Additional Work Estimate: ₹${subtotal}`,
+          message: `${b.worker?.profile?.full_name || 'Worker'} discovered additional defective issues for ${b.booking_code}. Please review and approve.`,
+          read: false,
+          action_url: `/bookings`,
+          created_at: new Date().toISOString(),
+        });
+
+        return { ...b };
+      }
+      return { id: bookingId, supplemental_bill: supplementalBill } as any;
+    }
+  }
+
+  public static async respondSupplementalBill(
+    bookingId: string,
+    approved: boolean,
+    denialReason?: string
+  ): Promise<Booking> {
+    try {
+      return await this.request<Booking>(`/bookings/${bookingId}/supplemental-bill/respond`, {
+        method: 'PATCH',
+        body: JSON.stringify({ approved, denial_reason: denialReason }),
+      });
+    } catch {
+      const b = MOCK_BOOKINGS.find(x => x.id === bookingId);
+      if (b && b.supplemental_bill) {
+        b.supplemental_bill.status = approved ? 'approved' : 'denied';
+        b.supplemental_bill.responded_at = new Date().toISOString();
+        if (!approved && denialReason) {
+          b.supplemental_bill.denial_reason = denialReason;
+        }
+        if (approved) {
+          b.final_amount = (Number(b.estimated_amount) || 0) + b.supplemental_bill.total_amount;
+        }
+        b.updated_at = new Date().toISOString();
+
+        // Push real-time confirmation notification to Worker
+        MOCK_NOTIFICATIONS.worker.unshift({
+          id: 'notif-w-' + Date.now(),
+          user_id: b.worker_id,
+          type: 'extra_bill_response',
+          title: approved
+            ? `✅ Additional Work Approved (+₹${b.supplemental_bill.total_amount})`
+            : `❌ Additional Work Declined`,
+          message: approved
+            ? `Customer approved additional repair work for ${b.booking_code}. You may proceed with the additional tasks.`
+            : `Customer declined additional work for ${b.booking_code}. Please proceed with base service only.`,
+          read: false,
+          action_url: `/jobs`,
+          created_at: new Date().toISOString(),
+        });
+
+        return { ...b };
+      }
+      return b as any;
     }
   }
 
