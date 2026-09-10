@@ -6,6 +6,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Path,
   Circle,
@@ -295,6 +296,27 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
           );
         })}
       </Svg>
+
+      {/* Uniform gradient fade at the bottom portion blending seamlessly into background */}
+      <LinearGradient
+        colors={[
+          'rgba(6, 10, 20, 0)',
+          'rgba(6, 10, 20, 0.22)',
+          'rgba(6, 10, 20, 0.65)',
+          'rgba(6, 10, 20, 0.92)',
+          '#060a14',
+        ]}
+        locations={[0, 0.3, 0.6, 0.85, 1]}
+        style={styles.bottomBlendGradient}
+        pointerEvents="none"
+      />
+
+      {/* Soft top blend gradient under header bar */}
+      <LinearGradient
+        colors={['rgba(6, 10, 20, 0.75)', 'rgba(6, 10, 20, 0)']}
+        style={styles.topBlendGradient}
+        pointerEvents="none"
+      />
     </View>
   );
 };
@@ -305,10 +327,24 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 440,
+    height: 480,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  bottomBlendGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 190,
+  },
+  topBlendGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
   },
 });
 

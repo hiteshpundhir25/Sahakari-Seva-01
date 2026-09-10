@@ -615,9 +615,12 @@ const styles = StyleSheet.create({
   },
   mapOverlay: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
-    height: 460,
+    height: 480,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContainer: {
     paddingHorizontal: 22,
