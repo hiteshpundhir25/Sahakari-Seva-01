@@ -252,15 +252,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
 
   return (
     <View style={styles.screenContainer}>
-      {/* Deep dark gradient canvas */}
+      {/* Deep dark seamless gradient canvas */}
       <LinearGradient
-        colors={['#050914', '#091226', '#0d1a36', '#070c18']}
-        locations={[0, 0.35, 0.7, 1]}
+        colors={['#060d1b', '#071024', '#050a17', '#040712']}
+        locations={[0, 0.35, 0.75, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Transparent India Map with live red & green activity dots */}
-      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 10 }]} />
+      {/* Perfectly centered, seamless India Map with fading bottom and live activity dots */}
+      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 4 }]} />
 
       {/* Top Header Bar */}
       <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 14) }]}>
@@ -611,14 +611,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
 const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
-    backgroundColor: '#060a14',
+    backgroundColor: '#040712',
   },
   mapOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 480,
+    height: 540,
     alignItems: 'center',
     justifyContent: 'center',
   },

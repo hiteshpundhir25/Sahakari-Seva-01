@@ -1,19 +1,20 @@
 // ==============================================================================
-// INDIA MAP OVERLAY — CLEAN GEOGRAPHIC OUTLINE WITHOUT STATE BORDERS
-// Features the complete external perimeter silhouette of India (Kashmir to
-// Kanyakumari, Gujarat to Assam) with neon cyan glow, constellation arcs, and
-// pulsing green (worker) & red (customer) live activity dots strictly inside India.
+// INDIA MAP OVERLAY — SEAMLESS BLEND & PERFECT CENTERING
+// - Perfectly centered horizontally and vertically: viewBox="60 16 880 932"
+// - Full geographic outline (Kashmir to Kanyakumari, Gujarat to Arunachal) without clipping
+// - Bottommost outline dissolves smoothly to 0 opacity via linear gradient stroke
+// - Zero abrupt hue cuts or horizontal seams
 // ==============================================================================
 
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, {
   Path,
   Circle,
   Line,
   G,
   Defs,
+  LinearGradient as SvgLinearGradient,
   RadialGradient,
   Stop,
 } from 'react-native-svg';
@@ -123,7 +124,7 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
           useNativeDriver: true,
         }),
         Animated.timing(lineGlow, {
-          toValue: 0.15,
+          toValue: 0.12,
           duration: 2500,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
@@ -158,46 +159,85 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
   return (
     <View style={[styles.container, style]} pointerEvents="none">
       <Svg
-        viewBox="150 155 710 745"
+        viewBox="60 16 880 932"
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
       >
         <Defs>
-          <RadialGradient id="mapAmbient" cx="50%" cy="45%" r="65%">
-            <Stop offset="0%" stopColor="#10b981" stopOpacity="0.09" />
-            <Stop offset="50%" stopColor="#0ea5e9" stopOpacity="0.04" />
-            <Stop offset="100%" stopColor="#060a14" stopOpacity="0.0" />
+          {/* Smooth vertical gradient fading the stroke into complete transparency at the bottom */}
+          <SvgLinearGradient id="outlineStrokeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.80" />
+            <Stop offset="45%" stopColor="#2dd4bf" stopOpacity="0.75" />
+            <Stop offset="62%" stopColor="#2dd4bf" stopOpacity="0.52" />
+            <Stop offset="74%" stopColor="#2dd4bf" stopOpacity="0.25" />
+            <Stop offset="84%" stopColor="#2dd4bf" stopOpacity="0.08" />
+            <Stop offset="90%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+          </SvgLinearGradient>
+
+          {/* Glowing aura gradient fading out at bottom */}
+          <SvgLinearGradient id="outlineAuraGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.18" />
+            <Stop offset="50%" stopColor="#2dd4bf" stopOpacity="0.12" />
+            <Stop offset="72%" stopColor="#2dd4bf" stopOpacity="0.03" />
+            <Stop offset="85%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+          </SvgLinearGradient>
+
+          {/* Soft interior fill gradient fading out completely in south */}
+          <SvgLinearGradient id="outlineFillGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.04" />
+            <Stop offset="45%" stopColor="#2dd4bf" stopOpacity="0.03" />
+            <Stop offset="70%" stopColor="#2dd4bf" stopOpacity="0.01" />
+            <Stop offset="84%" stopColor="#2dd4bf" stopOpacity="0.0" />
+            <Stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+          </SvgLinearGradient>
+
+          {/* Soft ambient center radial glow */}
+          <RadialGradient id="mapAmbient" cx="50%" cy="40%" r="55%">
+            <Stop offset="0%" stopColor="#10b981" stopOpacity="0.08" />
+            <Stop offset="50%" stopColor="#0ea5e9" stopOpacity="0.03" />
+            <Stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.0" />
           </RadialGradient>
         </Defs>
 
-        {/* Ambient interior fill glow — completely borderless inside */}
+        {/* Ambient interior radial glow */}
         <Path
           d={INDIA_OUTLINE_PATH}
           fill="url(#mapAmbient)"
-          stroke="#2dd4bf"
-          strokeWidth="3.6"
-          strokeOpacity="0.14"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          stroke="none"
         />
 
-        {/* Clean, glowing outer perimeter boundary of India (Zero internal state lines) */}
+        {/* Soft breathing aura stroke — dissolves at bottom */}
         <Path
           d={INDIA_OUTLINE_PATH}
-          fill="rgba(45, 212, 191, 0.035)"
-          stroke="#2dd4bf"
-          strokeWidth="1.6"
-          strokeOpacity="0.65"
+          fill="url(#outlineFillGrad)"
+          stroke="url(#outlineAuraGrad)"
+          strokeWidth="3.8"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {/* High-visibility network arcs connecting hubs */}
+        {/* Crisp neon cyan outer perimeter — dissolves to 0 opacity before the southern tip */}
+        <Path
+          d={INDIA_OUTLINE_PATH}
+          fill="none"
+          stroke="url(#outlineStrokeGrad)"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Constellation network arcs connecting hubs */}
         {NETWORK_LINKS.map(([startId, endId], idx) => {
           const start = NETWORK_NODES.find((n) => n.id === startId);
           const end = NETWORK_NODES.find((n) => n.id === endId);
           if (!start || !end) return null;
+
+          // Compute fade factor based on vertical position
+          const avgY = (start.y + end.y) / 2;
+          const fadeFactor = avgY > 750 ? 0.35 : 1.0;
 
           return (
             <AnimatedLine
@@ -209,7 +249,10 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
               stroke="#2dd4bf"
               strokeWidth="1.2"
               strokeDasharray="4,4"
-              strokeOpacity={lineGlow}
+              strokeOpacity={lineGlow.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.45 * fadeFactor],
+              })}
             />
           );
         })}
@@ -231,8 +274,11 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
             outputRange: [0.75, 0.35, 0.0],
           });
 
+          // Soften southernmost dots so they blend harmoniously
+          const nodeFade = node.y > 800 ? 0.6 : 1.0;
+
           return (
-            <G key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+            <G key={node.id} transform={`translate(${node.x}, ${node.y})`} opacity={nodeFade}>
               {/* Outer breathing aura */}
               <AnimatedCircle
                 r={haloRadius}
@@ -259,27 +305,6 @@ export const IndiaMapOverlay: React.FC<IndiaMapOverlayProps> = ({ style }) => {
           );
         })}
       </Svg>
-
-      {/* Uniform vertical dissolve blending the bottom of the map seamlessly into the background */}
-      <LinearGradient
-        colors={[
-          'rgba(6, 10, 20, 0)',
-          'rgba(6, 10, 20, 0.22)',
-          'rgba(6, 10, 20, 0.65)',
-          'rgba(6, 10, 20, 0.92)',
-          '#060a14',
-        ]}
-        locations={[0, 0.3, 0.6, 0.85, 1]}
-        style={styles.bottomBlendGradient}
-        pointerEvents="none"
-      />
-
-      {/* Soft top blend gradient under header */}
-      <LinearGradient
-        colors={['rgba(6, 10, 20, 0.75)', 'rgba(6, 10, 20, 0)']}
-        style={styles.topBlendGradient}
-        pointerEvents="none"
-      />
     </View>
   );
 };
@@ -290,24 +315,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 490,
+    height: 540,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  bottomBlendGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 190,
-  },
-  topBlendGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 50,
   },
 });
 
