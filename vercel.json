@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm --prefix Sahakari-Seva-main install",
   "buildCommand": "npm --prefix Sahakari-Seva-main run build:web",
   "outputDirectory": "Sahakari-Seva-main/dist",
   "cleanUrls": true,
