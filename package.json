@@ -8,6 +8,8 @@
     "android": "npm --prefix mobile run android",
     "ios": "npm --prefix mobile run ios",
     "web": "npm --prefix mobile run web",
-    "typecheck": "npm --prefix mobile run typecheck"
+    "typecheck": "npm --prefix mobile run typecheck",
+    "build:apk": "npm --prefix mobile run build:apk",
+    "build:aab": "npm --prefix mobile run build:aab"
   }
 }

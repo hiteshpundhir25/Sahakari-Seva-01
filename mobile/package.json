@@ -9,7 +9,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "node --stack-size=8192 ./node_modules/typescript/bin/tsc --noEmit",
-    "build:web": "expo export -p web"
+    "build:web": "expo export -p web",
+    "build:apk": "eas build -p android --profile preview",
+    "build:aab": "eas build -p android --profile production",
+    "eas-build-pre-install": "npm config set legacy-peer-deps true"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
@@ -18,7 +21,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^5.0.5",
-    "expo": "~57.0.20",
+    "expo": "~57.0.21",
     "expo-asset": "~57.0.16",
     "expo-constants": "~57.0.17",
     "expo-font": "~57.0.3",
