@@ -1,7 +1,8 @@
 // ==============================================================================
-// LOGIN & ONBOARDING SCREEN — MODERN COOPERATIVE WELCOME EXPERIENCE
-// Gradient hero, segmented role picker, glassy OTP card & 1-click demo login.
-// Fully localized (8 languages) with the app-wide animation system.
+// LOGIN SCREEN — SAHAKARI SEVA (ANTTI-GRAVITY REDESIGN)
+// Transparent glowing India map with live activity dots, "Bharat Works Together" badge,
+// bilingual branding (सहकारी सेवा), segmented role toggle, OTP input, social logins,
+// 1-click evaluation profiles, and "Scroll to explore" feature showcase with tricolor wave.
 // ==============================================================================
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -16,10 +17,12 @@ import {
   Animated,
   Easing,
   Platform,
+  Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import {
   ShieldCheck,
   User,
@@ -27,16 +30,16 @@ import {
   Shield,
   ArrowRight,
   Globe,
-  CheckCircle2,
   Sparkles,
-  Phone,
+  ChevronDown,
+  CheckCircle2,
+  Users,
+  Coins,
 } from 'lucide-react-native';
 import { LanguageModal } from '../../components/common/LanguageModal';
 import ThemeToggle from '../../components/common/ThemeToggle';
-import { FadeInView, ScalePressable, PulseView } from '../../animations';
-import { SUPPORTED_LANGUAGES } from '../../i18n';
+import { IndiaMapOverlay } from '../../components/auth/IndiaMapOverlay';
 import { useTheme } from '../../theme';
-import type { Palette } from '../../theme';
 
 interface LoginScreenProps {
   onSelectRole: (role: 'customer' | 'worker' | 'admin', userProfile?: any) => void;
@@ -59,61 +62,114 @@ const NATIVE_SHORT: Record<string, string> = {
   bho: 'भोजपुरी',
 };
 
+// Official Google 'G' 4-color vector logo
+const GoogleIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24">
+    <Path
+      fill="#4285F4"
+      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+    />
+    <Path
+      fill="#34A853"
+      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+    />
+    <Path
+      fill="#FBBC05"
+      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+    />
+    <Path
+      fill="#EA4335"
+      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+    />
+  </Svg>
+);
+
+// Official Apple vector icon
+const AppleIcon = () => (
+  <Svg width={17} height={17} viewBox="0 0 170 170">
+    <Path
+      fill="#ffffff"
+      d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.08-7.71-7.94-12.03-14.58-6.1-9.39-10.9-19.78-14.42-31.18-3.52-11.39-5.28-22.13-5.28-32.22 0-14.16 3.65-25.79 10.95-34.91 7.3-9.12 16.48-13.79 27.53-14.01 4.71 0 10.15 1.24 16.32 3.72 6.17 2.48 10.02 3.77 11.55 3.88 1.8 0 5.86-1.39 12.18-4.17 6.32-2.78 11.75-3.99 16.3-3.62 12.33.64 22.33 5.37 30 14.19-10.79 6.53-16.08 15.53-15.87 27 0 9.81 3.85 18.06 11.55 24.74 7.7 6.68 16.79 10.49 27.27 11.43-2.12 6.42-4.78 12.98-7.98 19.68zM119.22 31.84c0-7.19 2.61-13.98 7.83-20.37 5.22-6.39 11.83-10.47 19.82-12.24.21 1.7.32 3.18.32 4.45 0 7.08-2.69 13.91-8.07 20.49-5.38 6.58-12.1 10.74-20.16 12.48-.22-1.49-.33-2.82-.33-4.81z"
+    />
+  </Svg>
+);
+
+// Silhouette of Indian landmark monuments (India Gate, Red Fort, domes & minarets)
+const SkylineSilhouette = () => (
+  <Svg viewBox="0 0 400 50" width="100%" height={50} preserveAspectRatio="none">
+    <Path
+      d="M 0 50 L 0 38 L 12 38 L 12 32 L 18 32 L 18 24 L 22 24 L 22 32 L 28 32 L 28 38 L 40 38 L 40 30 L 46 30 L 46 22 L 48 18 L 50 22 L 50 30 L 56 30 L 56 38 L 75 38 L 75 33 L 80 33 L 80 26 L 85 22 L 90 26 L 90 33 L 95 33 L 95 38 L 120 38 L 120 28 L 125 28 L 125 18 L 128 13 L 131 18 L 131 28 L 135 28 L 135 38 L 155 38 L 155 32 L 160 32 L 160 22 L 165 22 L 165 14 L 170 10 L 175 14 L 175 22 L 180 22 L 180 32 L 185 32 L 185 38 L 215 38 L 215 32 L 220 32 L 220 22 L 225 22 L 225 14 L 230 10 L 235 14 L 235 22 L 240 22 L 240 32 L 245 32 L 245 38 L 265 38 L 265 28 L 270 28 L 270 18 L 273 13 L 276 18 L 276 28 L 280 28 L 280 38 L 305 38 L 305 33 L 310 33 L 310 26 L 315 22 L 320 26 L 320 33 L 325 33 L 325 38 L 344 38 L 344 30 L 350 30 L 350 22 L 352 18 L 354 22 L 354 30 L 360 30 L 360 38 L 372 38 L 372 32 L 378 32 L 378 24 L 382 24 L 382 32 L 388 32 L 388 38 L 400 38 L 400 50 Z"
+      fill="#0c172e"
+      opacity="0.75"
+    />
+  </Svg>
+);
+
+// Gentle Indian tricolor ribbon wave at base
+const TricolorWave = () => (
+  <Svg viewBox="0 0 400 22" width="100%" height={22} preserveAspectRatio="none">
+    <Path
+      d="M 0 0 C 110 12 210 -4 400 8 L 400 13 C 210 1 110 17 0 5 Z"
+      fill="#FF9933"
+      opacity="0.95"
+    />
+    <Path
+      d="M 0 5 C 110 17 210 1 400 13 L 400 17 C 210 5 110 21 0 9 Z"
+      fill="#FFFFFF"
+      opacity="0.8"
+    />
+    <Path
+      d="M 0 9 C 110 21 210 5 400 17 L 400 22 L 0 22 Z"
+      fill="#138808"
+      opacity="0.95"
+    />
+  </Svg>
+);
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   const { t, i18n } = useTranslation();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(colors, isDark);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'customer' | 'worker' | 'admin'>('customer');
-  const [focused, setFocused] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
 
-  // Animations
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const arrowAnim = useRef(new Animated.Value(0)).current;
+  // Soft bouncing down arrow animation for "Scroll to explore"
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const arrowNudgeAnim = useRef(new Animated.Value(0)).current;
+  const logoPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    const floatLoop = Animated.loop(
+    // Smooth vertical bounce for the scroll indicator
+    const bounceLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 2600,
+        Animated.timing(bounceAnim, {
+          toValue: 6,
+          duration: 900,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: Platform.OS !== 'web',
         }),
-        Animated.timing(floatAnim, {
+        Animated.timing(bounceAnim, {
           toValue: 0,
-          duration: 2600,
+          duration: 900,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     );
-    floatLoop.start();
+    bounceLoop.start();
 
-    // Slow, stately rotation for subtle Ashoka Chakra / Mandala motif
-    const spinLoop = Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 24000,
-        easing: Easing.linear,
-        useNativeDriver: Platform.OS !== 'web',
-      })
-    );
-    spinLoop.start();
-
-    // Subtle breathing nudge for the OTP continue arrow
+    // Subtle breathing nudge on the Send OTP arrow
     const arrowLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(arrowAnim, {
-          toValue: 4.5,
+        Animated.timing(arrowNudgeAnim, {
+          toValue: 4,
           duration: 750,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: Platform.OS !== 'web',
         }),
-        Animated.timing(arrowAnim, {
+        Animated.timing(arrowNudgeAnim, {
           toValue: 0,
           duration: 750,
           easing: Easing.inOut(Easing.ease),
@@ -123,48 +179,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
     );
     arrowLoop.start();
 
+    // Gentle logo breathing pulse
+    const logoLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoPulseAnim, {
+          toValue: 1.04,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(logoPulseAnim, {
+          toValue: 1.0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ])
+    );
+    logoLoop.start();
+
     return () => {
-      floatLoop.stop();
-      spinLoop.stop();
+      bounceLoop.stop();
       arrowLoop.stop();
+      logoLoop.stop();
     };
-  }, [floatAnim, spinAnim, arrowAnim]);
-
-  const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
-  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
-  const roleThemes: Record<
-    'customer' | 'worker' | 'admin',
-    {
-      gradient: [string, string];
-      activeBorder: string;
-      shadowColor: string;
-      inactiveIconBg: string;
-      inactiveIconColor: string;
-    }
-  > = {
-    customer: {
-      gradient: ['#3b82f6', '#1d4ed8'],
-      activeBorder: '#2563eb',
-      shadowColor: '#2563eb',
-      inactiveIconBg: isDark ? 'rgba(59, 130, 246, 0.16)' : '#eff6ff',
-      inactiveIconColor: '#2563eb',
-    },
-    worker: {
-      gradient: ['#f97316', '#ea580c'],
-      activeBorder: '#ea580c',
-      shadowColor: '#ea580c',
-      inactiveIconBg: isDark ? 'rgba(249, 115, 22, 0.16)' : '#fff7ed',
-      inactiveIconColor: '#ea580c',
-    },
-    admin: {
-      gradient: ['#10b981', '#047857'],
-      activeBorder: '#059669',
-      shadowColor: '#059669',
-      inactiveIconBg: isDark ? 'rgba(16, 185, 129, 0.16)' : '#ecfdf5',
-      inactiveIconColor: '#059669',
-    },
-  };
+  }, [bounceAnim, arrowNudgeAnim, logoPulseAnim]);
 
   const handlePhoneSubmit = () => {
     if (phoneNumber.length < 10) {
@@ -172,9 +211,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
       return;
     }
     onSelectRole(selectedRole, {
-      name: selectedRole === 'worker' ? 'Rajesh Sharma' : selectedRole === 'admin' ? 'Federation Admin' : 'Demo Customer',
+      name:
+        selectedRole === 'worker'
+          ? 'Rajesh Sharma'
+          : selectedRole === 'admin'
+          ? 'Federation Admin'
+          : 'Demo Customer',
       phone: phoneNumber,
-      role: selectedRole
+      role: selectedRole,
     });
   };
 
@@ -185,7 +229,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         name: 'Priya Singh',
         phone: '+91 98711 54321',
         city: 'Jaipur',
-        role: 'customer'
+        role: 'customer',
       });
     } else if (role === 'worker') {
       onSelectRole('worker', {
@@ -194,301 +238,368 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         trade: 'Electrician',
         phone: '+91 98110 55443',
         city: 'Jaipur',
-        role: 'worker'
+        role: 'worker',
       });
     } else {
       onSelectRole('admin', {
         id: 'admin-demo',
         name: 'Cooperative Federation Officer',
         phone: '+91 98765 43219',
-        role: 'admin'
+        role: 'admin',
       });
     }
   };
 
-  const roles: {
-    key: 'customer' | 'worker' | 'admin';
-    icon: React.ReactNode;
-  }[] = [
-    { key: 'customer', icon: <User size={17} color={colors.primary} /> },
-    { key: 'worker', icon: <Wrench size={17} color={colors.primary} /> },
-    { key: 'admin', icon: <Shield size={17} color={colors.primary} /> },
-  ];
-
-  const roleDescs: Record<string, string> = {
-    customer: t('auth.customer_desc'),
-    worker: t('auth.worker_desc'),
-    admin: t('auth.admin_desc'),
-  };
-
   return (
-    <View style={styles.container}>
-      {/* Top Bar */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.logoBadge}>
-          <ShieldCheck size={19} color={colors.primary} />
-          <Text style={styles.brandTitle}>{t('app_name')}</Text>
-        </View>
+    <View style={styles.screenContainer}>
+      {/* Deep dark gradient canvas */}
+      <LinearGradient
+        colors={['#050914', '#091226', '#0d1a36', '#070c18']}
+        locations={[0, 0.35, 0.7, 1]}
+        style={StyleSheet.absoluteFill}
+      />
 
-        <View style={styles.topBarActions}>
+      {/* Transparent India Map with live red & green activity dots */}
+      <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 10 }]} />
+
+      {/* Top Header Bar */}
+      <View style={[styles.topHeader, { paddingTop: Math.max(insets.top, 14) }]}>
+        <View style={styles.topHeaderLeft}>
           <ThemeToggle />
           <TouchableOpacity
-            style={styles.langBtn}
+            style={styles.langPill}
             onPress={() => setLangModalVisible(true)}
+            activeOpacity={0.75}
           >
-            <Globe size={15} color={colors.primary} />
-            <Text style={styles.langText}>
+            <Globe size={13} color="#2dd4bf" />
+            <Text style={styles.langPillText}>
               {NATIVE_SHORT[i18n.language] || 'English'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Bharat Works Together badge with tricolor underline */}
+        <View style={styles.bharatBadge}>
+          <Text style={styles.bharatTitle}>Bharat</Text>
+          <Text style={styles.bharatSub}>Works Together</Text>
+          <View style={styles.tricolorPill}>
+            <View style={[styles.tricolorBar, { backgroundColor: '#FF9933' }]} />
+            <View style={[styles.tricolorBar, { backgroundColor: '#FFFFFF' }]} />
+            <View style={[styles.tricolorBar, { backgroundColor: '#138808' }]} />
+          </View>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.scrollContainer,
+          { paddingBottom: insets.bottom + 36 },
+        ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Gradient Hero */}
-        <FadeInView distance={24} duration={500}>
-          <View style={styles.heroCardShadow}>
-            <LinearGradient
-              colors={
-                isDark
-                  ? ['#1e1b4b', '#312e81', '#4338ca']
-                  : [colors.primaryDark, colors.primary, '#6d5ae6']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.hero}
-            >
-              {/* Indian Tiranga Ribbon Accent Strip */}
-              <View style={styles.tricolorRibbon}>
-                <View style={[styles.tricolorSegment, { backgroundColor: '#FF9933' }]} />
-                <View style={[styles.tricolorSegment, { backgroundColor: '#FFFFFF' }]} />
-                <View style={[styles.tricolorSegment, { backgroundColor: '#138808' }]} />
-              </View>
-
-              {/* Decorative floating orbs */}
-              <Animated.View style={[styles.orb, styles.orbA, { transform: [{ translateY: floatY }] }]} />
-              <Animated.View style={[styles.orb, styles.orbB, { transform: [{ translateY: Animated.multiply(floatY, -1.4) }] }]} />
-              <View style={styles.orbC} />
-
-              {/* Central Emblem with slow-rotating Ashoka Chakra / Mandala ring */}
-              <View style={styles.emblemContainer}>
-                <Animated.View style={[styles.mandalaRing, { transform: [{ rotate: spin }] }]}>
-                  <View style={styles.mandalaInnerDotted} />
-                </Animated.View>
-                <PulseView scaleTo={1.04} duration={2200}>
-                  <View style={styles.heroMonogram}>
-                    <ShieldCheck size={32} color="#ffffff" />
-                  </View>
-                </PulseView>
-              </View>
-
-              <Text style={styles.heroTitle}>{t('app_name')}</Text>
-
-              {/* Dignified Indian Cooperative Motto */}
-              <View style={styles.mottoRow}>
-                <Text style={styles.mottoText}>सहकार से समृद्धि • Sahakar Se Samriddhi</Text>
-              </View>
-
-              <Text style={styles.heroSub}>{t('auth.hero_subtitle')}</Text>
-
-              <View style={styles.ministryPill}>
-                <CheckCircle2 size={13} color="#fef08a" />
-                <Text style={styles.ministryText}>{t('auth.ministry_pill')}</Text>
-              </View>
-            </LinearGradient>
-          </View>
-        </FadeInView>
-
-        {/* Role Selector — segmented chips with round corners */}
-        <FadeInView delay={140} distance={14} duration={360}>
-          <Text style={styles.sectionLabel}>{t('auth.role_label')}</Text>
-        </FadeInView>
-
-        <View style={styles.roleRow}>
-          {roles.map((role, idx) => {
-            const isActive = selectedRole === role.key;
-            const theme = roleThemes[role.key];
-            return (
-              <FadeInView key={role.key} delay={180 + idx * 80} distance={12} duration={340} style={styles.roleFlex}>
-                <ScalePressable
-                  onPress={() => setSelectedRole(role.key)}
-                  scaleTo={0.96}
-                  style={[
-                    styles.roleCardPressable,
-                    isActive && {
-                      shadowColor: theme.shadowColor,
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 8,
-                      elevation: 4,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.roleCardWrapper,
-                      isActive
-                        ? { borderColor: theme.activeBorder, borderWidth: 1.6 }
-                        : { borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border, borderWidth: 1.5 },
-                    ]}
-                  >
-                    {isActive ? (
-                      <LinearGradient
-                        colors={theme.gradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.roleChipContent}
-                      >
-                        <View style={[styles.roleChipIcon, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
-                          {React.cloneElement(role.icon as any, { color: '#ffffff' })}
-                        </View>
-                        <View style={styles.roleTitleWrap}>
-                          <Text style={styles.roleChipTitle} numberOfLines={2}>
-                            {t(`roles.${role.key}`)}
-                          </Text>
-                        </View>
-                        <View style={styles.roleDescWrap}>
-                          <Text style={styles.roleChipDesc} numberOfLines={2}>
-                            {roleDescs[role.key]}
-                          </Text>
-                        </View>
-                      </LinearGradient>
-                    ) : (
-                      <View style={[styles.roleChipContent, { backgroundColor: colors.surface }]}>
-                        <View style={[styles.roleChipIcon, { backgroundColor: theme.inactiveIconBg }]}>
-                          {React.cloneElement(role.icon as any, { color: theme.inactiveIconColor })}
-                        </View>
-                        <View style={styles.roleTitleWrap}>
-                          <Text style={[styles.roleChipTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-                            {t(`roles.${role.key}`)}
-                          </Text>
-                        </View>
-                        <View style={styles.roleDescWrap}>
-                          <Text style={[styles.roleChipDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                            {roleDescs[role.key]}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </ScalePressable>
-              </FadeInView>
-            );
-          })}
-        </View>
-
-        {/* OTP Login Card */}
-        <FadeInView delay={460} distance={16} duration={380}>
-          <View style={[styles.loginCard, focused && styles.loginCardFocused]}>
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.cardIconWrap}>
-                <Phone size={16} color={colors.primaryDark} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.boxTitle}>{t('auth.otp_login')}</Text>
-                <Text style={styles.boxSub}>{t('auth.otp_sub')}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.inputWrap, focused && styles.inputWrapFocused]}>
-              <View style={styles.countryCodeBadge}>
-                <Text style={styles.flagEmoji}>🇮🇳</Text>
-                <Text style={styles.countryCode}>+91</Text>
-              </View>
-              <View style={styles.inputDivider} />
-              <TextInput
-                style={styles.phoneInput}
-                placeholder={t('auth.phone_placeholder')}
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
+        {/* Central Logo & Branding */}
+        <View style={styles.brandCenter}>
+          <Animated.View
+            style={[
+              styles.logoCircleGlow,
+              { transform: [{ scale: logoPulseAnim }] },
+            ]}
+          >
+            <View style={styles.logoCircleInner}>
+              <Image
+                source={require('../../../assets/logo-transparent.png')}
+                style={styles.brandEmblemImage}
+                resizeMode="contain"
               />
             </View>
+          </Animated.View>
 
-            <ScalePressable onPress={handlePhoneSubmit} scaleTo={0.97}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.loginBtn}
+          <Text style={styles.brandHeading}>Sahakari Seva</Text>
+          <Text style={styles.brandHindiHeading}>सहकारी सेवा</Text>
+
+          <Text style={styles.brandTagline}>
+            India's First Worker-Owned Cooperative{'\n'}Platform for Urban & Household Gig Services
+          </Text>
+        </View>
+
+        {/* Segmented Role Switcher: Customer vs Worker (with subtle Admin toggle) */}
+        <View style={styles.rolePickerCard}>
+          <View style={styles.segmentedToggle}>
+            <TouchableOpacity
+              style={[
+                styles.segmentBtn,
+                selectedRole === 'customer' && styles.segmentBtnActive,
+              ]}
+              onPress={() => setSelectedRole('customer')}
+              activeOpacity={0.85}
+            >
+              <User
+                size={16}
+                color={selectedRole === 'customer' ? '#ffffff' : '#94a3b8'}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.segmentText,
+                  selectedRole === 'customer' && styles.segmentTextActive,
+                ]}
               >
-                <Text style={styles.loginBtnText}>{t('auth.continue_otp')}</Text>
-                <Animated.View style={{ transform: [{ translateX: arrowAnim }] }}>
-                  <ArrowRight size={17} color={colors.textInverse} />
-                </Animated.View>
-              </LinearGradient>
-            </ScalePressable>
+                {t('roles.customer') || 'Customer'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.segmentBtn,
+                selectedRole === 'worker' && styles.segmentBtnActive,
+              ]}
+              onPress={() => setSelectedRole('worker')}
+              activeOpacity={0.85}
+            >
+              <Wrench
+                size={16}
+                color={selectedRole === 'worker' ? '#ffffff' : '#94a3b8'}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.segmentText,
+                  selectedRole === 'worker' && styles.segmentTextActive,
+                ]}
+              >
+                {t('roles.worker') || 'Worker'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </FadeInView>
 
-        {/* 1-Click Demo Accounts */}
-        <FadeInView delay={580} distance={16} duration={380}>
-          <View style={styles.demoSection}>
-            <View style={styles.demoHeader}>
-              <Sparkles size={15} color={colors.secondaryDark} />
-              <Text style={styles.demoTitle}>{t('auth.demo_section')}</Text>
+          {/* Quick Admin switch for federation officers */}
+          <TouchableOpacity
+            style={[
+              styles.adminPill,
+              selectedRole === 'admin' && styles.adminPillActive,
+            ]}
+            onPress={() => setSelectedRole('admin')}
+            activeOpacity={0.7}
+          >
+            <Shield
+              size={12}
+              color={selectedRole === 'admin' ? '#10b981' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.adminPillText,
+                selectedRole === 'admin' && styles.adminPillTextActive,
+              ]}
+            >
+              Federation Admin Mode
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Phone Input Card */}
+        <View
+          style={[
+            styles.phoneCard,
+            inputFocused && styles.phoneCardFocused,
+          ]}
+        >
+          <View style={styles.phoneInputRow}>
+            <View style={styles.countryCodeWrap}>
+              <Text style={styles.flagEmoji}>🇮🇳</Text>
+              <Text style={styles.countryCodeText}>+91</Text>
             </View>
 
-            <View style={styles.demoBtnRow}>
-              <ScalePressable onPress={() => handleQuickDemoLogin('customer')} style={styles.demoBtnFlex}>
-                <View style={[styles.demoBtn, { borderColor: isDark ? 'rgba(59, 130, 246, 0.35)' : '#bfdbfe' }]}>
-                  <View style={[styles.demoDot, { backgroundColor: '#2563eb' }]} />
-                  <Text
-                    style={styles.demoBtnText}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {t('auth.demo_btn_customer')}
-                  </Text>
-                </View>
-              </ScalePressable>
-              <ScalePressable onPress={() => handleQuickDemoLogin('worker')} style={styles.demoBtnFlex}>
-                <View style={[styles.demoBtn, { borderColor: isDark ? 'rgba(249, 115, 22, 0.35)' : '#fed7aa' }]}>
-                  <View style={[styles.demoDot, { backgroundColor: '#ea580c' }]} />
-                  <Text
-                    style={styles.demoBtnText}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {t('auth.demo_btn_worker')}
-                  </Text>
-                </View>
-              </ScalePressable>
-              <ScalePressable onPress={() => handleQuickDemoLogin('admin')} style={styles.demoBtnFlex}>
-                <View style={[styles.demoBtn, { borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#bbf7d0' }]}>
-                  <View style={[styles.demoDot, { backgroundColor: '#059669' }]} />
-                  <Text
-                    style={styles.demoBtnText}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {t('auth.demo_btn_admin')}
-                  </Text>
-                </View>
-              </ScalePressable>
-            </View>
+            <View style={styles.inputDivider} />
 
-            {/* Subtle Cooperative Trust Badge */}
-            <View style={styles.trustFooterRow}>
-              <Text style={styles.trustFooterText}>
-                🏛️ Regd. Multi-State Cooperative • 100% Fair Wage • Zero Middlemen
+            <TextInput
+              style={styles.phoneTextInput}
+              placeholder="Enter your mobile number"
+              placeholderTextColor="#64748b"
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+            />
+          </View>
+        </View>
+
+        {/* Emerald "Send OTP →" Action Button */}
+        <TouchableOpacity
+          style={styles.sendOtpBtnShadow}
+          onPress={handlePhoneSubmit}
+          activeOpacity={0.88}
+        >
+          <LinearGradient
+            colors={['#10b981', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.sendOtpBtn}
+          >
+            <Text style={styles.sendOtpBtnText}>Send OTP</Text>
+            <Animated.View style={{ transform: [{ translateX: arrowNudgeAnim }] }}>
+              <ArrowRight size={18} color="#ffffff" />
+            </Animated.View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* "or continue with" Divider */}
+        <View style={styles.orDividerRow}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>or continue with</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        {/* Google & Apple Social Login Buttons */}
+        <View style={styles.socialRow}>
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => handleQuickDemoLogin(selectedRole)}
+            activeOpacity={0.8}
+          >
+            <GoogleIcon />
+            <Text style={styles.socialBtnText}>Google</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.socialBtn}
+            onPress={() => handleQuickDemoLogin(selectedRole)}
+            activeOpacity={0.8}
+          >
+            <AppleIcon />
+            <Text style={styles.socialBtnText}>Apple</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 1-Click Instant Demo Evaluation Pills */}
+        <View style={styles.demoSection}>
+          <View style={styles.demoHeader}>
+            <Sparkles size={13} color="#f59e0b" />
+            <Text style={styles.demoHeaderText}>1-Click Instant Evaluation</Text>
+          </View>
+
+          <View style={styles.demoPillsRow}>
+            <TouchableOpacity
+              style={[styles.demoPill, { borderColor: 'rgba(59, 130, 246, 0.4)' }]}
+              onPress={() => handleQuickDemoLogin('customer')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.demoDot, { backgroundColor: '#3b82f6' }]} />
+              <Text style={styles.demoPillText}>Customer (Priya)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.demoPill, { borderColor: 'rgba(249, 115, 22, 0.4)' }]}
+              onPress={() => handleQuickDemoLogin('worker')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.demoDot, { backgroundColor: '#f97316' }]} />
+              <Text style={styles.demoPillText}>Worker (Rajesh)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.demoPill, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}
+              onPress={() => handleQuickDemoLogin('admin')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.demoDot, { backgroundColor: '#10b981' }]} />
+              <Text style={styles.demoPillText}>Admin</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Terms of Service & Privacy Policy */}
+        <View style={styles.legalRow}>
+          <Text style={styles.legalText}>By continuing, you agree to our </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <TouchableOpacity onPress={() => Alert.alert('Terms of Service', 'Sahakari Seva is a registered multi-state cooperative federation providing ethical urban gig services.')}>
+              <Text style={styles.legalLink}>Terms of Service</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalText}> and </Text>
+            <TouchableOpacity onPress={() => Alert.alert('Privacy Policy', 'Your data is secured under cooperative data privacy principles.')}>
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* "Scroll to explore" Bounce Section */}
+        <View style={styles.scrollIndicatorWrap}>
+          <Text style={styles.scrollIndicatorText}>Scroll to explore</Text>
+          <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
+            <ChevronDown size={18} color="#94a3b8" />
+          </Animated.View>
+        </View>
+
+        {/* Bottom Revealed Section: 3 Feature Highlight Cards */}
+        <View style={styles.featureShowcase}>
+          {/* Feature 1: Verified Workers */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
+              <ShieldCheck size={22} color="#10b981" />
+            </View>
+            <View style={styles.featureTextWrap}>
+              <Text style={styles.featureTitle}>Verified Workers</Text>
+              <Text style={styles.featureTagline}>Trusted. Skilled. Reliable.</Text>
+              <Text style={styles.featureDesc}>
+                Aadhaar verified, background-checked, and trade-certified local professionals.
               </Text>
             </View>
           </View>
-        </FadeInView>
+
+          {/* Feature 2: Fair Earnings */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.14)' }]}>
+              <Coins size={22} color="#f59e0b" />
+            </View>
+            <View style={styles.featureTextWrap}>
+              <Text style={styles.featureTitle}>Fair Earnings</Text>
+              <Text style={styles.featureTagline}>Empowering Workers.</Text>
+              <Text style={styles.featureDesc}>
+                Workers retain 95% of customer payments. Zero predatory commission fees.
+              </Text>
+            </View>
+          </View>
+
+          {/* Feature 3: Stronger Communities */}
+          <View style={styles.featureCard}>
+            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.14)' }]}>
+              <Users size={22} color="#38bdf8" />
+            </View>
+            <View style={styles.featureTextWrap}>
+              <Text style={styles.featureTitle}>Stronger Communities</Text>
+              <Text style={styles.featureTagline}>Building a Better India.</Text>
+              <Text style={styles.featureDesc}>
+                Worker-owned multi-state cooperative fostering dignity, healthcare, and pensions.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Indian Landmark Skyline Silhouette */}
+        <View style={styles.skylineWrap}>
+          <SkylineSilhouette />
+        </View>
+
+        {/* Tricolor Bottom Wave & Slogan Footer */}
+        <View style={styles.footerWrap}>
+          <TricolorWave />
+          <View style={styles.footerContent}>
+            <Text style={styles.footerSlogan}>
+              Seva  •  Samman  •  Samriddhi
+            </Text>
+            <Text style={styles.footerHindi}>
+              सेवा • सम्मान • समृद्धि
+            </Text>
+            <Text style={styles.footerMinistry}>
+              🏛️ Ministry of Cooperation Recognized Cooperative Model
+            </Text>
+          </View>
+        </View>
       </ScrollView>
 
+      {/* Multilingual Selector Modal */}
       <LanguageModal
         visible={langModalVisible}
         onClose={() => setLangModalVisible(false)}
@@ -497,425 +608,473 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   );
 };
 
-const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({
+  screenContainer: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#060a14',
   },
-  topBar: {
+  mapOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 410,
+    opacity: 0.95,
+  },
+  scrollContainer: {
+    paddingHorizontal: 22,
+    alignItems: 'center',
+  },
+  // --- Top Header ---
+  topHeader: {
     paddingHorizontal: 18,
-    paddingBottom: 12,
-    backgroundColor: colors.topPanel,
+    paddingBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.topPanelBorder,
+    zIndex: 10,
   },
-  topBarActions: {
+  topHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  logoBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  brandTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  langBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  langText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primaryDark,
-  },
-  scrollContent: {
-    padding: 20,
-  },
-  // --- Gradient Hero ---
-  heroCardShadow: {
-    borderRadius: 24,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.32,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 22,
-  },
-  hero: {
-    borderRadius: 24,
-    paddingTop: 26,
-    paddingBottom: 24,
-    paddingHorizontal: 22,
-    alignItems: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  tricolorRibbon: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3.5,
-    flexDirection: 'row',
-  },
-  tricolorSegment: {
-    flex: 1,
-    height: '100%',
-  },
-  orb: {
-    position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.18,
-    backgroundColor: '#ffffff',
-  },
-  orbA: {
-    width: 130,
-    height: 130,
-    top: -40,
-    left: -30,
-  },
-  orbB: {
-    width: 90,
-    height: 90,
-    bottom: -25,
-    right: -15,
-  },
-  orbC: {
-    position: 'absolute',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    top: 26,
-    right: 34,
-    backgroundColor: 'rgba(251, 191, 36, 0.35)',
-  },
-  emblemContainer: {
-    width: 92,
-    height: 92,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    position: 'relative',
-  },
-  mandalaRing: {
-    position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 1.5,
-    borderColor: 'rgba(253, 224, 71, 0.45)', // subtle warm gold
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mandalaInnerDotted: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
-    borderStyle: 'dotted',
-  },
-  heroMonogram: {
-    width: 66,
-    height: 66,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: 0.3,
-  },
-  mottoRow: {
-    marginTop: 4,
-    marginBottom: 2,
-    paddingHorizontal: 10,
-    paddingVertical: 2.5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  mottoText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#fef08a',
-    letterSpacing: 0.3,
-  },
-  heroSub: {
-    fontSize: 12.5,
-    color: 'rgba(255,255,255,0.92)',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 18,
-    maxWidth: 300,
-  },
-  ministryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    marginTop: 12,
-  },
-  ministryText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  // --- Role Segmented Row ---
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
-  },
-  roleFlex: {
-    flex: 1,
-  },
-  roleCardPressable: {
-    borderRadius: 16,
-  },
-  roleCardWrapper: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
-  roleChipContent: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    minHeight: 126,
-  },
-  roleChipIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 7,
-  },
-  roleTitleWrap: {
-    minHeight: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-    width: '100%',
-  },
-  roleChipTitle: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: '#ffffff',
-    textAlign: 'center',
-    lineHeight: 14.5,
-  },
-  roleDescWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  roleChipDesc: {
-    fontSize: 9.5,
-    color: 'rgba(255,255,255,0.88)',
-    textAlign: 'center',
-    lineHeight: 12.5,
-  },
-  // --- OTP Card ---
-  loginCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  loginCardFocused: {
-    borderColor: colors.primary,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 14,
-  },
-  cardIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  boxTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  boxSub: {
-    fontSize: 11.5,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 52,
-    marginBottom: 14,
-    backgroundColor: colors.surfaceSubtle,
-  },
-  inputWrapFocused: {
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-  },
-  countryCodeBadge: {
+  langPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: 'rgba(45, 212, 191, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.25)',
+  },
+  langPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2dd4bf',
+  },
+  bharatBadge: {
+    alignItems: 'flex-end',
+  },
+  bharatTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#f8fafc',
+    letterSpacing: 0.3,
+  },
+  bharatSub: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#94a3b8',
+    marginTop: -1,
+  },
+  tricolorPill: {
+    flexDirection: 'row',
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  tricolorBar: {
+    flex: 1,
+    height: '100%',
+  },
+  // --- Brand Center ---
+  brandCenter: {
+    alignItems: 'center',
+    marginTop: 36,
+    marginBottom: 20,
+  },
+  logoCircleGlow: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: 'rgba(16, 185, 129, 0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(45, 212, 191, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 8,
+    marginBottom: 14,
+  },
+  logoCircleInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(10, 20, 42, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  brandEmblemImage: {
+    width: 52,
+    height: 52,
+  },
+  brandHeading: {
+    fontSize: 27,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.4,
+    textAlign: 'center',
+  },
+  brandHindiHeading: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#f1f5f9',
+    marginTop: 2,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  brandTagline: {
+    fontSize: 12.5,
+    fontWeight: '400',
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 310,
+  },
+  // --- Role Picker Card ---
+  rolePickerCard: {
+    width: '100%',
+    maxWidth: 360,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  segmentedToggle: {
+    flexDirection: 'row',
+    width: '100%',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 24,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 20,
+  },
+  segmentBtnActive: {
+    backgroundColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  segmentText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  segmentTextActive: {
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  adminPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  adminPillActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+  },
+  adminPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  adminPillTextActive: {
+    color: '#10b981',
+    fontWeight: '700',
+  },
+  // --- Phone Card ---
+  phoneCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: 'rgba(11, 18, 34, 0.88)',
+    borderRadius: 24,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 14,
+  },
+  phoneCardFocused: {
+    borderColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+  },
+  countryCodeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   flagEmoji: {
-    fontSize: 15,
+    fontSize: 18,
   },
-  countryCode: {
+  countryCodeText: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.textSecondary,
+    color: '#f8fafc',
   },
   inputDivider: {
     width: 1,
     height: 22,
-    backgroundColor: colors.border,
-    marginHorizontal: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    marginHorizontal: 12,
   },
-  phoneInput: {
+  phoneTextInput: {
     flex: 1,
-    fontSize: 15.5,
-    color: colors.textPrimary,
-    fontWeight: '600',
+    fontSize: 14.5,
+    color: '#ffffff',
     paddingVertical: 0,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
-  loginBtn: {
-    borderRadius: 14,
-    height: 50,
+  // --- Send OTP Button ---
+  sendOtpBtnShadow: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
+  },
+  sendOtpBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingVertical: 14,
+    borderRadius: 24,
   },
-  loginBtnText: {
-    color: colors.textInverse,
-    fontSize: 15,
-    fontWeight: '700',
+  sendOtpBtnText: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.2,
   },
-  // --- Demo Section ---
-  demoSection: {
-    backgroundColor: colors.secondaryLight,
-    borderRadius: 16,
-    padding: 16,
+  // --- Social Logins ---
+  orDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 360,
+    marginVertical: 12,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  orText: {
+    fontSize: 12,
+    color: '#64748b',
+    paddingHorizontal: 12,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 360,
+    gap: 12,
+    marginBottom: 16,
+  },
+  socialBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.secondaryLight,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  socialBtnText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#f8fafc',
+  },
+  // --- Demo Profiles ---
+  demoSection: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 16,
   },
   demoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  demoTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.secondaryDark,
+  demoHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#e2e8f0',
   },
-  demoBtnRow: {
+  demoPillsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
-  demoBtnFlex: {
+  demoPill: {
     flex: 1,
-  },
-  demoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 1.2,
-    borderColor: colors.secondary,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    minHeight: 40,
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 4,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
   },
   demoDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  demoBtnText: {
+  demoPillText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: colors.secondaryDark,
+    fontWeight: '600',
+    color: '#cbd5e1',
+  },
+  // --- Legal Notice ---
+  legalRow: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  legalText: {
+    fontSize: 11.5,
+    color: '#64748b',
     textAlign: 'center',
   },
-  trustFooterRow: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+  legalLink: {
+    fontSize: 11.5,
+    color: '#2dd4bf',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  // --- Scroll Indicator ---
+  scrollIndicatorWrap: {
+    alignItems: 'center',
+    gap: 4,
+    marginVertical: 14,
+  },
+  scrollIndicatorText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#94a3b8',
+    letterSpacing: 0.2,
+  },
+  // --- Features Section ---
+  featureShowcase: {
+    width: '100%',
+    maxWidth: 360,
+    gap: 12,
+    marginTop: 10,
+    marginBottom: 24,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  featureIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureTextWrap: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  featureTagline: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2dd4bf',
+    marginVertical: 2,
+  },
+  featureDesc: {
+    fontSize: 11.5,
+    color: '#94a3b8',
+    lineHeight: 16,
+  },
+  // --- Skyline & Footer ---
+  skylineWrap: {
+    width: '100%',
+    marginTop: 10,
+    marginBottom: -6,
+  },
+  footerWrap: {
+    width: '100%',
     alignItems: 'center',
   },
-  trustFooterText: {
-    fontSize: 10,
+  footerContent: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  footerSlogan: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#f8fafc',
+    letterSpacing: 0.8,
+  },
+  footerHindi: {
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.textMuted,
+    color: '#cbd5e1',
+    marginTop: 2,
+  },
+  footerMinistry: {
+    fontSize: 10.5,
+    color: '#64748b',
+    marginTop: 6,
     textAlign: 'center',
   },
 });
