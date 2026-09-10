@@ -32,6 +32,12 @@ const NATIVE_SHORT: Record<string, string> = {
   mr: 'मराठी',
   gu: 'ગુજરાતી',
   kn: 'ಕನ್ನಡ',
+  ml: 'മലയാളം',
+  pa: 'ਪੰਜਾਬੀ',
+  or: 'ଓଡ଼ିଆ',
+  as: 'অসমীয়া',
+  ur: 'اردو',
+  bho: 'भोजपुरी',
 };
 
 export const Header: React.FC<HeaderProps> = ({

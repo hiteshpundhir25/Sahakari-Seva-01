@@ -27,6 +27,12 @@ const LANGUAGE_META: Record<string, { name: string; sub: string }> = {
   mr: { name: 'मराठी', sub: 'Marathi — मराठी भाषा' },
   gu: { name: 'ગુજરાતી', sub: 'Gujarati — ગુજરાતી ભાષા' },
   kn: { name: 'ಕನ್ನಡ', sub: 'Kannada — ಕನ್ನಡ ಭಾಷೆ' },
+  ml: { name: 'മലയാളം', sub: 'Malayalam — കേരളം & മലയാളം' },
+  pa: { name: 'ਪੰਜਾਬੀ', sub: 'Punjabi — ਪੰਜਾਬ & ਦਿੱਲੀ' },
+  or: { name: 'ଓଡ଼ିଆ', sub: 'Odia — ଓଡ଼ିଶା & ଓଡ଼ିଆ' },
+  as: { name: 'অসমীয়া', sub: 'Assamese — অসম & উত্তৰ-পূৰ্ব' },
+  ur: { name: 'اردو', sub: 'Urdu — اردو زبان' },
+  bho: { name: 'भोजपुरी', sub: 'Bhojpuri — बिहार & पूर्वांचल' },
 };
 
 export const LanguageModal: React.FC<LanguageModalProps> = ({ visible, onClose }) => {
@@ -55,7 +61,7 @@ export const LanguageModal: React.FC<LanguageModalProps> = ({ visible, onClose }
           </View>
 
           <Text style={styles.modalSub}>
-            {t('lang.en')} + 7 Indian Languages
+            {t('lang.en')} + 13 Indian Languages
           </Text>
 
           <ScrollView style={styles.langScroll} showsVerticalScrollIndicator={false}>
@@ -138,7 +144,7 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     padding: 4,
   },
   langScroll: {
-    maxHeight: 420,
+    maxHeight: 480,
   },
   langOption: {
     flexDirection: 'row',

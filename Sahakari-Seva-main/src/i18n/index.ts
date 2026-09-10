@@ -1,5 +1,5 @@
 // ==============================================================================
-// MOBILE I18N INITIALIZATION — 8 LOCALES (ENGLISH + 7 INDIAN LANGUAGES)
+// MOBILE I18N INITIALIZATION — 14 LOCALES (ENGLISH + 13 MAJOR INDIAN LANGUAGES)
 // Language is persisted and restored instantly on next launch.
 // ==============================================================================
 
@@ -15,8 +15,29 @@ import te from './te.json';
 import mr from './mr.json';
 import gu from './gu.json';
 import kn from './kn.json';
+import ml from './ml.json';
+import pa from './pa.json';
+import or from './or.json';
+import as from './as.json';
+import ur from './ur.json';
+import bho from './bho.json';
 
-export const SUPPORTED_LANGUAGES = ['en', 'hi', 'bn', 'ta', 'te', 'mr', 'gu', 'kn'] as const;
+export const SUPPORTED_LANGUAGES = [
+  'en',
+  'hi',
+  'bn',
+  'ta',
+  'te',
+  'mr',
+  'gu',
+  'kn',
+  'ml',
+  'pa',
+  'or',
+  'as',
+  'ur',
+  'bho'
+] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 const STORAGE_KEY = 'sahakari_seva_language';
@@ -82,7 +103,13 @@ i18n
       te: { translation: te },
       mr: { translation: mr },
       gu: { translation: gu },
-      kn: { translation: kn }
+      kn: { translation: kn },
+      ml: { translation: ml },
+      pa: { translation: pa },
+      or: { translation: or },
+      as: { translation: as },
+      ur: { translation: ur },
+      bho: { translation: bho }
     },
     lng: 'en',
     fallbackLng: 'en',

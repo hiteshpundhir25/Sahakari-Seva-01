@@ -10,7 +10,13 @@
     "te": "తెలుగు (Telugu)",
     "mr": "मराठी (Marathi)",
     "gu": "ગુજરાતી (Gujarati)",
-    "kn": "ಕನ್ನಡ (Kannada)"
+    "kn": "ಕನ್ನಡ (Kannada)",
+    "ml": "മലയാളം (Malayalam)",
+    "pa": "ਪੰਜਾਬੀ (Punjabi)",
+    "or": "ଓଡ଼ିଆ (Odia)",
+    "as": "অসমীয়া (Assamese)",
+    "ur": "اردو (Urdu)",
+    "bho": "भोजपुरी (Bhojpuri)"
   },
   "tabs": {
     "home": "ಮುಖಪುಟ",

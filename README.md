@@ -7,7 +7,7 @@
 ## 🌟 Key Highlights
 
 - **📱 True Mobile Application** — Expo SDK 52 / React Native app in `mobile/` with role-based bottom tabs (Customer, Worker, Admin), touch-first UI, native safe areas, GPS matching, and offline demo fallback so *every* screen works even without the backend.
-- **🗣 8-Language Simultaneous Localization** — English + **7 Indian languages** (हिन्दी Hindi, বাংলা Bengali, தமிழ் Tamil, తెలుగు Telugu, मराठी Marathi, ગુજરાતી Gujarati, ಕನ್ನಡ Kannada). Switching languages swaps **the entire app at once** — tabs, screens, alerts, invoices, admin dashboards — behind a smooth branded cross-fade with **zero glitches**. Your choice persists across restarts.
+- **🗣 14-Language Comprehensive Localization** — English + **13 Major Indian languages** (हिन्दी Hindi, বাংলা Bengali, தமிழ் Tamil, తెలుగు Telugu, मराठी Marathi, ગુજરાતી Gujarati, ಕನ್ನಡ Kannada, മലയാളം Malayalam, ਪੰਜਾਬੀ Punjabi, ଓଡ଼ିଆ Odia, অসমীয়া Assamese, اردو Urdu, भोजपुरी Bhojpuri). Covering all major landmark regions across North, South, East, West, Central, and Northeast India. Switching languages swaps **the entire app at once** — tabs, screens, alerts, invoices, admin dashboards — behind a smooth branded cross-fade with **zero glitches**. Your choice persists across restarts.
 - **✨ Unique Classy Animations Everywhere** — reusable animation system (`FadeInView`, `ScalePressable`, `AnimatedNumber`, `PulseView`): staggered entrance sequences on every screen, springy haptic press feedback, count-up earnings/KPI numbers, gentle pulsing emergency banner, and cross-fade screen transitions.
 - **🤖 AI Demand Forecasting & Workforce Allocation** — Ensemble time-series model (weekend surge ×1.55, OLS trend regression, 95% confidence bounds) plus real-time supply–demand balancing with 1-tap standby worker mobilization.
 - **📍 Zero Paid Map APIs** — 100% open-source OpenStreetMap + Haversine geo-matching. Zero Google Maps / Mapbox fees.
@@ -43,18 +43,24 @@ Without the backend the app automatically falls back to built-in demo data — e
 
 ---
 
-## 🌐 Language Switching (7 Indian Languages + English)
-
-| Language | Native | Script |
-|---|---|---|
-| English | English | Latin |
-| Hindi | हिन्दी | Devanagari |
-| Bengali | বাংলা | Bengali |
-| Tamil | தமிழ் | Tamil |
-| Telugu | తెలుగు | Telugu |
-| Marathi | मराठी | Devanagari |
-| Gujarati | ગુજરાતી | Gujarati |
-| Kannada | ಕನ್ನಡ | Kannada |
+## 🌐 Language Switching (13 Indian Languages + English)
+ 
+| Language | Native | Script | Landmark Region Coverage |
+|---|---|---|---|
+| English | English | Latin | Pan-India / Default Platform |
+| Hindi | हिन्दी | Devanagari | North & Central India (Delhi, UP, MP, Rajasthan, Bihar) |
+| Bengali | বাংলা | Bengali | East India (West Bengal, Kolkata, Tripura) |
+| Tamil | தமிழ் | Tamil | South India (Tamil Nadu, Chennai) |
+| Telugu | తెలుగు | Telugu | South India (Andhra Pradesh, Telangana, Hyderabad) |
+| Marathi | मराठी | Devanagari | West India (Maharashtra, Mumbai, Pune) |
+| Gujarati | ગુજરાતી | Gujarati | West India (Gujarat, Ahmedabad, Surat) |
+| Kannada | ಕನ್ನಡ | Kannada | South India (Karnataka, Bengaluru) |
+| Malayalam | മലയാളം | Malayalam | South India (Kerala, Kochi, Thiruvananthapuram) |
+| Punjabi | ਪੰਜਾਬੀ | Gurmukhi | North/North-West (Punjab, Chandigarh, Delhi NCR) |
+| Odia | ଓଡ଼ିଆ | Odia | East India (Odisha, Bhubaneswar, Cuttack) |
+| Assamese | অসমীয়া | Bengali-Assamese | Northeast India (Assam, Guwahati & Seven Sisters) |
+| Urdu | اردو | Perso-Arabic | Pan-India / North / J&K / Hyderabad / Lucknow |
+| Bhojpuri | भोजपुरी | Devanagari | Heartland Gig Workforce (Bihar, Purvanchal UP, Jharkhand) |
 
 Tap the **🌐 chip** in any header to open the language picker. The switch is
 orchestrated by `LanguageSwitchProvider` (`mobile/src/animations/`) — a

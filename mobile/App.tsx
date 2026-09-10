@@ -1,7 +1,7 @@
 // ==============================================================================
 // SAHAKARI SEVA MOBILE APPLICATION — EXPO ROOT APP
 // Cooperative Gig Services with Real Geolocation, AI Forecasting & Localization
-// English + 7 Indian Languages (हिन्दी, বাংলা, தமிழ், తెలుగు, मराठी, ગુજરાતી, ಕನ್ನಡ)
+// English + 13 Major Indian Languages (हिन्दी, বাংলা, தமிழ், తెలుగు, मराठी, ગુજરાતી, ಕನ್ನಡ, മലയാളം, ਪੰਜਾਬੀ, ଓଡ଼ିଆ, অসমীয়া, اردو, भोजपुरी)
 // Light & Dark Themes with animated glitch-free switching
 // ==============================================================================
 
