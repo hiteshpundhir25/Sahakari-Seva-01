@@ -70,8 +70,42 @@ const NATIVE_SHORT: Record<string, string> = {
   or: 'ଓଡ଼ିଆ',
   as: 'অসমীয়া',
   ur: 'اردو',
-  bho: 'भोजपुरी',
 };
+
+// Demo Platform Metrics (Easily editable numbers representing our apps and platform)
+export interface PlatformStatItem {
+  id: string;
+  value: string;
+  label: string;
+  detail: string;
+}
+
+export const DEMO_PLATFORM_STATS: PlatformStatItem[] = [
+  {
+    id: 'apps',
+    value: '3',
+    label: 'Apps',
+    detail: 'Ecosystem Apps: Customer App, Worker App & Federation Admin Portal',
+  },
+  {
+    id: 'workers',
+    value: '14.2K+',
+    label: 'Sahakaris',
+    detail: '14,200+ registered & verified worker-members with direct cooperative ownership',
+  },
+  {
+    id: 'societies',
+    value: '128',
+    label: 'Co-ops',
+    detail: '128 registered cooperative societies and primary agricultural credit societies (PACS)',
+  },
+  {
+    id: 'states',
+    value: '24',
+    label: 'States',
+    detail: 'Active cooperative service delivery network running across 24 States & UTs',
+  },
+];
 
 // Official Google 'G' 4-color vector logo
 const GoogleIcon = () => (
@@ -473,6 +507,27 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Top Platform Metrics Ribbon (Institutional & Non-Promotional) */}
+        <View style={styles.topStatsRibbon}>
+          {DEMO_PLATFORM_STATS.map((stat, idx) => (
+            <React.Fragment key={stat.id}>
+              <TouchableOpacity
+                style={styles.statCell}
+                activeOpacity={0.7}
+                onPress={() => Alert.alert(stat.label, stat.detail)}
+              >
+                <Text style={styles.statCellNumber}>{stat.value}</Text>
+                <Text style={styles.statCellLabel} numberOfLines={1}>
+                  {stat.label}
+                </Text>
+              </TouchableOpacity>
+              {idx < DEMO_PLATFORM_STATS.length - 1 && (
+                <View style={styles.statDivider} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+
         {/* Central Logo & Branding (Moved slightly upward) */}
         <View style={styles.brandCenter}>
           <Animated.View
@@ -1020,10 +1075,56 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
   },
+  // --- Top Platform Metrics Ribbon ---
+  topStatsRibbon: {
+    width: '100%',
+    maxWidth: 360,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.90)',
+    borderRadius: 14,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(45, 212, 191, 0.25)' : 'rgba(226, 232, 240, 0.95)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.25 : 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  statCellNumber: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: isDark ? '#2dd4bf' : '#0d9488',
+    letterSpacing: 0.2,
+  },
+  statCellLabel: {
+    fontSize: 9.2,
+    fontWeight: '600',
+    color: isDark ? '#94a3b8' : '#64748b',
+    marginTop: 1.5,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  statDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(203, 213, 225, 0.8)',
+  },
   // --- Brand Center (Moved slightly upward) ---
   brandCenter: {
     alignItems: 'center',
-    marginTop: 18,
+    marginTop: 10,
     marginBottom: 14,
   },
   logoCircleGlow: {
