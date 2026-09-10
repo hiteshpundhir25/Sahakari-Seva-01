@@ -9,6 +9,8 @@
     "ios": "npm --prefix mobile run ios",
     "web": "npm --prefix mobile run web",
     "typecheck": "npm --prefix mobile run typecheck",
+    "build": "npm --prefix Sahakari-Seva-main run build:web",
+    "build:web": "npm --prefix Sahakari-Seva-main run build:web",
     "build:apk": "npm --prefix mobile run build:apk",
     "build:aab": "npm --prefix mobile run build:aab"
   }
