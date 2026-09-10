@@ -58,6 +58,7 @@ import type { Palette } from '../theme';
 
 // Role context for role-aware UI (notification feeds, etc.)
 import { RoleProvider } from '../context/RoleContext';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 // Context for Auth & Role Switching
 export interface UserSession {
@@ -382,9 +383,21 @@ export const RootNavigator: React.FC = () => {
         )}
 
         {!session.role && <LoginScreen onSelectRole={login} />}
-        {session.role === 'customer' && <CustomerStackNavigator />}
-        {session.role === 'worker' && <WorkerTabNavigator />}
-        {session.role === 'admin' && <AdminTabNavigator />}
+        {session.role === 'customer' && (
+          <ErrorBoundary fallbackTitle="Customer Section">
+            <CustomerStackNavigator />
+          </ErrorBoundary>
+        )}
+        {session.role === 'worker' && (
+          <ErrorBoundary fallbackTitle="Worker Section">
+            <WorkerTabNavigator />
+          </ErrorBoundary>
+        )}
+        {session.role === 'admin' && (
+          <ErrorBoundary fallbackTitle="Admin Section">
+            <AdminTabNavigator />
+          </ErrorBoundary>
+        )}
         </View>
       </RoleProvider>
     </AuthContext.Provider>
