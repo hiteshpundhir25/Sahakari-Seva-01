@@ -312,9 +312,11 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
             <View style={styles.iconCircle}>
               <CalendarIcon size={18} color={colors.primary} />
             </View>
-            <View>
-              <Text style={styles.sectionTitle}>{t('calendar.title')}</Text>
-              <Text style={styles.sectionSubtitle}>
+            <View style={styles.titleTextCol}>
+              <Text style={styles.sectionTitle} numberOfLines={1}>
+                {t('calendar.title')}
+              </Text>
+              <Text style={styles.sectionSubtitle} numberOfLines={1}>
                 {t('calendar.subtitle', { count: currentMonthJobsCount })}
               </Text>
             </View>
@@ -326,7 +328,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
             onPress={handleJumpToToday}
             activeOpacity={0.7}
           >
-            <Clock size={12} color={colors.primary} />
+            <Clock size={11} color={colors.primary} />
             <Text style={styles.todayButtonText}>{t('calendar.today')}</Text>
           </TouchableOpacity>
         </View>
@@ -397,49 +399,56 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
               return (
                 <TouchableOpacity
                   key={item.dateStr!}
-                  style={[
-                    styles.dayCell,
-                    item.isSelected && styles.dayCellSelected,
-                    item.isToday && !item.isSelected && styles.dayCellToday,
-                  ]}
+                  style={styles.dayCell}
                   onPress={() => setSelectedDate(item.dateStr!)}
                   activeOpacity={0.7}
                 >
-                  <Text
+                  <View
                     style={[
-                      styles.dayNumber,
-                      item.isSelected && styles.dayNumberSelected,
-                      item.isToday && !item.isSelected && styles.dayNumberToday,
+                      styles.dayBadge,
+                      item.isSelected && styles.dayBadgeSelected,
+                      item.isToday && !item.isSelected && styles.dayBadgeToday,
                     ]}
                   >
-                    {item.day}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.dayNumber,
+                        item.isSelected && styles.dayNumberSelected,
+                        item.isToday && !item.isSelected && styles.dayNumberToday,
+                      ]}
+                    >
+                      {item.day}
+                    </Text>
 
-                  {/* Indicator Dot / Pill */}
-                  {hasJobs && (
-                    <View style={styles.indicatorContainer}>
-                      {hasEmergency ? (
-                        <View style={[styles.jobDot, { backgroundColor: colors.danger }]} />
-                      ) : hasInProgress ? (
-                        <View style={[styles.jobDot, { backgroundColor: '#f59e0b' }]} />
-                      ) : hasAccepted ? (
-                        <View style={[styles.jobDot, { backgroundColor: colors.success }]} />
-                      ) : (
-                        <View style={[styles.jobDot, { backgroundColor: colors.textMuted }]} />
-                      )}
-
-                      {item.jobs.length > 1 && (
-                        <Text
+                    {/* Indicator Dot / Pill */}
+                    {hasJobs ? (
+                      <View style={styles.indicatorContainer}>
+                        <View
                           style={[
-                            styles.dotCountText,
-                            item.isSelected && { color: colors.textInverse },
+                            styles.jobDot,
+                            {
+                              backgroundColor: item.isSelected
+                                ? (hasEmergency ? '#fee2e2' : hasInProgress ? '#fef08a' : '#ffffff')
+                                : (hasEmergency ? colors.danger : hasInProgress ? '#f59e0b' : colors.success),
+                            },
                           ]}
-                        >
-                          {item.jobs.length}
-                        </Text>
-                      )}
-                    </View>
-                  )}
+                        />
+
+                        {item.jobs.length > 1 && (
+                          <Text
+                            style={[
+                              styles.dotCountText,
+                              item.isSelected && { color: '#ffffff' },
+                            ]}
+                          >
+                            {item.jobs.length}
+                          </Text>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={styles.emptyDotPlaceholder} />
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -820,24 +829,32 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: 14,
+      gap: 8,
     },
     sectionTitleRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
+      flex: 1,
+      marginRight: 6,
+    },
+    titleTextCol: {
+      flex: 1,
     },
     iconCircle: {
-      width: 38,
-      height: 38,
-      borderRadius: 12,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       backgroundColor: colors.primaryLight,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
     sectionTitle: {
-      fontSize: 15,
+      fontSize: 14.5,
       fontWeight: '800',
       color: colors.textPrimary,
+      letterSpacing: -0.2,
     },
     sectionSubtitle: {
       fontSize: 11,
@@ -847,13 +864,14 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     todayButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 10,
+      gap: 4,
+      paddingHorizontal: 9,
       paddingVertical: 5,
       borderRadius: 8,
       backgroundColor: colors.primaryLight,
       borderWidth: 1,
       borderColor: isDark ? 'transparent' : colors.primary,
+      flexShrink: 0,
     },
     todayButtonText: {
       fontSize: 11,
@@ -930,19 +948,25 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       aspectRatio: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 10,
-      padding: 2,
-      position: 'relative',
+      padding: 1,
     },
-    dayCellSelected: {
+    dayBadge: {
+      width: 36,
+      height: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 11,
+      backgroundColor: 'transparent',
+    },
+    dayBadgeSelected: {
       backgroundColor: colors.primary,
       shadowColor: colors.primary,
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
+      shadowOpacity: 0.25,
       shadowRadius: 4,
       elevation: 3,
     },
-    dayCellToday: {
+    dayBadgeToday: {
       borderWidth: 1.5,
       borderColor: colors.primary,
       backgroundColor: colors.primaryLight,
@@ -951,6 +975,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontSize: 12.5,
       fontWeight: '700',
       color: colors.textPrimary,
+      lineHeight: 15,
     },
     dayNumberSelected: {
       color: colors.textInverse,
@@ -961,11 +986,15 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontWeight: '800',
     },
     indicatorContainer: {
-      position: 'absolute',
-      bottom: 4,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 2,
+      height: 6,
+      marginTop: 2,
+    },
+    emptyDotPlaceholder: {
+      height: 6,
+      marginTop: 2,
     },
     jobDot: {
       width: 5,
