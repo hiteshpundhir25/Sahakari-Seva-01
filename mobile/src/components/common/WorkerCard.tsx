@@ -38,6 +38,17 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook,
                 <Text style={styles.workerName}>{worker.name}</Text>
                 <ShieldCheck size={16} color={colors.primary} />
               </View>
+
+              {/* Status indicator directly under worker name */}
+              {worker.availability === 'busy' && (
+                <View style={styles.activeJobBadge}>
+                  <View style={styles.activeJobPulseDot} />
+                  <Text style={styles.activeJobText}>
+                    {t('workerProfile.status_busy', 'On Active Job')}
+                  </Text>
+                </View>
+              )}
+
               {/* Vibrant Trade Category Chip */}
               <View style={[styles.tradeChip, { backgroundColor: tradeTheme.badgeBg, borderColor: tradeTheme.border }]}>
                 <View style={[styles.tradeDot, { backgroundColor: tradeTheme.primary }]} />
@@ -128,6 +139,32 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  activeJobBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.16)' : '#fef3c7',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#fde68a',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  activeJobPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#f59e0b',
+  },
+  activeJobText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: isDark ? '#fbbf24' : '#b45309',
+    letterSpacing: 0.3,
   },
   tradeChip: {
     flexDirection: 'row',

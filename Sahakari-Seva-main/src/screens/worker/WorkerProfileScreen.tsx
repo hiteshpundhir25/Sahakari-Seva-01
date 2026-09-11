@@ -18,6 +18,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   User,
   Shield,
@@ -84,31 +85,33 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
   const [newSkillText, setNewSkillText] = useState('');
   const [langModalVisible, setLangModalVisible] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const w = await ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001');
-        if (w) {
-          setWorker(w);
-          setBio(w.bio || 'Govt ITI certified electrician with 8+ years experience in domestic and commercial troubleshooting.');
-          setSkillCategory(w.skill_category || 'Electrical');
-          setHourlyRate(String(w.hourly_or_base_rate || 350));
-          setServiceArea(w.service_area || 'C-Scheme, Jaipur (MI Road)');
-          setPincode(w.pincode || '302001');
-          setSkillsList(w.skills && w.skills.length > 0 ? w.skills : ['House Wiring', 'MCB Fix', 'Inverter Cabling']);
-          setCertName(w.certification_name || 'Govt ITI National Trade Certificate');
-          setAvailability(w.availability_status || 'available');
-          setRadiusKm(w.service_radius_km || 15);
+  useFocusEffect(
+    React.useCallback(() => {
+      const load = async () => {
+        setLoading(true);
+        try {
+          const w = await ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001');
+          if (w) {
+            setWorker(w);
+            setBio(w.bio || 'Govt ITI certified electrician with 8+ years experience in domestic and commercial troubleshooting.');
+            setSkillCategory(w.skill_category || 'Electrical');
+            setHourlyRate(String(w.hourly_or_base_rate || 350));
+            setServiceArea(w.service_area || 'C-Scheme, Jaipur (MI Road)');
+            setPincode(w.pincode || '302001');
+            setSkillsList(w.skills && w.skills.length > 0 ? w.skills : ['House Wiring', 'MCB Fix', 'Inverter Cabling']);
+            setCertName(w.certification_name || 'Govt ITI National Trade Certificate');
+            setAvailability(w.availability_status || 'available');
+            setRadiusKm(w.service_radius_km || 15);
+          }
+        } catch {
+          // Handled in ApiClient fallback
+        } finally {
+          setLoading(false);
         }
-      } catch {
-        // Handled in ApiClient fallback
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+      };
+      load();
+    }, [])
+  );
 
   const handleUpdateAvailability = async (newStatus: AvailabilityStatus) => {
     setAvailability(newStatus);

@@ -14,6 +14,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking, ExtraTaskItem } from '../../types';
@@ -48,14 +49,23 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
     }
   };
 
-  useEffect(() => {
-    loadJobs();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadJobs();
+    }, [])
+  );
 
   const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
     try {
       await ApiClient.updateBookingStatus(bookingId, newStatus);
-      Alert.alert(t('worker.status_updated_title'), t('worker.status_updated_msg', { status: newStatus }));
+      if (newStatus === 'accepted') {
+        Alert.alert(
+          t('worker.job_accepted_title', 'Job Accepted!'),
+          t('worker.job_accepted_msg', 'Your operational duty status has automatically shifted to "On Active Job". You remain visible to customers on the cooperative dashboard with an active job badge.')
+        );
+      } else {
+        Alert.alert(t('worker.status_updated_title'), t('worker.status_updated_msg', { status: newStatus }));
+      }
       loadJobs();
     } catch (err: any) {
       Alert.alert('Update Failed', err.message);

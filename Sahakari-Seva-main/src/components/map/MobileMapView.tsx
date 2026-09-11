@@ -171,6 +171,12 @@ export const MobileMapView: React.FC<MobileMapViewProps> = ({
                 <Text style={styles.workerName}>{activeWorker.name}</Text>
                 <ShieldCheck size={16} color={colors.success} />
               </View>
+              {activeWorker.availability === 'busy' && (
+                <View style={styles.activeJobBadge}>
+                  <View style={styles.activeJobDot} />
+                  <Text style={styles.activeJobText}>On Active Job</Text>
+                </View>
+              )}
               <Text style={styles.workerService}>{activeWorker.service}</Text>
               <Text style={styles.workerArea}>{activeWorker.approximate_location.area}</Text>
             </View>
@@ -285,6 +291,32 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: colors.textPrimary
+  },
+  activeJobBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 3,
+    marginBottom: 1,
+  },
+  activeJobDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#f59e0b',
+  },
+  activeJobText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#b45309',
+    letterSpacing: 0.3,
   },
   workerService: {
     fontSize: 13,

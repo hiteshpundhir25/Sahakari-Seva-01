@@ -605,7 +605,7 @@ export function buildNearbyWorkers(
     .map(w => {
       const dist = haversineKm(lat, lng, w.latitude ?? 28.6315, w.longitude ?? 77.2167);
       const distanceScore = Math.max(5, Math.round(40 - dist * 3));
-      const availabilityScore = w.availability_status === 'available' ? 20 : 12;
+      const availabilityScore = w.availability_status === 'available' ? 20 : 18;
       const ratingScore = Math.round(w.average_rating * 4);
       const reliabilityScore = Math.min(10, Math.max(4, Math.round(w.total_jobs / 20)));
       const serviceMatchScore = 10;

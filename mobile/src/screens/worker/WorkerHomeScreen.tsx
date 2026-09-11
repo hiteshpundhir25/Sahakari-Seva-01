@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/common/Header';
 import { WorkerScheduleCalendar } from '../../components/worker/WorkerScheduleCalendar';
@@ -48,9 +49,11 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
     }
   };
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadProfile();
+    }, [])
+  );
 
   const handleToggleStatus = async (newStatus: AvailabilityStatus) => {
     setStatus(newStatus);
@@ -79,16 +82,44 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               <View style={styles.liveIndicatorRow}>
                 {status === 'available' && <PulseDot color="#10b981" size={7} ringScale={2.4} duration={1400} />}
                 {status === 'emergency_only' && <PulseDot color="#ef4444" size={7} ringScale={2.4} duration={1200} />}
-                <Text style={styles.liveIndicatorText}>
-                  {status === 'available' ? 'DISPATCH READY' : status === 'emergency_only' ? 'SOS PRIORITY' : 'STANDBY'}
+                {status === 'busy' && <PulseDot color="#f59e0b" size={7} ringScale={2.4} duration={1200} />}
+                <Text
+                  style={[
+                    styles.liveIndicatorText,
+                    status === 'busy' && { color: '#f59e0b' },
+                    status === 'emergency_only' && { color: colors.danger },
+                  ]}
+                >
+                  {status === 'available'
+                    ? 'DISPATCH READY'
+                    : status === 'emergency_only'
+                    ? 'SOS PRIORITY'
+                    : status === 'busy'
+                    ? 'ON ACTIVE JOB'
+                    : 'STANDBY'}
                 </Text>
               </View>
             </View>
 
+            {/* Active Job Alert Banner */}
+            {status === 'busy' && (
+              <View style={styles.activeJobBanner}>
+                <View style={styles.activeJobDotGlow} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.activeJobBannerTitle}>
+                    {t('workerProfile.status_busy', 'On Active Job')}
+                  </Text>
+                  <Text style={styles.activeJobBannerSub}>
+                    {t('worker.active_job_banner_desc', 'Assigned to an active booking. Duty status will revert upon job completion.')}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.statusPills}>
               <ScalePressable
                 onPress={() => handleToggleStatus('available')}
-                style={styles.statusPillFlexReady}
+                style={styles.statusPillFlex}
                 scaleTo={0.95}
               >
                 <View style={[styles.statusPill, status === 'available' && styles.statusPillActive]}>
@@ -102,8 +133,23 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               </ScalePressable>
 
               <ScalePressable
+                onPress={() => handleToggleStatus('busy')}
+                style={styles.statusPillFlex}
+                scaleTo={0.95}
+              >
+                <View style={[styles.statusPill, status === 'busy' && styles.busyPillActive]}>
+                  <Text
+                    style={[styles.statusPillText, status === 'busy' && { color: colors.textInverse }]}
+                    numberOfLines={1}
+                  >
+                    {t('workerProfile.status_busy', 'On Active Job')}
+                  </Text>
+                </View>
+              </ScalePressable>
+
+              <ScalePressable
                 onPress={() => handleToggleStatus('emergency_only')}
-                style={styles.statusPillFlexEmergency}
+                style={styles.statusPillFlex}
                 scaleTo={0.95}
               >
                 <View style={[styles.statusPill, status === 'emergency_only' && styles.emergencyPillActive]}>
@@ -118,7 +164,7 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
 
               <ScalePressable
                 onPress={() => handleToggleStatus('offline')}
-                style={styles.statusPillFlexOffline}
+                style={styles.statusPillFlex}
                 scaleTo={0.95}
               >
                 <View style={[styles.statusPill, status === 'offline' && styles.offlinePillActive]}>
@@ -271,29 +317,64 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     letterSpacing: 0.5,
     color: colors.textSecondary,
   },
+  activeJobBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.14)' : '#fef3c7',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  activeJobDotGlow: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#f59e0b',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  activeJobBannerTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: isDark ? '#fbbf24' : '#b45309',
+    letterSpacing: 0.2,
+  },
+  activeJobBannerSub: {
+    fontSize: 11,
+    color: isDark ? '#fde68a' : '#92400e',
+    marginTop: 2,
+    lineHeight: 15,
+  },
   statusPills: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
-  statusPillFlexReady: {
-    flex: 1.05,
-  },
-  statusPillFlexEmergency: {
-    flex: 1.3,
-  },
-  statusPillFlexOffline: {
-    flex: 0.85,
+  statusPillFlex: {
+    flex: 1,
   },
   statusPill: {
     flexDirection: 'row',
     paddingVertical: 9.5,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     borderRadius: 10,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceSubtle,
+  },
+  busyPillActive: {
+    backgroundColor: '#f59e0b',
+    borderColor: '#d97706',
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statusPillActive: {
     backgroundColor: colors.primary,

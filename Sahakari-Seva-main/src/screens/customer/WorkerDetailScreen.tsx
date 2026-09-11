@@ -77,6 +77,23 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* On Active Job Notice Banner */}
+        {worker.availability_status === 'busy' && (
+          <FadeInView distance={10} duration={300}>
+            <View style={styles.activeJobBanner}>
+              <View style={styles.activeJobDotGlow} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.activeJobTitle}>
+                  {t('workerProfile.status_busy', 'On Active Job')}
+                </Text>
+                <Text style={styles.activeJobDesc}>
+                  {t('workerDetail.active_job_notice', 'This worker is currently on an active assignment. You can still proceed to schedule a booking.')}
+                </Text>
+              </View>
+            </View>
+          </FadeInView>
+        )}
+
         {/* Verification Banner */}
         <FadeInView distance={12} duration={320}>
           <View style={styles.verifiedCard}>
@@ -211,6 +228,36 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
     opacity: 0.9
+  },
+  activeJobBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  activeJobDotGlow: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#f59e0b',
+  },
+  activeJobTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#d97706',
+    letterSpacing: 0.2,
+  },
+  activeJobDesc: {
+    fontSize: 11.5,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 16,
   },
   statsCard: {
     flexDirection: 'row',

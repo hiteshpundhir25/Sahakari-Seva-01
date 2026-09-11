@@ -6,6 +6,7 @@
 // ==============================================================================
 
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Worker,
   NearbyWorkerResult,
@@ -143,6 +144,32 @@ export class ApiClient {
     }
   }
 
+  // --- WORKER STATUS PERSISTENCE HELPERS ---
+  public static async persistWorkerAvailability(workerId: string, status: string): Promise<void> {
+    try {
+      const key = `@sahakari_worker_status_${workerId}`;
+      await AsyncStorage.setItem(key, status);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, status);
+      }
+    } catch (e) {
+      console.warn('Failed to persist worker availability', e);
+    }
+  }
+
+  public static async restoreWorkerAvailability(workerId: string): Promise<string | null> {
+    try {
+      const key = `@sahakari_worker_status_${workerId}`;
+      let val = await AsyncStorage.getItem(key);
+      if (!val && typeof window !== 'undefined' && window.localStorage) {
+        val = window.localStorage.getItem(key);
+      }
+      return val;
+    } catch {
+      return null;
+    }
+  }
+
   // --- WORKERS & GEOLOCATION MATCHING ---
   public static async getNearbyWorkers(
     lat: number,
@@ -151,14 +178,24 @@ export class ApiClient {
     service?: string,
     emergency = false
   ): Promise<NearbyWorkerResult[]> {
+    let results: NearbyWorkerResult[];
     try {
       let url = `/workers/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}`;
       if (service && service !== 'all') url += `&service=${encodeURIComponent(service)}`;
       if (emergency) url += `&emergency=true`;
-      return await this.request<NearbyWorkerResult[]>(url);
+      results = await this.request<NearbyWorkerResult[]>(url);
     } catch {
-      return buildNearbyWorkers(lat, lng, radius, service, emergency);
+      results = buildNearbyWorkers(lat, lng, radius, service, emergency);
     }
+
+    // Synchronize current worker availability from mock memory / storage
+    for (const r of results) {
+      const w = MOCK_WORKERS.find(x => x.id === r.workerId);
+      if (w) {
+        r.availability = w.availability_status;
+      }
+    }
+    return results;
   }
 
   public static async getWorkers(verification?: string): Promise<Worker[]> {
@@ -175,10 +212,11 @@ export class ApiClient {
   }
 
   public static async getWorkerById(id: string): Promise<Worker> {
+    let worker: Worker;
     try {
-      return await this.request<Worker>(`/workers/${id}`);
+      worker = await this.request<Worker>(`/workers/${id}`);
     } catch {
-      return (
+      worker = (
         MOCK_WORKERS.find(w => w.id === id) ||
         MOCK_WORKERS[0] || {
           id: id || 'w0000000-0000-0000-0000-000000000001',
@@ -199,6 +237,15 @@ export class ApiClient {
         } as any
       );
     }
+
+    const savedStatus = await this.restoreWorkerAvailability(worker.id);
+    if (savedStatus) {
+      worker.availability_status = savedStatus as any;
+      const memWorker = MOCK_WORKERS.find(x => x.id === worker.id);
+      if (memWorker) memWorker.availability_status = savedStatus as any;
+    }
+
+    return worker;
   }
 
   public static async updateWorkerProfile(
@@ -247,11 +294,17 @@ export class ApiClient {
     workerId: string,
     status: string
   ): Promise<Worker> {
+    await this.persistWorkerAvailability(workerId, status);
     try {
-      return await this.request<Worker>(`/workers/${workerId}/availability`, {
+      const res = await this.request<Worker>(`/workers/${workerId}/availability`, {
         method: 'PATCH',
         body: JSON.stringify({ status })
       });
+      const w = MOCK_WORKERS.find(x => x.id === workerId);
+      if (w) {
+        w.availability_status = status as any;
+      }
+      return res;
     } catch {
       const w = MOCK_WORKERS.find(x => x.id === workerId);
       if (w) {
@@ -323,8 +376,9 @@ export class ApiClient {
   }
 
   public static async updateBookingStatus(bookingId: string, status: string): Promise<Booking> {
+    let resultBooking: Booking | null = null;
     try {
-      return await this.request<Booking>(`/bookings/${bookingId}/status`, {
+      resultBooking = await this.request<Booking>(`/bookings/${bookingId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status })
       });
@@ -333,10 +387,39 @@ export class ApiClient {
       if (b) {
         b.status = status as any;
         b.updated_at = new Date().toISOString();
-        return b;
+        resultBooking = b;
+      } else {
+        resultBooking = { id: bookingId, status } as any;
       }
-      return { id: bookingId, status } as any;
     }
+
+    // Automatically shift operational duty status for the assigned service worker
+    if (resultBooking) {
+      const assignedWorkerId =
+        resultBooking.worker_id ||
+        (resultBooking.worker as any)?.id ||
+        (resultBooking as any)?.workerId;
+
+      if (assignedWorkerId) {
+        if (status === 'accepted' || status === 'in_progress') {
+          // When a service worker accepts or begins a job -> shift to 'busy' ("On Active Job")
+          await this.updateWorkerAvailability(assignedWorkerId, 'busy');
+        } else if (status === 'completed' || status === 'cancelled' || status === 'rejected') {
+          // Check if worker has any other active jobs in 'accepted' or 'in_progress'
+          const hasOtherActiveJobs = MOCK_BOOKINGS.some(
+            bk =>
+              (bk.worker_id === assignedWorkerId || (bk.worker as any)?.id === assignedWorkerId) &&
+              bk.id !== bookingId &&
+              (bk.status === 'accepted' || bk.status === 'in_progress')
+          );
+          if (!hasOtherActiveJobs) {
+            await this.updateWorkerAvailability(assignedWorkerId, 'available');
+          }
+        }
+      }
+    }
+
+    return resultBooking!;
   }
 
   public static async rescheduleBooking(
