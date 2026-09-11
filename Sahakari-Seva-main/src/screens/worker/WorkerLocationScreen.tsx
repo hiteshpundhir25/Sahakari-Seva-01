@@ -23,7 +23,7 @@ import type { Palette } from '../../theme';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -83,13 +83,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
         title={t('workerLocation.title')}
         subtitle={t('workerLocation.subtitle')}
         showBack={true}
-        onBack={() => {
-          if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-          } else if (navigation?.navigate) {
-            navigation.navigate('WorkerHome');
-          }
-        }}
+        onBack={handleBack}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

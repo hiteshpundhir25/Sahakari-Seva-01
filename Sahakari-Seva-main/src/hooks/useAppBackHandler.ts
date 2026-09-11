@@ -1,11 +1,12 @@
 // ==============================================================================
 // SAHAKARI SEVA — UNIVERSAL APP BACK-HANDLER HOOK
-// Handles Android hardware back button and Web browser popstate events.
-// Ensures sub-pages return to the role's Home/Dashboard instead of logging out
-// or quitting the application abruptly.
+// Handles Android hardware back button, Web browser popstate events,
+// and on-screen Header back navigation across Customer, Worker, and Admin.
+// Retains visit history so pressing Back returns to the PREVIOUS page/tab
+// instead of jumping blindly to home or quitting the application.
 // ==============================================================================
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { BackHandler, Platform, ToastAndroid } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -15,26 +16,34 @@ interface UseAppBackHandlerOptions {
 }
 
 export function useAppBackHandler(options: UseAppBackHandlerOptions = {}) {
-  const { homeRouteName = 'WorkerHome', isHome = false } = options;
+  const { homeRouteName = 'Home', isHome = false } = options;
   const navigation = useNavigation<any>();
   const lastBackPressTime = useRef<number>(0);
 
+  const handleBack = useCallback(() => {
+    // 1. If navigation has previous screens or tabs in history, navigate back to previous
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+
+    // 2. If on a sub-screen with no prior history (e.g. direct load), navigate to home
+    if (!isHome && homeRouteName) {
+      navigation.navigate(homeRouteName);
+      return true;
+    }
+
+    return false;
+  }, [navigation, isHome, homeRouteName]);
+
   useEffect(() => {
-    // 1. Android Hardware Back Handler
+    // 1. Android Hardware Back Button Handler
     const onHardwareBack = () => {
-      // If navigation stack has a screen to pop, pop it
-      if (navigation.canGoBack()) {
-        navigation.goBack();
+      if (handleBack()) {
         return true;
       }
 
-      // If we are on a sub-screen / sub-tab, route back to the role's Home screen
-      if (!isHome && homeRouteName) {
-        navigation.navigate(homeRouteName);
-        return true;
-      }
-
-      // If already on Home screen, guard against accidental app quitting with double-press
+      // If at root portal home screen, require double-back within 2s to exit
       const now = Date.now();
       if (now - lastBackPressTime.current < 2000) {
         BackHandler.exitApp();
@@ -54,17 +63,13 @@ export function useAppBackHandler(options: UseAppBackHandlerOptions = {}) {
     let onPopState: (() => void) | null = null;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       onPopState = () => {
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-        } else if (!isHome && homeRouteName) {
-          navigation.navigate(homeRouteName);
-        } else {
-          // Push state to keep the user safely inside the application
+        if (!handleBack()) {
+          // Keep user safely on root screen without quitting or loading blank/login
           window.history.pushState(null, '', window.location.href);
         }
       };
 
-      // Push an entry so the first back click is captured inside the SPA
+      // Push history entry so browser back button triggers popstate
       window.history.pushState(null, '', window.location.href);
       window.addEventListener('popstate', onPopState);
     }
@@ -75,5 +80,7 @@ export function useAppBackHandler(options: UseAppBackHandlerOptions = {}) {
         window.removeEventListener('popstate', onPopState);
       }
     };
-  }, [navigation, homeRouteName, isHome]);
+  }, [handleBack]);
+
+  return { handleBack };
 }

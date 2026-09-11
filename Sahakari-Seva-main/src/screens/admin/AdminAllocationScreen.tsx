@@ -29,8 +29,10 @@ import { FadeInView, ScalePressable } from '../../animations';
 import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const AdminAllocationScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'AdminDashboard', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -120,6 +122,8 @@ export const AdminAllocationScreen: React.FC<{ navigation: any }> = ({ navigatio
       <Header
         title={t('admin.allocation_title')}
         subtitle={t('admin.allocation_subtitle')}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView

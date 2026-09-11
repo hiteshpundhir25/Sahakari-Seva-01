@@ -17,8 +17,11 @@ import { Worker } from '../../types';
 import { useTranslation } from 'react-i18next';
 import { FadeInView } from '../../animations';
 import { translateTrade } from '../../i18n';
+import { Header } from '../../components/common/Header';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const AdminVerificationScreen: React.FC = () => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'AdminDashboard', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const typography = makeTypography(colors);
@@ -109,15 +112,20 @@ export const AdminVerificationScreen: React.FC = () => {
   const displayedWorkers = activeTab === 'pending' ? pendingWorkers : verifiedWorkers;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Screen Header */}
-      <FadeInView distance={12} duration={320}>
-        <View style={styles.header}>
-          <Text style={styles.badgeText}>{t('admin.governance_badge')}</Text>
-          <Text style={styles.title}>{t('admin.verification_title')}</Text>
-          <Text style={styles.subtitle}>{t('admin.verification_sub')}</Text>
-        </View>
-      </FadeInView>
+    <View style={styles.container}>
+      <Header
+        title={t('tabs.verify_kyc')}
+        subtitle={t('admin.verification_sub')}
+        showBack={true}
+        onBack={handleBack}
+      />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+        {/* Governance Badge Banner */}
+        <FadeInView distance={12} duration={320}>
+          <View style={styles.header}>
+            <Text style={styles.badgeText}>{t('admin.governance_badge')}</Text>
+          </View>
+        </FadeInView>
 
       {/* Segmented Control Tabs */}
       <FadeInView delay={70} distance={10} duration={300}>
@@ -241,7 +249,8 @@ export const AdminVerificationScreen: React.FC = () => {
           );
         })
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 

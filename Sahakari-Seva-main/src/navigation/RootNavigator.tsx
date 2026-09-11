@@ -143,7 +143,7 @@ function CustomerTabNavigator() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
-      backBehavior="firstRoute"
+      backBehavior="history"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,
@@ -219,7 +219,7 @@ function WorkerTabNavigator() {
   return (
     <Tab.Navigator
       initialRouteName="WorkerHome"
-      backBehavior="firstRoute"
+      backBehavior="history"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,
@@ -293,7 +293,7 @@ function AdminTabNavigator() {
   return (
     <Tab.Navigator
       initialRouteName="AdminDashboard"
-      backBehavior="firstRoute"
+      backBehavior="history"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,

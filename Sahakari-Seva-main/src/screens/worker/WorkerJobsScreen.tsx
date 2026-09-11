@@ -25,7 +25,7 @@ import { SupplementalBillModal } from '../../components/worker/SupplementalBillM
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -58,7 +58,7 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
       Alert.alert(t('worker.status_updated_title'), t('worker.status_updated_msg', { status: newStatus }));
       loadJobs();
     } catch (err: any) {
-      Alert.alert(t('booking.error_title'), err.message);
+      Alert.alert('Update Failed', err.message);
     }
   };
 
@@ -91,13 +91,7 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
         title={t('tabs.jobs')}
         subtitle={t('worker.assigned_bookings', { count: jobs.length })}
         showBack={true}
-        onBack={() => {
-          if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-          } else if (navigation?.navigate) {
-            navigation.navigate('WorkerHome');
-          }
-        }}
+        onBack={handleBack}
       />
 
       <ScrollView

@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const typography = makeTypography(colors);
@@ -131,13 +131,7 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
         title={worker?.profile?.full_name || 'Rahul Sharma'}
         subtitle={t('worker.federation_member')}
         showBack={true}
-        onBack={() => {
-          if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-          } else if (navigation?.navigate) {
-            navigation.navigate('WorkerHome');
-          }
-        }}
+        onBack={handleBack}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Cooperative Digital ID Card */}

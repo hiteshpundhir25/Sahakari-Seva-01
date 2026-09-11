@@ -22,8 +22,10 @@ import { Map, Zap } from 'lucide-react-native';
 import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'Home', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -77,6 +79,8 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
       <Header
         title={t('tabs.services')}
         subtitle={t('search.verified_nearby', { count: workers.length })}
+        showBack={true}
+        onBack={handleBack}
       />
 
       {/* Filter Chips Bar */}

@@ -26,8 +26,10 @@ import {
 import { FadeInView, AnimatedNumber, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const AdminDashboardScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  useAppBackHandler({ homeRouteName: 'AdminDashboard', isHome: true });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);

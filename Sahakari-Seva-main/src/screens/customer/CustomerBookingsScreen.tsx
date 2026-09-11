@@ -21,6 +21,7 @@ import { Clock, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react-native'
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 const makeStatusColors = (colors: Palette): Record<string, { bg: string; text: string }> => ({
   pending: { bg: colors.warningLight, text: colors.warningDark },
@@ -31,6 +32,7 @@ const makeStatusColors = (colors: Palette): Record<string, { bg: string; text: s
 });
 
 export const CustomerBookingsScreen: React.FC = () => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'Home', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -62,6 +64,8 @@ export const CustomerBookingsScreen: React.FC = () => {
       <Header
         title={t('tabs.bookings')}
         subtitle={t('bookingsList.service_requests', { count: bookings.length })}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView

@@ -19,7 +19,7 @@ import { FadeInView, AnimatedNumber } from '../../animations';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerWelfareScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
-  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const typography = makeTypography(colors);
@@ -68,13 +68,7 @@ export const WorkerWelfareScreen: React.FC<{ navigation?: any }> = ({ navigation
         title={t('welfare.title')}
         subtitle={t('welfare.subtitle')}
         showBack={true}
-        onBack={() => {
-          if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-          } else if (navigation?.navigate) {
-            navigation.navigate('WorkerHome');
-          }
-        }}
+        onBack={handleBack}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Dignity Badge Banner */}
