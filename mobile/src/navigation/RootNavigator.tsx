@@ -44,6 +44,7 @@ import { CustomerProfileScreen } from '../screens/customer/CustomerProfileScreen
 // Worker Screens
 import { WorkerHomeScreen } from '../screens/worker/WorkerHomeScreen';
 import { WorkerJobsScreen } from '../screens/worker/WorkerJobsScreen';
+import { WorkerJobDetailScreen } from '../screens/worker/WorkerJobDetailScreen';
 import { WorkerLocationScreen } from '../screens/worker/WorkerLocationScreen';
 import { WorkerWelfareScreen } from '../screens/worker/WorkerWelfareScreen';
 import { WorkerProfileScreen } from '../screens/worker/WorkerProfileScreen';
@@ -300,6 +301,15 @@ function WorkerTabNavigator() {
   );
 }
 
+function WorkerStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={stackScreenOptions}>
+      <Stack.Screen name="WorkerTabs" component={WorkerTabNavigator} />
+      <Stack.Screen name="WorkerJobDetail" component={WorkerJobDetailScreen} />
+    </Stack.Navigator>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // ADMIN TABS
 // -----------------------------------------------------------------------------
@@ -455,7 +465,7 @@ export const RootNavigator: React.FC = () => {
         )}
         {session.role === 'worker' && (
           <ErrorBoundary fallbackTitle="Worker Section">
-            <WorkerTabNavigator />
+            <WorkerStackNavigator />
           </ErrorBoundary>
         )}
         {session.role === 'admin' && (

@@ -214,7 +214,8 @@ export const BookingDetailScreen: React.FC = () => {
   const currentStep = getStepIndex(booking.status, booking.payment_status);
   const worker = booking.worker;
   const finalPrice = booking.final_amount || booking.estimated_amount;
-  const isPaidOrCompleted = booking.payment_status === 'paid' || booking.status === 'completed';
+  const isPaid = booking.payment_status === 'paid';
+  const isPaidOrCompleted = isPaid;
 
   return (
     <View style={styles.screenWrapper}>
@@ -737,7 +738,43 @@ export const BookingDetailScreen: React.FC = () => {
           </View>
         )}
 
-        {(booking.status === 'accepted' || booking.status === 'in_progress') && !isPaidOrCompleted && (
+        {booking.status === 'accepted' && (
+          <View style={styles.pendingActionCard}>
+            <View style={styles.pendingTrustRow}>
+              <View style={[styles.pendingTrustIconCircle, { backgroundColor: '#ecfdf5' }]}>
+                <ShieldCheck size={18} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingTrustTitle}>
+                  Booking Confirmed • Pay on Service Completion
+                </Text>
+                <Text style={styles.pendingTrustDesc}>
+                  Under cooperative bylaws, prepayment before service begins is strictly prohibited. Payment of ₹{finalPrice.toFixed(0)} will unlock only after {worker?.profile?.full_name || 'the professional'} finishes the work.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'in_progress' && !isPaid && (
+          <View style={styles.pendingActionCard}>
+            <View style={styles.pendingTrustRow}>
+              <View style={[styles.pendingTrustIconCircle, { backgroundColor: '#eff6ff' }]}>
+                <Clock size={18} color="#3b82f6" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.pendingTrustTitle, { color: '#1d4ed8' }]}>
+                  Service In Progress • Payment Unlocks Upon Completion
+                </Text>
+                <Text style={styles.pendingTrustDesc}>
+                  {worker?.profile?.full_name || 'The professional'} is actively performing the service work. You will be prompted to verify and pay ₹{finalPrice.toFixed(0)} once the job is marked complete.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'completed' && !isPaid && (
           <Button
             title={`Pay Now (₹${finalPrice.toFixed(0)})`}
             variant="primary"

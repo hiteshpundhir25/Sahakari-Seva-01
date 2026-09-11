@@ -447,7 +447,39 @@ export class ApiClient {
     }
   }
 
+  public static isPrepaidViolation(booking: Booking | null | undefined): boolean {
+    if (!booking) return false;
+    return booking.payment_status === 'paid' && (booking.status === 'pending' || booking.status === 'accepted');
+  }
+
   public static async updateBookingStatus(bookingId: string, status: string): Promise<Booking> {
+    const targetBooking = MOCK_BOOKINGS.find(x => x.id === bookingId);
+    if (targetBooking && this.isPrepaidViolation(targetBooking)) {
+      throw new Error(
+        "Access Revoked: Customer prepayment was detected before service commenced. Under cooperative bylaws, this job profile is locked from worker access and transferred to Federation Dispute Audit."
+      );
+    }
+
+    if (status === 'accepted' || status === 'in_progress') {
+      const assignedWorkerId =
+        targetBooking?.worker_id ||
+        (targetBooking?.worker as any)?.id ||
+        'w0000000-0000-0000-0000-000000000001';
+
+      const existingActive = MOCK_BOOKINGS.find(
+        b =>
+          (b.worker_id === assignedWorkerId || (b.worker as any)?.id === assignedWorkerId) &&
+          b.id !== bookingId &&
+          (b.status === 'accepted' || b.status === 'in_progress')
+      );
+
+      if (existingActive) {
+        throw new Error(
+          `Cannot accept or start multiple jobs simultaneously. You already have active job ${existingActive.booking_code}. Complete it before taking on another job.`
+        );
+      }
+    }
+
     let resultBooking: Booking | null = null;
     try {
       resultBooking = await this.request<Booking>(`/bookings/${bookingId}/status`, {
