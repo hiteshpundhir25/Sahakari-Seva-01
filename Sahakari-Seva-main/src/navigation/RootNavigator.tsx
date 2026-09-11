@@ -48,6 +48,7 @@ import { WorkerJobDetailScreen } from '../screens/worker/WorkerJobDetailScreen';
 import { WorkerLocationScreen } from '../screens/worker/WorkerLocationScreen';
 import { WorkerWelfareScreen } from '../screens/worker/WorkerWelfareScreen';
 import { WorkerProfileScreen } from '../screens/worker/WorkerProfileScreen';
+import { WorkerAIAssistantWidget } from '../components/worker/WorkerAIAssistantWidget';
 
 // Admin Screens
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
@@ -466,6 +467,7 @@ export const RootNavigator: React.FC = () => {
         {session.role === 'worker' && (
           <ErrorBoundary fallbackTitle="Worker Section">
             <WorkerStackNavigator />
+            <WorkerAIAssistantWidget />
           </ErrorBoundary>
         )}
         {session.role === 'admin' && (
