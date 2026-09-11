@@ -11,7 +11,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  RefreshControl
+  RefreshControl,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -51,6 +52,15 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
       loadJobs();
     }, [])
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      loadJobs();
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
 
   const inProgressJob = jobs.find((b) => b.status === 'in_progress');
   const acceptedJobs = jobs.filter((b) => b.status === 'accepted');
@@ -189,18 +199,6 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
                             <Text style={styles.violationPillText}>SEC 14-B LOCKOUT</Text>
                           </View>
                         )}
-                        {job.status === 'pending' && scheduleConflict.isExactCollision && (
-                          <View style={styles.exactCollisionPill}>
-                            <AlertCircle size={9} color="#ffffff" />
-                            <Text style={styles.exactCollisionPillText}>SAME TIME COLLISION</Text>
-                          </View>
-                        )}
-                        {job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && (
-                          <View style={styles.bufferCollisionPill}>
-                            <Clock size={9} color={isDark ? '#fbbf24' : '#b45309'} />
-                            <Text style={styles.bufferCollisionPillText}>&lt;1H OVERLAP</Text>
-                          </View>
-                        )}
                       </View>
                       <View style={styles.timeRow}>
                         <Clock size={11} color={colors.textMuted} />
@@ -280,8 +278,6 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
                       style={[
                         styles.cardFooterText,
                         isViolation && styles.cardFooterTextViolation,
-                        job.status === 'pending' && scheduleConflict.isExactCollision && { color: '#ef4444' },
-                        job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && { color: '#d97706' },
                       ]}
                     >
                       {isViolation
@@ -291,22 +287,12 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
                         : job.status === 'accepted'
                         ? '⚡ Manage Confirmed Job Panel →'
                         : job.status === 'pending'
-                        ? scheduleConflict.isExactCollision
-                          ? `🔒 Acceptance Hidden • Same Time as ${scheduleConflict.conflictingBooking?.booking_code}`
-                          : scheduleConflict.isBufferCollision
-                          ? `⚠️ Collides with ${scheduleConflict.conflictingBooking?.booking_code} (<1 hr buffer)`
-                          : '👉 Open Dedicated Job Panel to Review & Accept →'
+                        ? '👉 Review & Manage Job Request →'
                         : 'View Job Details & Wages →'}
                     </Text>
                     <ChevronRight
                       size={14}
-                      color={
-                        isViolation || (job.status === 'pending' && scheduleConflict.isExactCollision)
-                          ? '#ef4444'
-                          : job.status === 'pending' && scheduleConflict.isBufferCollision
-                          ? '#d97706'
-                          : colors.primary
-                      }
+                      color={isViolation ? '#ef4444' : colors.primary}
                     />
                   </View>
                 </TouchableOpacity>

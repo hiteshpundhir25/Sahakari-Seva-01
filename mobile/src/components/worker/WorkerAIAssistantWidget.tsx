@@ -1,14 +1,15 @@
 // ==============================================================================
-// SAHAKARI SATHI — SERVICE WORKER AI ASSISTANT WIDGET
+// SAHAKARI ASSISTANT WIDGET — INTERACTIVE WORKER ASSISTANT
 // ==============================================================================
-// - Simple, elegant floating widget anchored at the bottom-right.
-// - Automates the entire worker process on a SINGLE SCREEN:
-//   * Check schedule & collision shield
-//   * Accept jobs
-//   * Start service work
-//   * Add diagnostic extra parts
-//   * Mark jobs completed & credit wages
-//   * Audio read-aloud and voice commands with ZERO API keys
+// - Floating bottom-right trigger with live status indicators
+// - Interactive conversational assistant with action cards
+// - Direct 1-tap execution of:
+//   * Start Service Work
+//   * Add Diagnostic Parts (+₹350)
+//   * Complete Job & Claim Direct Wage
+//   * View Schedule & Customer Contacts
+//   * Speech recognition & text-to-speech
+//   * Instant cross-app synchronization
 // ==============================================================================
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -23,6 +24,8 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
+  Linking,
+  DeviceEventEmitter,
 } from 'react-native';
 import {
   Sparkles,
@@ -36,55 +39,43 @@ import {
   X,
   Wrench,
   TrendingUp,
-  ShieldCheck,
   Send,
   RefreshCw,
   MapPin,
   Clock,
   User,
-  Info,
+  Phone,
+  ArrowRight,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import {
   AIAssistantService,
   WorkerAssistantContext,
   AssistantActionOutcome,
+  AssistantMessage,
+  AssistantActionCard,
 } from '../../services/aiAssistantService';
 
-interface WorkerAIAssistantWidgetProps {
-  onActionCompleted?: () => void;
-}
-
-export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = ({
-  onActionCompleted,
-}) => {
+export const WorkerAIAssistantWidget: React.FC = () => {
   const { colors, isDark } = useTheme();
 
-  // Widget visibility & state
+  // Modal open/close & loading states
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [context, setContext] = useState<WorkerAssistantContext | null>(null);
 
-  // Voice & Audio
+  // Speech Recognition & Synthesis
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [inputText, setInputText] = useState('');
 
-  // Conversation/Activity history
-  const [activityLog, setActivityLog] = useState<
-    { id: string; text: string; isAi: boolean; timestamp: string }[]
-  >([
-    {
-      id: 'init-1',
-      text: 'Namaste! I am Sahakari Sathi ⚡. I can automate your jobs, start service, add parts, and claim wages without you needing to scroll.',
-      isAi: true,
-      timestamp: 'Now',
-    },
-  ]);
+  // Conversational message feed with interactive action cards
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
 
   // Pulse animation for floating trigger
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     Animated.loop(
@@ -103,7 +94,17 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
     ).start();
   }, [pulseAnim]);
 
-  // Fetch worker context whenever widget opens
+  // Load context on mount and subscribe to app-wide updates
+  useEffect(() => {
+    refreshContext();
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      refreshContext();
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       refreshContext();
@@ -115,48 +116,145 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
       setLoading(true);
       const ctx = await AIAssistantService.getWorkerContext();
       setContext(ctx);
+
+      // Initialize conversation if empty
+      if (messages.length === 0) {
+        initializeConversation(ctx);
+      }
     } catch (err) {
-      console.warn('Failed to load worker assistant context', err);
+      console.warn('Failed to refresh assistant context', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const addLog = (text: string, isAi: boolean = true) => {
+  const initializeConversation = (ctx: WorkerAssistantContext) => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setActivityLog(prev => [{ id: Date.now().toString(), text, isAi, timestamp: time }, ...prev.slice(0, 8)]);
+    const inProg = ctx.activeOnSiteJob;
+    const accepted = ctx.nextCommittedJob;
+    const pending = ctx.pendingJobs;
+
+    let greeting = 'Namaste! I am your Sahakari Assistant ⚡.\n';
+    let card: AssistantActionCard | undefined;
+
+    if (inProg) {
+      const wage = (Number(inProg.final_amount || inProg.estimated_amount || 0) * 0.85).toFixed(0);
+      greeting += `You are currently on-site for job ${inProg.booking_code} (${inProg.customer?.full_name || 'Customer'}). Expected wage: ₹${wage}. What would you like to do?`;
+      card = {
+        id: 'init-card-1',
+        type: 'action_buttons',
+        booking: inProg,
+        actions: [
+          { label: `✓ Complete Job (Claim ₹${wage})`, command: 'complete job', variant: 'success' },
+          { label: '🔧 Add Extra Parts (+₹350)', command: 'add diagnostic parts', variant: 'warning' },
+          { label: '📞 Customer Details', command: 'customer contact', variant: 'neutral' },
+        ],
+      };
+    } else if (accepted) {
+      const wage = (Number(accepted.final_amount || accepted.estimated_amount || 0) * 0.85).toFixed(0);
+      greeting += `You have 1 confirmed job ready to start: ${accepted.booking_code} for ${accepted.customer?.full_name || 'Customer'} on ${accepted.booking_date} at ${accepted.booking_time}. Expected direct wage: ₹${wage}.`;
+      card = {
+        id: 'init-card-2',
+        type: 'action_buttons',
+        booking: accepted,
+        actions: [
+          { label: '⚡ Start Service Work Now', command: 'start work', variant: 'success' },
+          { label: '📍 Customer & Address', command: 'customer contact', variant: 'neutral' },
+          { label: '🔊 Read Order Aloud', command: 'read details aloud', variant: 'neutral' },
+        ],
+      };
+    } else if (pending.length > 0) {
+      greeting += `You have ${pending.length} new booking request waiting for your review.`;
+      card = {
+        id: 'init-card-3',
+        type: 'action_buttons',
+        booking: pending[0],
+        actions: [
+          { label: `Accept ${pending[0].booking_code} (₹${pending[0].estimated_amount})`, command: 'accept job', variant: 'primary' },
+          { label: 'Decline Request', command: 'decline job', variant: 'danger' },
+        ],
+      };
+    } else {
+      greeting += `You are completely caught up! No active jobs right now. You can check your earnings or review past jobs.`;
+      card = {
+        id: 'init-card-4',
+        type: 'action_buttons',
+        actions: [
+          { label: '💰 Check My Earnings', command: 'earnings summary', variant: 'primary' },
+          { label: '📋 View Schedule', command: 'my jobs', variant: 'neutral' },
+        ],
+      };
+    }
+
+    setMessages([
+      {
+        id: 'msg-init',
+        sender: 'ai',
+        text: greeting,
+        timestamp: time,
+        card,
+      },
+    ]);
   };
 
-  // Autonomous command execution
   const handleExecute = async (command: string) => {
     if (!command.trim() || actionInProgress) return;
-    setInputText('');
-    addLog(command, false);
+    const userTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // Append user message
+    const userMsg: AssistantMessage = {
+      id: 'user-' + Date.now(),
+      sender: 'user',
+      text: command,
+      timestamp: userTime,
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInputText('');
     setActionInProgress(true);
+
     try {
       const outcome: AssistantActionOutcome = await AIAssistantService.executeCommand(command);
-      addLog(outcome.message, true);
+      const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Speak feedback aloud
+      const aiMsg: AssistantMessage = {
+        id: 'ai-' + Date.now(),
+        sender: 'ai',
+        text: outcome.message,
+        timestamp: aiTime,
+        card: outcome.card,
+      };
+
+      setMessages(prev => [...prev, aiMsg]);
+
+      // Speak feedback
       if (outcome.speechText) {
         setIsSpeaking(true);
         AIAssistantService.speak(outcome.speechText, () => setIsSpeaking(false));
       }
 
       await refreshContext();
-      if (onActionCompleted) {
-        onActionCompleted();
-      }
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (err: any) {
-      addLog(`⚠️ Error: ${err.message || 'Action failed'}`, true);
+      const errorTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setMessages(prev => [
+        ...prev,
+        {
+          id: 'err-' + Date.now(),
+          sender: 'ai',
+          text: `⚠️ ${err.message || 'Action could not be executed.'}`,
+          timestamp: errorTime,
+        },
+      ]);
     } finally {
       setActionInProgress(false);
     }
   };
 
-  // Voice recognition toggle
-  const toggleVoiceInput = () => {
+  // Voice toggle
+  const toggleVoice = () => {
     if (isListening) {
       AIAssistantService.stopListening();
       setIsListening(false);
@@ -169,7 +267,7 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
         },
         (error: string) => {
           setIsListening(false);
-          addLog(`Microphone: ${error}`, true);
+          console.log('Voice recognition notice:', error);
         },
         () => {
           setIsListening(false);
@@ -177,13 +275,12 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
       );
       if (!started) {
         setIsListening(false);
-        addLog('Voice input is not supported in this browser. Please use the quick action buttons.', true);
       }
     }
   };
 
-  // Audio read-aloud toggle
-  const toggleSpeechReadout = () => {
+  // Audio readout toggle
+  const toggleAudio = () => {
     if (isSpeaking) {
       AIAssistantService.stopSpeaking();
       setIsSpeaking(false);
@@ -193,11 +290,7 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
     }
   };
 
-  // Compute active target booking for dominant card
-  const currentTarget = context?.activeOnSiteJob || context?.nextCommittedJob;
-  const targetWage = currentTarget
-    ? (Number(currentTarget.final_amount || currentTarget.estimated_amount || 0) * 0.85).toFixed(0)
-    : '0';
+  const activeJob = context?.activeOnSiteJob || context?.nextCommittedJob;
 
   return (
     <>
@@ -210,13 +303,11 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
             style={styles.fabButton}
             onPress={() => setIsOpen(true)}
             activeOpacity={0.85}
-            accessibilityLabel="Open Sahakari Sathi AI Assistant"
+            accessibilityLabel="Open Sahakari Assistant"
           >
             <View style={styles.fabInner}>
               <Sparkles size={22} color="#ffffff" strokeWidth={2.5} />
-              {context?.activeOnSiteJob && (
-                <View style={styles.fabActiveDot} />
-              )}
+              {context?.activeOnSiteJob && <View style={styles.fabActiveDot} />}
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -226,12 +317,12 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
           activeOpacity={0.85}
         >
           <Zap size={11} color="#10b981" />
-          <Text style={styles.fabLabelText}>AI Sathi</Text>
+          <Text style={styles.fabLabelText}>Assistant</Text>
         </TouchableOpacity>
       </View>
 
       {/* ------------------------------------------------------------------- */}
-      {/* 2. SINGLE-SCREEN AUTOMATION MODAL                                    */}
+      {/* 2. INTERACTIVE ASSISTANT MODAL SHEET                                */}
       {/* ------------------------------------------------------------------- */}
       <Modal
         visible={isOpen}
@@ -245,7 +336,7 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.sheetContainer, { backgroundColor: isDark ? '#0f172a' : '#ffffff' }]}>
-            {/* Sheet Handle */}
+            {/* Handle */}
             <View style={styles.sheetHandle} />
 
             {/* Header */}
@@ -255,25 +346,20 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
                   <Sparkles size={16} color="#10b981" />
                 </View>
                 <View>
-                  <View style={styles.titleRow}>
-                    <Text style={[styles.sheetTitle, { color: isDark ? '#f8fafc' : '#0f172a' }]}>
-                      Sahakari Sathi
-                    </Text>
-                    <View style={styles.zeroKeyPill}>
-                      <Text style={styles.zeroKeyPillText}>0 API KEYS • 100% FREE</Text>
-                    </View>
-                  </View>
+                  <Text style={[styles.sheetTitle, { color: isDark ? '#f8fafc' : '#0f172a' }]}>
+                    Sahakari Assistant
+                  </Text>
                   <Text style={styles.sheetSubtitle}>
-                    Single-Screen Autonomous Copilot for Service Workers
+                    Your Smart Task & Voice Companion
                   </Text>
                 </View>
               </View>
 
               <View style={styles.sheetHeaderActions}>
-                {/* Audio Read-out Button */}
+                {/* Audio Read-out Toggle */}
                 <TouchableOpacity
                   style={[styles.iconHeaderBtn, isSpeaking && styles.iconHeaderBtnActive]}
-                  onPress={toggleSpeechReadout}
+                  onPress={toggleAudio}
                   accessibilityLabel="Listen aloud"
                 >
                   {isSpeaking ? (
@@ -283,7 +369,7 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
                   )}
                 </TouchableOpacity>
 
-                {/* Refresh Context Button */}
+                {/* Refresh Context */}
                 <TouchableOpacity
                   style={styles.iconHeaderBtn}
                   onPress={refreshContext}
@@ -292,7 +378,7 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
                   <RefreshCw size={17} color={colors.textMuted} />
                 </TouchableOpacity>
 
-                {/* Close Button */}
+                {/* Close Sheet */}
                 <TouchableOpacity
                   style={styles.iconHeaderBtn}
                   onPress={() => {
@@ -306,289 +392,180 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
               </View>
             </View>
 
-            {/* Main Single-Screen Content */}
-            <ScrollView
-              style={styles.sheetContent}
-              contentContainerStyle={styles.sheetContentInner}
-              showsVerticalScrollIndicator={false}
-            >
-              {loading && !context ? (
-                <View style={styles.loadingBox}>
-                  <ActivityIndicator size="large" color="#10b981" />
-                  <Text style={styles.loadingText}>Syncing worker automation state...</Text>
+            {/* Status Strip */}
+            {activeJob && (
+              <View style={styles.statusStrip}>
+                <View style={styles.statusStripLeft}>
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor:
+                          context?.activeOnSiteJob ? '#10b981' : '#3b82f6',
+                      },
+                    ]}
+                  />
+                  <Text style={styles.statusStripText} numberOfLines={1}>
+                    {context?.activeOnSiteJob ? 'In Progress: ' : 'Confirmed: '}
+                    <Text style={{ fontWeight: '800' }}>{activeJob.booking_code}</Text>
+                    {' • '}
+                    {activeJob.customer?.full_name || 'Customer'}
+                  </Text>
                 </View>
-              ) : (
-                <>
-                  {/* --- SECTION 1: LIVE WORK STAGE & TARGET JOB --- */}
-                  {currentTarget ? (
-                    <View
+                <Text style={styles.statusStripWage}>
+                  ₹{(Number(activeJob.final_amount || activeJob.estimated_amount || 0) * 0.85).toFixed(0)} wage
+                </Text>
+              </View>
+            )}
+
+            {/* Conversation Messages */}
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.chatScroll}
+              contentContainerStyle={styles.chatScrollInner}
+              showsVerticalScrollIndicator={false}
+              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+            >
+              {messages.map(msg => (
+                <View
+                  key={msg.id}
+                  style={[
+                    styles.messageRow,
+                    msg.sender === 'user' ? styles.messageRowUser : styles.messageRowAi,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.bubble,
+                      msg.sender === 'user' ? styles.bubbleUser : styles.bubbleAi,
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.stageCard,
-                        context?.activeOnSiteJob
-                          ? styles.stageCardActive
-                          : styles.stageCardCommitted,
+                        styles.bubbleText,
+                        msg.sender === 'user'
+                          ? styles.bubbleTextUser
+                          : { color: isDark ? '#f1f5f9' : '#1e293b' },
                       ]}
                     >
-                      <View style={styles.stageCardHeader}>
-                        <View style={styles.stagePillWrap}>
-                          <View
+                      {msg.text}
+                    </Text>
+
+                    {/* Interactive Action Cards */}
+                    {msg.card && msg.card.actions && msg.card.actions.length > 0 && (
+                      <View style={styles.cardActionGroup}>
+                        {msg.card.actions.map((act, actIdx) => (
+                          <TouchableOpacity
+                            key={actIdx}
                             style={[
-                              styles.stageStatusPill,
-                              context?.activeOnSiteJob
-                                ? styles.statusPillActive
-                                : styles.statusPillCommitted,
+                              styles.cardActionBtn,
+                              act.variant === 'success' && styles.cardActionSuccess,
+                              act.variant === 'primary' && styles.cardActionPrimary,
+                              act.variant === 'warning' && styles.cardActionWarning,
+                              act.variant === 'danger' && styles.cardActionDanger,
+                              act.variant === 'neutral' && styles.cardActionNeutral,
                             ]}
+                            onPress={() => handleExecute(act.command)}
+                            disabled={actionInProgress}
+                            activeOpacity={0.85}
                           >
-                            <View
+                            <Text
                               style={[
-                                styles.stageStatusDot,
-                                {
-                                  backgroundColor: context?.activeOnSiteJob
-                                    ? '#10b981'
-                                    : '#3b82f6',
+                                styles.cardActionText,
+                                (act.variant === 'success' ||
+                                  act.variant === 'primary' ||
+                                  act.variant === 'danger') && {
+                                  color: '#ffffff',
                                 },
                               ]}
-                            />
-                            <Text style={styles.stageStatusPillText}>
-                              {context?.activeOnSiteJob
-                                ? 'ON-SITE IN PROGRESS'
-                                : 'CONFIRMED BOOKING'}
+                            >
+                              {act.label}
                             </Text>
-                          </View>
-                          <Text style={styles.jobCodeText}>{currentTarget.booking_code}</Text>
-                        </View>
-
-                        <View style={styles.wageHighlightBox}>
-                          <Text style={styles.wageHighlightLabel}>YOUR DIRECT WAGE</Text>
-                          <Text style={styles.wageHighlightValue}>₹{targetWage}</Text>
-                        </View>
+                          </TouchableOpacity>
+                        ))}
                       </View>
+                    )}
 
-                      {/* Customer & Location */}
-                      <View style={styles.jobDetailsRow}>
-                        <View style={styles.jobDetailItem}>
-                          <User size={13} color="#64748b" />
-                          <Text style={styles.jobDetailText} numberOfLines={1}>
-                            {currentTarget.customer?.full_name || 'Customer'}
-                          </Text>
-                        </View>
-                        <View style={styles.jobDetailItem}>
-                          <Clock size={13} color="#64748b" />
-                          <Text style={styles.jobDetailText}>
-                            {currentTarget.booking_date} • {currentTarget.booking_time}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.addressRow}>
-                        <MapPin size={13} color="#64748b" />
-                        <Text style={styles.addressText} numberOfLines={1}>
-                          {currentTarget.address || 'Address on file'}
-                        </Text>
-                      </View>
-
-                      {/* --- DOMINANT ONE-TAP AUTOMATION ACTION --- */}
-                      <TouchableOpacity
-                        style={[
-                          styles.dominantActionBtn,
-                          context?.activeOnSiteJob
-                            ? styles.completeDominantBtn
-                            : styles.startDominantBtn,
-                          actionInProgress && styles.btnDisabled,
-                        ]}
-                        onPress={() =>
-                          handleExecute(
-                            context?.activeOnSiteJob
-                              ? `complete job ${currentTarget.booking_code}`
-                              : `start work on ${currentTarget.booking_code}`
-                          )
-                        }
-                        disabled={actionInProgress}
-                        activeOpacity={0.85}
-                      >
-                        {actionInProgress ? (
-                          <ActivityIndicator size="small" color="#ffffff" />
-                        ) : context?.activeOnSiteJob ? (
-                          <>
-                            <CheckCircle2 size={19} color="#ffffff" strokeWidth={2.5} />
-                            <Text style={styles.dominantActionBtnText}>
-                              Complete Job & Claim ₹{targetWage}
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Zap size={19} color="#ffffff" strokeWidth={2.5} />
-                            <Text style={styles.dominantActionBtnText}>
-                              ⚡ Start Service Work Now
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  ) : context?.pendingJobs && context.pendingJobs.length > 0 ? (
-                    /* If no active/committed job, but pending requests exist */
-                    <View style={[styles.stageCard, styles.stageCardPending]}>
-                      <View style={styles.stageCardHeader}>
-                        <View style={styles.stagePillWrap}>
-                          <View style={[styles.stageStatusPill, styles.statusPillPending]}>
-                            <Text style={styles.stageStatusPillText}>
-                              {context.pendingJobs.length} PENDING REQUEST(S)
-                            </Text>
-                          </View>
-                          <Text style={styles.jobCodeText}>
-                            {context.pendingJobs[0].booking_code}
-                          </Text>
-                        </View>
-                        <View style={styles.wageHighlightBox}>
-                          <Text style={styles.wageHighlightLabel}>EST. VALUE</Text>
-                          <Text style={styles.wageHighlightValue}>
-                            ₹{context.pendingJobs[0].estimated_amount}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.pendingDescText}>
-                        {context.pendingJobs[0].service_description || 'Standard service request'}
-                      </Text>
-
-                      {/* One-tap Accept Button */}
-                      <TouchableOpacity
-                        style={[styles.dominantActionBtn, styles.acceptDominantBtn]}
-                        onPress={() =>
-                          handleExecute(`accept job ${context.pendingJobs[0].booking_code}`)
-                        }
-                        disabled={actionInProgress}
-                        activeOpacity={0.85}
-                      >
-                        {actionInProgress ? (
-                          <ActivityIndicator size="small" color="#ffffff" />
-                        ) : (
-                          <>
-                            <CheckCircle2 size={19} color="#ffffff" strokeWidth={2.5} />
-                            <Text style={styles.dominantActionBtnText}>
-                              Accept {context.pendingJobs[0].booking_code} (No Conflict)
-                            </Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    /* All caught up banner */
-                    <View style={styles.caughtUpCard}>
-                      <ShieldCheck size={28} color="#10b981" />
-                      <Text style={styles.caughtUpTitle}>You are completely caught up! 🎉</Text>
-                      <Text style={styles.caughtUpDesc}>
-                        No pending actions. You have completed {context?.todayCompletedCount || 0}{' '}
-                        jobs today with ₹{context?.todayEarnings.toFixed(0) || 0} earned.
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* --- SECTION 2: SCHEDULE COLLISION SHIELD ALERT --- */}
-                  {context?.collidingJobs && context.collidingJobs.length > 0 && (
-                    <View style={styles.collisionCard}>
-                      <View style={styles.collisionHeader}>
-                        <AlertTriangle size={15} color="#ef4444" />
-                        <Text style={styles.collisionTitle}>Schedule Collision Shield Active</Text>
-                      </View>
-                      {context.collidingJobs.map((c, idx) => (
-                        <Text key={idx} style={styles.collisionItemText}>
-                          • {c.booking.booking_code}: {c.reason}
-                        </Text>
-                      ))}
-                      <Text style={styles.collisionSubtext}>
-                        The 1-hour buffer safeguards your commitments without manual schedule math.
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* --- SECTION 3: 1-TAP FAST WORKER ACTIONS --- */}
-                  <View style={styles.fastActionSection}>
-                    <Text style={styles.sectionHeaderLabel}>1-TAP COOPERATIVE AUTOMATION</Text>
-                    <View style={styles.fastActionGrid}>
-                      {/* Read Aloud */}
-                      <TouchableOpacity
-                        style={styles.fastActionChip}
-                        onPress={() => handleExecute('read details aloud')}
-                        activeOpacity={0.8}
-                      >
-                        <Volume2 size={15} color="#10b981" />
-                        <Text style={styles.fastActionChipText}>Read Details Aloud</Text>
-                      </TouchableOpacity>
-
-                      {/* Diagnose Extra Parts */}
-                      <TouchableOpacity
-                        style={styles.fastActionChip}
-                        onPress={() => handleExecute('add diagnostic parts')}
-                        activeOpacity={0.8}
-                      >
-                        <Wrench size={15} color="#3b82f6" />
-                        <Text style={styles.fastActionChipText}>Add ₹350 Parts</Text>
-                      </TouchableOpacity>
-
-                      {/* Check Earnings */}
-                      <TouchableOpacity
-                        style={styles.fastActionChip}
-                        onPress={() => handleExecute('check my earnings and welfare')}
-                        activeOpacity={0.8}
-                      >
-                        <TrendingUp size={15} color="#f59e0b" />
-                        <Text style={styles.fastActionChipText}>Check Earnings</Text>
-                      </TouchableOpacity>
-
-                      {/* Decline Next Pending */}
-                      {context?.pendingJobs && context.pendingJobs.length > 0 && (
-                        <TouchableOpacity
-                          style={styles.fastActionChip}
-                          onPress={() => handleExecute('decline job')}
-                          activeOpacity={0.8}
-                        >
-                          <X size={15} color="#ef4444" />
-                          <Text style={styles.fastActionChipText}>Decline Request</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <Text
+                      style={[
+                        styles.bubbleTime,
+                        msg.sender === 'user' ? { color: '#dcfce7' } : { color: '#94a3b8' },
+                      ]}
+                    >
+                      {msg.timestamp}
+                    </Text>
                   </View>
+                </View>
+              ))}
 
-                  {/* --- SECTION 4: RECENT ACTION LOG --- */}
-                  <View style={styles.logSection}>
-                    <Text style={styles.sectionHeaderLabel}>ASSISTANT ACTIVITY FEED</Text>
-                    <View style={styles.logBox}>
-                      {activityLog.map(item => (
-                        <View
-                          key={item.id}
-                          style={[
-                            styles.logMessage,
-                            item.isAi ? styles.logAi : styles.logUser,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.logText,
-                              item.isAi
-                                ? { color: isDark ? '#e2e8f0' : '#1e293b' }
-                                : { color: '#ffffff' },
-                            ]}
-                          >
-                            {item.text}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.logTime,
-                              item.isAi ? { color: '#94a3b8' } : { color: '#dcfce7' },
-                            ]}
-                          >
-                            {item.timestamp}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </>
+              {actionInProgress && (
+                <View style={styles.typingBox}>
+                  <ActivityIndicator size="small" color="#10b981" />
+                  <Text style={styles.typingText}>Executing action on live bookings...</Text>
+                </View>
               )}
             </ScrollView>
 
-            {/* --- SECTION 5: COMMAND INPUT & VOICE MICROPHONE --- */}
+            {/* Quick Action Suggestion Chips */}
+            <View style={styles.chipRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('start work')}
+                  disabled={actionInProgress}
+                >
+                  <Zap size={13} color="#10b981" />
+                  <Text style={styles.chipText}>Start Work</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('complete job')}
+                  disabled={actionInProgress}
+                >
+                  <CheckCircle2 size={13} color="#2563eb" />
+                  <Text style={styles.chipText}>Complete Job</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('add diagnostic parts')}
+                  disabled={actionInProgress}
+                >
+                  <Wrench size={13} color="#f59e0b" />
+                  <Text style={styles.chipText}>Add ₹350 Parts</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('my jobs')}
+                  disabled={actionInProgress}
+                >
+                  <Clock size={13} color="#64748b" />
+                  <Text style={styles.chipText}>Show My Jobs</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('earnings summary')}
+                  disabled={actionInProgress}
+                >
+                  <TrendingUp size={13} color="#059669" />
+                  <Text style={styles.chipText}>Earnings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
+                  onPress={() => handleExecute('read details aloud')}
+                  disabled={actionInProgress}
+                >
+                  <Volume2 size={13} color="#8b5cf6" />
+                  <Text style={styles.chipText}>Read Aloud</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            {/* Input Bar */}
             <View
               style={[
                 styles.footerInputBar,
@@ -598,8 +575,9 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
               {/* Mic Button */}
               <TouchableOpacity
                 style={[styles.micBtn, isListening && styles.micBtnActive]}
-                onPress={toggleVoiceInput}
+                onPress={toggleVoice}
                 activeOpacity={0.8}
+                accessibilityLabel="Voice microphone"
               >
                 {isListening ? (
                   <MicOff size={18} color="#ffffff" />
@@ -620,8 +598,8 @@ export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = (
                 ]}
                 placeholder={
                   isListening
-                    ? 'Listening... speak now'
-                    : 'Tap mic or type: "start work", "complete"...'
+                    ? 'Listening... speak your command'
+                    : 'Type or tap quick actions...'
                 }
                 placeholderTextColor={colors.textMuted}
                 value={inputText}
@@ -654,7 +632,7 @@ const styles = StyleSheet.create({
   // Floating Action Button
   fabContainer: {
     position: 'absolute',
-    bottom: 84, // elevated nicely above the 66px tab bar
+    bottom: 84,
     right: 18,
     alignItems: 'center',
     zIndex: 9999,
@@ -664,7 +642,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#059669', // rich emerald green
+    backgroundColor: '#059669',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#059669',
@@ -723,7 +701,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '88%',
-    minHeight: '70%',
+    minHeight: '72%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.25,
@@ -766,26 +744,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#a7f3d0',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   sheetTitle: {
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.2,
-  },
-  zeroKeyPill: {
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-  },
-  zeroKeyPillText: {
-    color: '#059669',
-    fontSize: 8.5,
-    fontWeight: '800',
   },
   sheetSubtitle: {
     fontSize: 11,
@@ -813,288 +775,157 @@ const styles = StyleSheet.create({
     borderColor: '#fca5a5',
   },
 
-  // Sheet Content
-  sheetContent: {
-    flex: 1,
-  },
-  sheetContentInner: {
-    padding: 16,
-    gap: 14,
-  },
-  loadingBox: {
-    padding: 40,
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#64748b',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // Stage Card
-  stageCard: {
-    borderRadius: 16,
-    padding: 15,
-    borderWidth: 1.5,
-  },
-  stageCardActive: {
-    backgroundColor: '#f0fdf4',
-    borderColor: '#86efac',
-  },
-  stageCardCommitted: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#93c5fd',
-  },
-  stageCardPending: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fde68a',
-  },
-  stageCardHeader: {
+  // Status Strip
+  statusStrip: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
-  stagePillWrap: {
-    gap: 4,
-  },
-  stageStatusPill: {
+  statusStripLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    gap: 5,
-    alignSelf: 'flex-start',
-  },
-  statusPillActive: {
-    backgroundColor: '#dcfce7',
-  },
-  statusPillCommitted: {
-    backgroundColor: '#dbeafe',
-  },
-  statusPillPending: {
-    backgroundColor: '#fef3c7',
-  },
-  stageStatusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  stageStatusPillText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    color: '#0f172a',
-  },
-  jobCodeText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  wageHighlightBox: {
-    alignItems: 'flex-end',
-  },
-  wageHighlightLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#64748b',
-    letterSpacing: 0.4,
-  },
-  wageHighlightValue: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#059669',
-  },
-  jobDetailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 6,
-  },
-  jobDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  jobDetailText: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '600',
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 14,
-  },
-  addressText: {
-    fontSize: 11.5,
-    color: '#475569',
-    fontWeight: '500',
+    gap: 6,
     flex: 1,
   },
-  pendingDescText: {
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusStripText: {
+    fontSize: 11.5,
+    color: '#334155',
+    flex: 1,
+  },
+  statusStripWage: {
     fontSize: 12,
-    color: '#475569',
-    marginBottom: 12,
+    fontWeight: '800',
+    color: '#059669',
   },
 
-  // Dominant Action Button
-  dominantActionBtn: {
-    height: 48,
-    borderRadius: 12,
+  // Chat Scroll
+  chatScroll: {
+    flex: 1,
+  },
+  chatScrollInner: {
+    padding: 16,
+    gap: 12,
+  },
+  messageRow: {
     flexDirection: 'row',
+  },
+  messageRowAi: {
+    justifyContent: 'flex-start',
+  },
+  messageRowUser: {
+    justifyContent: 'flex-end',
+  },
+  bubble: {
+    maxWidth: '88%',
+    borderRadius: 16,
+    padding: 12,
+    gap: 8,
+  },
+  bubbleAi: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderTopLeftRadius: 4,
+  },
+  bubbleUser: {
+    backgroundColor: '#059669',
+    borderTopRightRadius: 4,
+  },
+  bubbleText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  bubbleTextUser: {
+    color: '#ffffff',
+  },
+  bubbleTime: {
+    fontSize: 9.5,
+    alignSelf: 'flex-end',
+  },
+
+  // Interactive Card Actions inside chat
+  cardActionGroup: {
+    gap: 6,
+    marginTop: 4,
+  },
+  cardActionBtn: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
   },
-  startDominantBtn: {
+  cardActionSuccess: {
     backgroundColor: '#059669',
   },
-  completeDominantBtn: {
+  cardActionPrimary: {
     backgroundColor: '#2563eb',
   },
-  acceptDominantBtn: {
-    backgroundColor: '#059669',
+  cardActionWarning: {
+    backgroundColor: '#d97706',
   },
-  dominantActionBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+  cardActionDanger: {
+    backgroundColor: '#ef4444',
   },
-  btnDisabled: {
-    opacity: 0.65,
-  },
-
-  // Caught up card
-  caughtUpCard: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 16,
-    padding: 18,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: '#a7f3d0',
-  },
-  caughtUpTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#065f46',
-  },
-  caughtUpDesc: {
-    fontSize: 12,
-    color: '#047857',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-
-  // Collision alert card
-  collisionCard: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 14,
-    padding: 12,
+  cardActionNeutral: {
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#fca5a5',
-    gap: 5,
+    borderColor: '#cbd5e1',
   },
-  collisionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  collisionTitle: {
-    fontSize: 12,
+  cardActionText: {
+    fontSize: 12.5,
     fontWeight: '800',
-    color: '#b91c1c',
-  },
-  collisionItemText: {
-    fontSize: 11,
-    color: '#991b1b',
-    fontWeight: '600',
-  },
-  collisionSubtext: {
-    fontSize: 10,
-    color: '#7f1d1d',
-    fontStyle: 'italic',
-    marginTop: 2,
+    color: '#1e293b',
   },
 
-  // Fast action chips
-  fastActionSection: {
-    gap: 8,
-  },
-  sectionHeaderLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    color: '#64748b',
-  },
-  fastActionGrid: {
+  typingBox: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+  },
+  typingText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontStyle: 'italic',
+  },
+
+  // Quick Action Chips
+  chipRow: {
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  chipScroll: {
+    paddingHorizontal: 14,
     gap: 8,
   },
-  fastActionChip: {
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8fafc',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 5,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
-  fastActionChipText: {
-    fontSize: 11.5,
+  chipText: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#334155',
-  },
-
-  // Log box
-  logSection: {
-    gap: 8,
-  },
-  logBox: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 14,
-    padding: 10,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  logMessage: {
-    padding: 9,
-    borderRadius: 10,
-    gap: 2,
-  },
-  logAi: {
-    backgroundColor: '#ffffff',
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    maxWidth: '92%',
-  },
-  logUser: {
-    backgroundColor: '#059669',
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-  },
-  logText: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  logTime: {
-    fontSize: 9,
-    alignSelf: 'flex-end',
   },
 
   // Footer Input Bar

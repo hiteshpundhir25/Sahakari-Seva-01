@@ -13,6 +13,7 @@ import {
   Alert,
   Linking,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -119,6 +120,12 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
 
   useEffect(() => {
     fetchJob();
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      fetchJob();
+    });
+    return () => {
+      sub.remove();
+    };
   }, [bookingId]);
 
   const isPrepaidViolation = ApiClient.isPrepaidViolation(job);
@@ -344,39 +351,6 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
           </FadeInView>
         ) : (
           <>
-            {/* Schedule Collision: Exact Same Date & Time */}
-            {job.status === 'pending' && scheduleConflict.isExactCollision && (
-              <FadeInView distance={10} duration={260}>
-                <View style={styles.exactConflictBanner}>
-                  <AlertCircle size={18} color="#ef4444" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.exactConflictBannerTitle}>
-                      Same Date & Time Collision ({scheduleConflict.conflictingBooking?.booking_code})
-                    </Text>
-                    <Text style={styles.exactConflictBannerDesc}>
-                      You are already committed to {scheduleConflict.conflictingBooking?.booking_code} on {job.booking_date} at {job.booking_time}. Acceptance option is hidden to prevent double-booking.
-                    </Text>
-                  </View>
-                </View>
-              </FadeInView>
-            )}
-
-            {/* Schedule Collision: Buffer Overlap (< 1 hour) */}
-            {job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && (
-              <FadeInView distance={10} duration={260}>
-                <View style={styles.conflictBanner}>
-                  <AlertTriangle size={18} color="#b45309" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.conflictBannerTitle}>
-                      Schedule Overlap ({scheduleConflict.timeDifferenceMinutes}m Difference)
-                    </Text>
-                    <Text style={styles.conflictBannerDesc}>
-                      Starts within {scheduleConflict.timeDifferenceMinutes} minutes of committed job {scheduleConflict.conflictingBooking?.booking_code} ({scheduleConflict.conflictingBooking?.booking_time}). Minimum 1-hour buffer is required between jobs.
-                    </Text>
-                  </View>
-                </View>
-              </FadeInView>
-            )}
 
             {/* On-Site Service In Progress Warning for Accepted Jobs */}
             {job.status === 'accepted' && ongoingServiceConflict && (
@@ -572,14 +546,8 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
               <View style={styles.actionCard}>
                 {job.status === 'pending' && (
                   scheduleConflict.isExactCollision ? (
-                    // Exact same date & time: ACCEPT OPTION IS HIDDEN completely
+                    // Exact same date & time: ACCEPT OPTION IS HIDDEN completely (only Decline)
                     <View style={styles.exactHiddenActionBox}>
-                      <View style={styles.exactCollisionNotice}>
-                        <AlertCircle size={14} color="#ef4444" />
-                        <Text style={styles.exactCollisionNoticeText}>
-                          Acceptance hidden: Exact time overlap with {scheduleConflict.conflictingBooking?.booking_code} ({job.booking_date} at {job.booking_time}).
-                        </Text>
-                      </View>
                       <TouchableOpacity
                         style={styles.fullDeclineBtn}
                         onPress={() => handleUpdateStatus('rejected')}
@@ -609,13 +577,13 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                         activeOpacity={1}
                         onPress={() => {
                           Alert.alert(
-                            'Collision Warning',
-                            scheduleConflict.reason || 'This job collides with another scheduled job (1-hour buffer required).'
+                            'Schedule Conflict',
+                            scheduleConflict.reason || 'This job collides with another scheduled booking.'
                           );
                         }}
                       >
                         <AlertTriangle size={15} color="#ffffff" />
-                        <Text style={styles.acceptBtnText}>Collides (&lt;1h Buffer)</Text>
+                        <Text style={styles.acceptBtnText}>Schedule Conflict</Text>
                       </TouchableOpacity>
                     </View>
                   ) : (

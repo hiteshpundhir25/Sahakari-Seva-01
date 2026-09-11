@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -113,6 +114,15 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
       loadProfile();
     }, [])
   );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      loadProfile();
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
 
   const handleToggleStatus = async (newStatus: AvailabilityStatus) => {
     setStatus(newStatus);
