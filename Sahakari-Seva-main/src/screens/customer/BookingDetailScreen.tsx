@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock, Clock } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
@@ -29,9 +29,9 @@ type RouteParams = {
 
 export const BookingDetailScreen: React.FC = () => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const typography = makeTypography(colors);
-  const styles = createStyles(colors, typography);
+  const styles = createStyles(colors, typography, isDark);
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'BookingDetail'>>();
   const bookingId = route.params?.bookingId;
@@ -219,10 +219,18 @@ export const BookingDetailScreen: React.FC = () => {
           </Text>
         </View>
         <Badge
-          label={booking.status.toUpperCase().replace('_', ' ')}
+          label={
+            booking.status === 'pending'
+              ? 'REQUESTED • AWAITING WORKER'
+              : booking.status === 'accepted'
+              ? 'CONFIRMED • ON ACTIVE JOB'
+              : booking.status.toUpperCase().replace('_', ' ')
+          }
           variant={
             booking.status === 'completed'
               ? 'success'
+              : booking.status === 'accepted'
+              ? 'info'
               : booking.status === 'in_progress'
               ? 'info'
               : 'warning'
@@ -246,6 +254,39 @@ export const BookingDetailScreen: React.FC = () => {
       {/* Progress Stepper */}
       <Card style={styles.stepperCard}>
         <Text style={styles.sectionTitle}>{t('bookingDetail.status_tracking')}</Text>
+
+        {/* Status Explainer Banner for Customer */}
+        {booking.status === 'pending' && (
+          <View style={styles.statusExplainerCardPending}>
+            <Clock size={16} color="#d97706" />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.statusExplainerTitlePending}>
+                {t('booking.awaiting_worker') || 'Awaiting Worker Confirmation'}
+              </Text>
+              <Text style={styles.statusExplainerDescPending}>
+                {t('booking.awaiting_worker_desc', {
+                  name: worker?.profile?.full_name || 'Assigned Professional',
+                  defaultValue: `${worker?.profile?.full_name || 'Assigned Professional'} has received your job alert. You will be notified as soon as they confirm your booking.`
+                })}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'accepted' && (
+          <View style={styles.statusExplainerCardAccepted}>
+            <CheckCircle2 size={16} color="#059669" />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.statusExplainerTitleAccepted}>
+                {t('booking.confirmed_title') || 'Booking Confirmed! 🎉'}
+              </Text>
+              <Text style={styles.statusExplainerDescAccepted}>
+                {worker?.profile?.full_name || 'Assigned Professional'} has confirmed your booking and is on active duty for this service.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.stepperRow}>
           {steps.map((step, idx) => {
             const isDone = idx <= currentStep;
@@ -630,7 +671,7 @@ export const BookingDetailScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>) => StyleSheet.create({
+const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>, isDark = false) => StyleSheet.create({
   screenWrapper: {
     flex: 1,
     backgroundColor: colors.background,
@@ -937,6 +978,48 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   },
   stepperCard: {
     marginBottom: spacing.md,
+  },
+  statusExplainerCardPending: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FFFBEB',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245,158,11,0.3)' : '#FDE68A',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statusExplainerTitlePending: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: isDark ? '#FBBF24' : '#92400E',
+    marginBottom: 2,
+  },
+  statusExplainerDescPending: {
+    fontSize: 11.5,
+    color: isDark ? '#FDE68A' : '#78350F',
+    lineHeight: 16,
+  },
+  statusExplainerCardAccepted: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#ECFDF5',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(16,185,129,0.3)' : '#A7F3D0',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statusExplainerTitleAccepted: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: isDark ? '#34D399' : '#065F46',
+    marginBottom: 2,
+  },
+  statusExplainerDescAccepted: {
+    fontSize: 11.5,
+    color: isDark ? '#A7F3D0' : '#047857',
+    lineHeight: 16,
   },
   sectionTitle: {
     ...typography.fontSubtitle,

@@ -30,6 +30,7 @@ import {
   X,
   Sparkles,
   CheckCircle2,
+  Send,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -247,7 +248,8 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
 
   if (!visible && !booking) return null;
 
-  const bookingCode = booking?.booking_code || 'BK-2026-CONFIRMED';
+  const isConfirmed = booking?.status === 'accepted' || booking?.status === 'in_progress' || booking?.status === 'completed';
+  const bookingCode = booking?.booking_code || (isConfirmed ? 'BK-2026-CONFIRMED' : 'BK-2026-REQUESTED');
   const workerName = worker?.name || booking?.worker?.profile?.full_name || (booking?.worker as any)?.name || 'Assigned Professional';
   const workerTrade = worker?.service || worker?.skill_category || booking?.service_description || 'Home Service';
   const workerRating = worker?.rating || worker?.average_rating || 4.9;
@@ -302,17 +304,20 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
             style={styles.closeBtn}
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityLabel="Close confirmation"
+            accessibilityLabel="Close confirmation modal"
           >
-            <X size={20} color={colors.textSecondary} />
+            <X size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
-          {/* Celebratory Animation Header */}
+          {/* ============================================================== */}
+          {/* CELEBRATORY TOP ANIMATION (Checkmark / Send Icon + Ripple + Confetti) */}
+          {/* ============================================================== */}
           <View style={styles.celebrationArea}>
             {/* Ripple Ring 1 */}
             <Animated.View
               style={[
                 styles.rippleRing,
+                !isConfirmed && styles.rippleRingRequested,
                 {
                   transform: [{ scale: ripple1Scale }],
                   opacity: ripple1Opacity,
@@ -325,6 +330,7 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
               style={[
                 styles.rippleRing,
                 styles.rippleRingSecondary,
+                !isConfirmed && styles.rippleRingRequestedSecondary,
                 {
                   transform: [{ scale: ripple2Scale }],
                   opacity: ripple2Opacity,
@@ -374,10 +380,11 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
               );
             })}
 
-            {/* Main Green Checkmark Badge */}
+            {/* Main Badge: Green Checkmark (Confirmed) or Royal Blue Send (Requested) */}
             <Animated.View
               style={[
                 styles.checkCircleBadge,
+                !isConfirmed && styles.checkCircleBadgeRequested,
                 {
                   transform: [
                     { scale: checkScale },
@@ -386,7 +393,11 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                 },
               ]}
             >
-              <Check size={42} color="#ffffff" strokeWidth={3.8} />
+              {isConfirmed ? (
+                <Check size={42} color="#ffffff" strokeWidth={3.8} />
+              ) : (
+                <Send size={36} color="#ffffff" strokeWidth={2.8} style={{ marginLeft: -2 }} />
+              )}
             </Animated.View>
           </View>
 
@@ -400,20 +411,24 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
               },
             ]}
           >
-            {/* Title & Badge */}
+            {/* Title & Dynamic Status Badge */}
             <Text style={styles.titleText}>
-              {t('booking.confirmed_title') || 'Booking Confirmed! 🎉'}
+              {isConfirmed
+                ? (t('booking.confirmed_title') || 'Booking Confirmed! 🎉')
+                : (t('booking.requested_title') || 'Booking Requested! 📋')}
             </Text>
 
-            <View style={styles.orderCodeBadge}>
-              <View style={styles.liveGreenDot} />
-              <Text style={styles.orderCodeText}>
-                ORDER #{bookingCode}
+            <View style={[styles.orderCodeBadge, !isConfirmed && styles.orderCodeBadgeRequested]}>
+              <View style={isConfirmed ? styles.liveGreenDot : styles.liveAmberDot} />
+              <Text style={[styles.orderCodeText, !isConfirmed && styles.orderCodeTextRequested]}>
+                ORDER #{bookingCode} • {isConfirmed ? 'CONFIRMED' : 'REQUEST SENT'}
               </Text>
             </View>
 
             <Text style={styles.subtitleText}>
-              Your request has been dispatched to {workerName}. Instant demand recorded!
+              {isConfirmed
+                ? `Your booking has been confirmed by ${workerName}. Technician is scheduled on active duty!`
+                : `Your booking request has been dispatched to ${workerName}. Awaiting worker confirmation.`}
             </Text>
 
             {/* ============================================================== */}
@@ -421,29 +436,45 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
             {/* ============================================================== */}
             <View style={styles.stepperContainer}>
               <View style={styles.stepperTrackRow}>
-                {/* Step 1: Placed */}
+                {/* Step 1: Requested */}
                 <View style={styles.stepItem}>
                   <View style={[styles.stepCircle, styles.stepCircleDone]}>
                     <Check size={13} color="#ffffff" strokeWidth={3} />
                   </View>
-                  <Text style={[styles.stepLabel, styles.stepLabelActive]}>Placed</Text>
+                  <Text style={[styles.stepLabel, styles.stepLabelActive]}>
+                    {t('bookingDetail.step_requested') || 'Requested'}
+                  </Text>
                 </View>
 
                 {/* Connecting Line 1-2 */}
-                <View style={[styles.stepLine, styles.stepLineActive]} />
+                <View style={[styles.stepLine, isConfirmed && styles.stepLineActive]} />
 
-                {/* Step 2: Confirmed */}
+                {/* Step 2: Confirmed / Awaiting */}
                 <View style={styles.stepItem}>
-                  <Animated.View
-                    style={[
-                      styles.stepCircle,
-                      styles.stepCircleDone,
-                      { transform: [{ scale: stepperPulse }] },
-                    ]}
-                  >
-                    <Check size={13} color="#ffffff" strokeWidth={3} />
-                  </Animated.View>
-                  <Text style={[styles.stepLabel, styles.stepLabelActive]}>Confirmed</Text>
+                  {isConfirmed ? (
+                    <Animated.View
+                      style={[
+                        styles.stepCircle,
+                        styles.stepCircleDone,
+                        { transform: [{ scale: stepperPulse }] },
+                      ]}
+                    >
+                      <Check size={13} color="#ffffff" strokeWidth={3} />
+                    </Animated.View>
+                  ) : (
+                    <Animated.View
+                      style={[
+                        styles.stepCircle,
+                        styles.stepCircleAwaiting,
+                        { transform: [{ scale: stepperPulse }] },
+                      ]}
+                    >
+                      <Clock size={12} color="#d97706" strokeWidth={2.4} />
+                    </Animated.View>
+                  )}
+                  <Text style={[styles.stepLabel, isConfirmed ? styles.stepLabelActive : styles.stepLabelAwaiting]}>
+                    {isConfirmed ? (t('bookingDetail.step_confirmed') || 'Confirmed') : (t('booking.awaiting_short') || 'Awaiting')}
+                  </Text>
                 </View>
 
                 {/* Connecting Line 2-3 */}
@@ -454,7 +485,7 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                   <View style={styles.stepCirclePending}>
                     <Clock size={12} color={colors.textMuted} />
                   </View>
-                  <Text style={styles.stepLabel}>On The Way</Text>
+                  <Text style={styles.stepLabel}>{t('bookingDetail.step_in_progress') || 'On The Way'}</Text>
                 </View>
 
                 {/* Connecting Line 3-4 */}
@@ -465,10 +496,25 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                   <View style={styles.stepCirclePending}>
                     <ShieldCheck size={12} color={colors.textMuted} />
                   </View>
-                  <Text style={styles.stepLabel}>Done</Text>
+                  <Text style={styles.stepLabel}>{t('bookingDetail.step_completed') || 'Done'}</Text>
                 </View>
               </View>
             </View>
+
+            {/* Awaiting Worker Confirmation Notice Card */}
+            {!isConfirmed && (
+              <View style={styles.awaitingNoticeCard}>
+                <Clock size={16} color="#d97706" />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.awaitingNoticeTitle}>
+                    {t('booking.awaiting_worker') || 'Awaiting Worker Confirmation'}
+                  </Text>
+                  <Text style={styles.awaitingNoticeDesc}>
+                    {t('booking.awaiting_worker_desc', { name: workerName, defaultValue: `${workerName} has received your job alert. You will be notified as soon as ${workerName} confirms your job.` })}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Summary Details Card */}
             <View style={styles.summaryCard}>
@@ -599,6 +645,12 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     rippleRingSecondary: {
       backgroundColor: '#34D399',
     },
+    rippleRingRequested: {
+      backgroundColor: '#3B82F6',
+    },
+    rippleRingRequestedSecondary: {
+      backgroundColor: '#60A5FA',
+    },
     confettiParticle: {
       position: 'absolute',
       justifyContent: 'center',
@@ -618,6 +670,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       elevation: 10,
       borderWidth: 3.5,
       borderColor: '#ffffff',
+    },
+    checkCircleBadgeRequested: {
+      backgroundColor: '#2563EB',
+      shadowColor: '#2563EB',
     },
     contentSection: {
       width: '100%',
@@ -642,6 +698,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderWidth: 1,
       borderColor: isDark ? 'rgba(16,185,129,0.4)' : '#A7F3D0',
     },
+    orderCodeBadgeRequested: {
+      backgroundColor: isDark ? 'rgba(245,158,11,0.18)' : '#FEF3C7',
+      borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
+    },
     liveGreenDot: {
       width: 8,
       height: 8,
@@ -649,11 +709,21 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: '#10B981',
       marginRight: 6,
     },
+    liveAmberDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#F59E0B',
+      marginRight: 6,
+    },
     orderCodeText: {
       fontSize: 12,
       fontWeight: '700',
       color: colors.successDark,
       letterSpacing: 0.6,
+    },
+    orderCodeTextRequested: {
+      color: isDark ? '#FBBF24' : '#B45309',
     },
     subtitleText: {
       fontSize: 13,
@@ -701,6 +771,17 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       shadowRadius: 4,
       elevation: 2,
     },
+    stepCircleAwaiting: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+      borderWidth: 1.5,
+      borderColor: '#F59E0B',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
     stepCirclePending: {
       width: 24,
       height: 24,
@@ -722,6 +803,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.successDark,
       fontWeight: '700',
     },
+    stepLabelAwaiting: {
+      color: isDark ? '#FBBF24' : '#D97706',
+      fontWeight: '700',
+    },
     stepLine: {
       flex: 1,
       height: 2,
@@ -731,6 +816,30 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     stepLineActive: {
       backgroundColor: '#059669',
+    },
+
+    // Awaiting Notice Card
+    awaitingNoticeCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FFFBEB',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(245,158,11,0.3)' : '#FDE68A',
+      borderRadius: 12,
+      padding: 10,
+      marginBottom: 14,
+      width: '100%',
+    },
+    awaitingNoticeTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: isDark ? '#FBBF24' : '#92400E',
+      marginBottom: 2,
+    },
+    awaitingNoticeDesc: {
+      fontSize: 11,
+      color: isDark ? '#FDE68A' : '#78350F',
+      lineHeight: 15,
     },
 
     // Summary Card
