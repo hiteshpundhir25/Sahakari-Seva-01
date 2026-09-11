@@ -12,8 +12,10 @@ import { MobileLocationService } from '../../services/locationService';
 import { NearbyWorkerResult } from '../../types';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerMapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'Home', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -49,6 +51,8 @@ export const WorkerMapScreen: React.FC<{ navigation: any }> = ({ navigation }) =
       <Header
         title={t('map.title')}
         subtitle={t('map.subtitle')}
+        showBack={true}
+        onBack={handleBack}
       />
 
       {loading ? (

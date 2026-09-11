@@ -22,8 +22,10 @@ import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { SupplementalBillModal } from '../../components/worker/SupplementalBillModal';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
-export const WorkerJobsScreen: React.FC = () => {
+export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -56,7 +58,7 @@ export const WorkerJobsScreen: React.FC = () => {
       Alert.alert(t('worker.status_updated_title'), t('worker.status_updated_msg', { status: newStatus }));
       loadJobs();
     } catch (err: any) {
-      Alert.alert(t('booking.error_title'), err.message);
+      Alert.alert('Update Failed', err.message);
     }
   };
 
@@ -88,6 +90,8 @@ export const WorkerJobsScreen: React.FC = () => {
       <Header
         title={t('tabs.jobs')}
         subtitle={t('worker.assigned_bookings', { count: jobs.length })}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView

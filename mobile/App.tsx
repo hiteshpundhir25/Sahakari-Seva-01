@@ -15,7 +15,7 @@ import {
   DarkTheme as NavDarkTheme,
 } from '@react-navigation/native';
 import './src/i18n';
-import { RootNavigator } from './src/navigation/RootNavigator';
+import { RootNavigator, rootNavigationRef } from './src/navigation/RootNavigator';
 import { LanguageSwitchProvider } from './src/animations';
 import { ThemeProvider, useTheme } from './src/theme';
 
@@ -47,7 +47,7 @@ const ThemedApp: React.FC = () => {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={rootNavigationRef} theme={navTheme}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <RootNavigator />
     </NavigationContainer>

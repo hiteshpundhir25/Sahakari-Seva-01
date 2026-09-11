@@ -19,7 +19,9 @@ import {
   Welfare,
   Notification,
   ExtraTaskItem,
-  SupplementalBill
+  SupplementalBill,
+  Profile,
+  AdminProfile
 } from '../types';
 import {
   MOCK_CATEGORIES,
@@ -196,6 +198,25 @@ export class ApiClient {
           verification_status: 'verified',
         } as any
       );
+    }
+  }
+
+  public static async updateWorkerProfile(
+    workerId: string,
+    updates: Partial<Worker> & Record<string, any>
+  ): Promise<Worker> {
+    try {
+      return await this.request<Worker>(`/workers/${workerId}/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      });
+    } catch {
+      const w = MOCK_WORKERS.find(x => x.id === workerId) || MOCK_WORKERS[0];
+      if (w) {
+        Object.assign(w, updates);
+        return w;
+      }
+      return { id: workerId, ...updates } as any;
     }
   }
 
@@ -769,6 +790,159 @@ export class ApiClient {
         if (n) n.read = true;
       }
       return true;
+    }
+  }
+
+  // --- CUSTOMER PROFILE ---
+  private static mockCustomerProfiles: Record<string, Profile> = {
+    'p0000000-0000-0000-0000-000000000002': {
+      id: 'p0000000-0000-0000-0000-000000000002',
+      full_name: 'Priya Singh',
+      email: 'priya.singh@customer.in',
+      phone: '+91 98711 54321',
+      role: 'customer',
+      address: 'Flat 402, C-Scheme',
+      city: 'Jaipur',
+      state: 'Rajasthan',
+      pincode: '302001',
+      language: 'en',
+      membership_id: 'COP-CUS-2026-8842',
+      total_spent: 4890,
+      coop_savings: 1450,
+      welfare_contribution: 146,
+      saved_addresses: [
+        {
+          id: 'addr-1',
+          label: 'Home',
+          address: 'Flat 402, C-Scheme',
+          city: 'Jaipur',
+          state: 'Rajasthan',
+          pincode: '302001',
+          is_default: true,
+        },
+        {
+          id: 'addr-2',
+          label: 'Office',
+          address: 'Tower B, World Trade Park, Malviya Nagar',
+          city: 'Jaipur',
+          state: 'Rajasthan',
+          pincode: '302017',
+          is_default: false,
+        },
+      ],
+      emergency_contacts: [
+        {
+          id: 'em-1',
+          name: 'Dr. Alok Singh',
+          phone: '+91 98290 11223',
+          relation: 'Father / Family',
+        },
+      ],
+    },
+  };
+
+  public static async getCustomerProfile(customerId = 'p0000000-0000-0000-0000-000000000002'): Promise<Profile> {
+    try {
+      const res = await this.request<any>(`/customers/${customerId}/profile`);
+      return res.data || res;
+    } catch {
+      if (this.mockCustomerProfiles[customerId]) {
+        return { ...this.mockCustomerProfiles[customerId] };
+      }
+      const existing = MOCK_CUSTOMERS.find(c => c.id === customerId);
+      if (existing) {
+        this.mockCustomerProfiles[customerId] = {
+          ...existing,
+          membership_id: 'COP-CUS-2026-8842',
+          total_spent: 4890,
+          coop_savings: 1450,
+          welfare_contribution: 146,
+          saved_addresses: [
+            {
+              id: 'addr-default',
+              label: 'Home',
+              address: existing.address || 'Flat 402, C-Scheme',
+              city: existing.city || 'Jaipur',
+              state: existing.state || 'Rajasthan',
+              pincode: existing.pincode || '302001',
+              is_default: true,
+            },
+          ],
+          emergency_contacts: [
+            {
+              id: 'em-default',
+              name: 'Family Helpline',
+              phone: '+91 98290 11223',
+              relation: 'Emergency Contact',
+            },
+          ],
+        };
+        return { ...this.mockCustomerProfiles[customerId] };
+      }
+      return { ...this.mockCustomerProfiles['p0000000-0000-0000-0000-000000000002'] };
+    }
+  }
+
+  public static async updateCustomerProfile(
+    customerId: string,
+    updates: Partial<Profile>
+  ): Promise<Profile> {
+    try {
+      const res = await this.request<any>(`/customers/${customerId}/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      return res.data || res;
+    } catch {
+      const current = await this.getCustomerProfile(customerId);
+      const merged = { ...current, ...updates };
+      this.mockCustomerProfiles[customerId] = merged;
+      // Also update in MOCK_CUSTOMERS array if present
+      const inList = MOCK_CUSTOMERS.find(c => c.id === customerId);
+      if (inList) {
+        Object.assign(inList, updates);
+      }
+      return { ...merged };
+    }
+  }
+
+  // --- ADMIN PROFILE ---
+  private static mockAdminProfile: AdminProfile = {
+    id: 'admin-sec-001',
+    officer_name: 'Dr. Vikramaditya Rathore, IAS (Retd.)',
+    designation: 'Chief Registrar & Commissioner of Cooperatives',
+    department: 'Dept of Cooperatives & Shramik Welfare, Govt of Rajasthan',
+    authority_code: 'SEC-RAJ-COOP-001',
+    state: 'Rajasthan',
+    jurisdiction_districts: 24,
+    affiliated_cooperatives: 128,
+    statutory_minimum_wage: 249,
+    mandatory_certification: true,
+    emergency_mobilization_override: true,
+    patronage_dividend_rate: 12,
+    last_audit_date: '2026-09-01',
+    integrity_hash: '0x8F92A7D1C34E65B901FE',
+  };
+
+  public static async getAdminProfile(): Promise<AdminProfile> {
+    try {
+      const res = await this.request<any>('/admin/profile');
+      return res.data || res;
+    } catch {
+      return { ...this.mockAdminProfile };
+    }
+  }
+
+  public static async updateAdminProfile(updates: Partial<AdminProfile>): Promise<AdminProfile> {
+    try {
+      const res = await this.request<any>('/admin/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      });
+      return res.data || res;
+    } catch {
+      this.mockAdminProfile = { ...this.mockAdminProfile, ...updates };
+      return { ...this.mockAdminProfile };
     }
   }
 }

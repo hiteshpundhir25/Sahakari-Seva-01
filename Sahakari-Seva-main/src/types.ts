@@ -8,6 +8,40 @@ export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 export type BookingStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'in_progress' | 'completed';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
+export interface CustomerAddress {
+  id: string;
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  is_default: boolean;
+}
+
+export interface CustomerEmergencyContact {
+  id: string;
+  name: string;
+  phone: string;
+  relation: string;
+}
+
+export interface AdminProfile {
+  id: string;
+  officer_name: string;
+  designation: string;
+  department: string;
+  authority_code: string;
+  state: string;
+  jurisdiction_districts: number;
+  affiliated_cooperatives: number;
+  statutory_minimum_wage: number;
+  mandatory_certification: boolean;
+  emergency_mobilization_override: boolean;
+  patronage_dividend_rate: number;
+  last_audit_date: string;
+  integrity_hash: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string;
@@ -19,7 +53,13 @@ export interface Profile {
   city: string;
   state: string;
   pincode: string;
-  language: 'en' | 'hi';
+  language: string;
+  membership_id?: string;
+  total_spent?: number;
+  coop_savings?: number;
+  welfare_contribution?: number;
+  saved_addresses?: CustomerAddress[];
+  emergency_contacts?: CustomerEmergencyContact[];
 }
 
 export interface ServiceCategory {

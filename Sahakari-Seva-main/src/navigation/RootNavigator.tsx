@@ -8,6 +8,7 @@ import React, { useState, useEffect, createContext } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +25,9 @@ import {
   Users,
   Heart,
   UserCheck,
-  User
+  User,
+  Shield,
+  ChevronRight
 } from 'lucide-react-native';
 
 // Customer Screens
@@ -36,6 +39,7 @@ import { WorkerDetailScreen } from '../screens/customer/WorkerDetailScreen';
 import { BookingCreateScreen } from '../screens/customer/BookingCreateScreen';
 import { BookingDetailScreen } from '../screens/customer/BookingDetailScreen';
 import { InvoiceScreen } from '../screens/customer/InvoiceScreen';
+import { CustomerProfileScreen } from '../screens/customer/CustomerProfileScreen';
 
 // Worker Screens
 import { WorkerHomeScreen } from '../screens/worker/WorkerHomeScreen';
@@ -49,6 +53,9 @@ import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AdminForecastScreen } from '../screens/admin/AdminForecastScreen';
 import { AdminAllocationScreen } from '../screens/admin/AdminAllocationScreen';
 import { AdminVerificationScreen } from '../screens/admin/AdminVerificationScreen';
+import { AdminProfileScreen } from '../screens/admin/AdminProfileScreen';
+
+export const rootNavigationRef = createNavigationContainerRef<any>();
 
 // Auth Screen
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -193,6 +200,16 @@ function CustomerTabNavigator() {
           ),
         }}
       />
+      <Tab.Screen
+        name="CustomerProfile"
+        component={CustomerProfileScreen}
+        options={{
+          tabBarLabel: t('tabs.profile'),
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={User} color={color} size={size} focused={focused} colors={colors} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -263,7 +280,7 @@ function WorkerTabNavigator() {
         name="WorkerProfile"
         component={WorkerProfileScreen}
         options={{
-          tabBarLabel: t('tabs.credentials'),
+          tabBarLabel: t('tabs.profile'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon icon={User} color={color} size={size} focused={focused} colors={colors} />
           ),
@@ -343,6 +360,16 @@ function AdminTabNavigator() {
           ),
         }}
       />
+      <Tab.Screen
+        name="AdminProfile"
+        component={AdminProfileScreen}
+        options={{
+          tabBarLabel: t('tabs.profile'),
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Shield} color={color} size={size} focused={focused} colors={colors} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -416,20 +443,45 @@ export const RootNavigator: React.FC = () => {
     }
   };
 
+    const navigateToActiveProfile = () => {
+    if (!rootNavigationRef.isReady()) return;
+    try {
+      if (session.role === 'customer') {
+        rootNavigationRef.navigate('CustomerTabs', { screen: 'CustomerProfile' });
+      } else if (session.role === 'worker') {
+        rootNavigationRef.navigate('WorkerProfile');
+      } else if (session.role === 'admin') {
+        rootNavigationRef.navigate('AdminProfile');
+      }
+    } catch (e) {
+      console.warn('Navigation to profile error:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ session, login, logout }}>
       <RoleProvider role={session.role}>
       <View style={styles.container}>
         {session.role && (
           <View style={[styles.sessionHeader, { paddingTop: insets.top + 8 }]}>
-            <View style={styles.sessionInfo}>
+            <TouchableOpacity
+              style={styles.sessionInfoBtn}
+              onPress={navigateToActiveProfile}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Open Active Profile"
+            >
+              <View style={styles.sessionAvatarPill}>
+                <User size={12} color={isDark ? colors.success : colors.successDark} />
+              </View>
               <Text style={styles.sessionRoleText}>
                 {t('auth.active_profile')}:{' '}
                 <Text style={styles.sessionRoleHighlight}>
                   {t(`roles.${session.role}`)}
                 </Text>
               </Text>
-            </View>
+              <ChevronRight size={12} color={isDark ? '#94a3b8' : colors.textSecondary} />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.switchRoleBtn} onPress={logout}>
               <LogOut size={13} color={colors.danger} />
               <Text style={styles.switchRoleText}>{t('auth.switch_role')}</Text>
@@ -475,9 +527,22 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 99
   },
-  sessionInfo: {
+  sessionInfoBtn: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+  },
+  sessionAvatarPill: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(22, 101, 52, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sessionRoleText: {
     fontSize: 11,

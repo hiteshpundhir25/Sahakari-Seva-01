@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Globe, Building2, Bell } from 'lucide-react-native';
+import { Globe, Building2, Bell, ArrowLeft } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -20,6 +20,8 @@ interface HeaderProps {
   subtitle?: string;
   onPressLanguage?: () => void;
   onPressNotifications?: () => void;
+  showBack?: boolean;
+  onBack?: () => void;
 }
 
 // Native short names shown on the language chip
@@ -45,6 +47,8 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   onPressLanguage,
   onPressNotifications,
+  showBack,
+  onBack,
 }) => {
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
@@ -66,6 +70,18 @@ export const Header: React.FC<HeaderProps> = ({
     <View style={styles.container}>
       <View style={styles.brandRow}>
         <View style={styles.logoRow}>
+          {showBack && (
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={onBack}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.back', 'Back')}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ArrowLeft size={17} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           <View style={styles.logoBadge}>
             <Building2 size={16} color={colors.textInverse} />
           </View>
@@ -137,6 +153,17 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     gap: 6,
     marginRight: 6,
     minWidth: 0,
+  },
+  backBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
   },
   logoBadge: {
     width: 32,

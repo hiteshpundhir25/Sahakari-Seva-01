@@ -24,8 +24,10 @@ import {
 import { FadeInView, ScalePressable, AnimatedNumber, PulseDot } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: true });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);

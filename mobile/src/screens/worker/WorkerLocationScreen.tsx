@@ -20,8 +20,10 @@ import { MobileLocationService } from '../../services/locationService';
 import { MapPin, Navigation, ShieldCheck, CheckCircle } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
-export const WorkerLocationScreen: React.FC = () => {
+export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -80,6 +82,8 @@ export const WorkerLocationScreen: React.FC = () => {
       <Header
         title={t('workerLocation.title')}
         subtitle={t('workerLocation.subtitle')}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

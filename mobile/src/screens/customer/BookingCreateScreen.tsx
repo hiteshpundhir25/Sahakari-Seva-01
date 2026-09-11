@@ -23,6 +23,7 @@ import type { Palette } from '../../theme';
 import { BookingConfirmedModal } from '../../components/common/BookingConfirmedModal';
 import { useRole } from '../../context/RoleContext';
 import type { Booking } from '../../types';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 const localToday = () => {
   const now = new Date();
@@ -32,6 +33,7 @@ const localToday = () => {
 };
 
 export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'CustomerTabs', isHome: false });
   const worker = route?.params?.worker || {
     name: 'Rajesh Sharma',
     hourly_rate: 249,
@@ -102,6 +104,8 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
       <Header
         title={t('booking.book_worker')}
         subtitle={worker.name || worker.worker_code}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

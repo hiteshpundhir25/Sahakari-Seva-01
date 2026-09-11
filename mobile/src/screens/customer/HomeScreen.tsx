@@ -26,6 +26,7 @@ import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { getTradeTheme } from '../../theme/tradeThemes';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 import {
   Zap,
   Wrench,
@@ -57,6 +58,7 @@ const categoryIcons: Record<string, any> = {
 };
 
 export const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  useAppBackHandler({ homeRouteName: 'Home', isHome: true });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);

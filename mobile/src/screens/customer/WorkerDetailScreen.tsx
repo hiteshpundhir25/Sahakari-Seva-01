@@ -26,8 +26,10 @@ import { FadeInView, ScalePressable } from '../../animations';
 import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ route, navigation }) => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'CustomerTabs', isHome: false });
   const workerId = route?.params?.workerId || 'w0000000-0000-0000-0000-000000000001';
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -70,6 +72,8 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
       <Header
         title={worker.profile?.full_name || worker.worker_code}
         subtitle={`${translateTrade(worker.skill_category)} • ${t('workerDetail.yrs_exp', { years: worker.experience_years })}`}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

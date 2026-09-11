@@ -25,8 +25,10 @@ import { FadeInView } from '../../animations';
 import { translateTrade } from '../../i18n';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 export const AdminForecastScreen: React.FC = () => {
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'AdminDashboard', isHome: false });
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -60,6 +62,8 @@ export const AdminForecastScreen: React.FC = () => {
       <Header
         title={t('admin.forecast_tab')}
         subtitle={t('admin.grounding', { count: totalEvents })}
+        showBack={true}
+        onBack={handleBack}
       />
 
       <ScrollView
