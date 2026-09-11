@@ -443,52 +443,10 @@ export const RootNavigator: React.FC = () => {
     }
   };
 
-    const navigateToActiveProfile = () => {
-    if (!rootNavigationRef.isReady()) return;
-    try {
-      if (session.role === 'customer') {
-        rootNavigationRef.navigate('CustomerTabs', { screen: 'CustomerProfile' });
-      } else if (session.role === 'worker') {
-        rootNavigationRef.navigate('WorkerProfile');
-      } else if (session.role === 'admin') {
-        rootNavigationRef.navigate('AdminProfile');
-      }
-    } catch (e) {
-      console.warn('Navigation to profile error:', e);
-    }
-  };
-
   return (
     <AuthContext.Provider value={{ session, login, logout }}>
       <RoleProvider role={session.role}>
       <View style={styles.container}>
-        {session.role && (
-          <View style={[styles.sessionHeader, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity
-              style={styles.sessionInfoBtn}
-              onPress={navigateToActiveProfile}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Open Active Profile"
-            >
-              <View style={styles.sessionAvatarPill}>
-                <User size={12} color={isDark ? colors.success : colors.successDark} />
-              </View>
-              <Text style={styles.sessionRoleText}>
-                {t('auth.active_profile')}:{' '}
-                <Text style={styles.sessionRoleHighlight}>
-                  {t(`roles.${session.role}`)}
-                </Text>
-              </Text>
-              <ChevronRight size={12} color={isDark ? '#94a3b8' : colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.switchRoleBtn} onPress={logout}>
-              <LogOut size={13} color={colors.danger} />
-              <Text style={styles.switchRoleText}>{t('auth.switch_role')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {!session.role && <LoginScreen onSelectRole={login} />}
         {session.role === 'customer' && (
           <ErrorBoundary fallbackTitle="Customer Section">
@@ -511,62 +469,9 @@ export const RootNavigator: React.FC = () => {
   );
 };
 
-const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
+const createStyles = (colors: Palette, _isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background
-  },
-  sessionHeader: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    backgroundColor: colors.topPanel,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.topPanelBorder,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 99
-  },
-  sessionInfoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-  },
-  sessionAvatarPill: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(22, 101, 52, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sessionRoleText: {
-    fontSize: 11,
-    color: isDark ? '#94a3b8' : colors.textSecondary,
-    fontWeight: '600'
-  },
-  sessionRoleHighlight: {
-    color: isDark ? colors.success : colors.successDark,
-    fontWeight: '800'
-  },
-  switchRoleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: isDark ? '#1e293b' : colors.surfaceSubtle,
-    borderWidth: isDark ? 0 : 1,
-    borderColor: isDark ? 'transparent' : colors.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6
-  },
-  switchRoleText: {
-    fontSize: 11,
-    color: colors.danger,
-    fontWeight: '700'
   }
 });
