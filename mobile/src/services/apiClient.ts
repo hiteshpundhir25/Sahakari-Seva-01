@@ -427,10 +427,20 @@ export class ApiClient {
         id: 'notif-c-' + Date.now(),
         user_id: bookingPayload.customer_id || 'p0000000-0000-0000-0000-000000000002',
         type: 'booking',
-        title: `Booking Confirmed! 🎉 (${booking.booking_code})`,
-        message: `Your booking for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} on ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'} has been confirmed.`,
+        title: `Booking Requested! 📋 (${booking.booking_code})`,
+        message: `Your booking request for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} on ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'} has been sent. Awaiting worker confirmation.`,
         read: false,
         action_url: '/bookings',
+        created_at: new Date().toISOString(),
+      });
+      MOCK_NOTIFICATIONS.worker.unshift({
+        id: 'notif-w-' + Date.now(),
+        user_id: bookingPayload.worker_id || 'w0000000-0000-0000-0000-000000000001',
+        type: 'booking',
+        title: `New Job Request! 📋 (${booking.booking_code})`,
+        message: `New booking requested by ${customerInfo?.full_name || 'Customer'} for ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'}. Tap to accept or review.`,
+        read: false,
+        action_url: '/jobs',
         created_at: new Date().toISOString(),
       });
       return booking;
@@ -466,6 +476,20 @@ export class ApiClient {
         if (status === 'accepted' || status === 'in_progress') {
           // When a service worker accepts or begins a job -> shift to 'busy' ("On Active Job")
           await this.updateWorkerAvailability(assignedWorkerId, 'busy');
+
+          // Notify customer that booking is officially confirmed
+          const workerObj = MOCK_WORKERS.find(w => w.id === assignedWorkerId);
+          const workerName = workerObj?.profile?.full_name || (workerObj as any)?.name || 'Service Professional';
+          MOCK_NOTIFICATIONS.customer.unshift({
+            id: 'notif-c-' + Date.now(),
+            user_id: resultBooking.customer_id || 'p0000000-0000-0000-0000-000000000002',
+            type: 'booking',
+            title: `Booking Confirmed! 🎉 (${resultBooking.booking_code})`,
+            message: `${workerName} has accepted and confirmed your booking! Worker duty status is now "On Active Job".`,
+            read: false,
+            action_url: '/bookings',
+            created_at: new Date().toISOString(),
+          });
         } else if (status === 'completed' || status === 'cancelled' || status === 'rejected') {
           // Check if worker has any other active jobs in 'accepted' or 'in_progress'
           const hasOtherActiveJobs = MOCK_BOOKINGS.some(

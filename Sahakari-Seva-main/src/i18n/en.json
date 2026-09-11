@@ -213,7 +213,14 @@
     "home_maintenance": "Home Maintenance",
     "worker_fallback": "Worker",
     "trade_fallback": "Skilled Tradesperson",
-    "verified_customer": "Verified Customer"
+    "verified_customer": "Verified Customer",
+    "cancel_request": "Cancel Request",
+    "refresh_status": "Refresh Status",
+    "cancel_title": "Cancel Booking Request?",
+    "cancel_msg": "Are you sure you want to cancel this booking request? The technician will be notified immediately and no charges will apply.",
+    "cancel_confirm": "Yes, Cancel Request",
+    "cancel_success_title": "Booking Request Cancelled",
+    "cancel_success_msg": "Your service request has been cancelled."
   },
   "bookingsList": {
     "empty_title": "No bookings found",

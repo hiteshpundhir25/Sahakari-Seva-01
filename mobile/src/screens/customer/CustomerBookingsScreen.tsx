@@ -25,8 +25,8 @@ import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 const makeStatusColors = (colors: Palette): Record<string, { bg: string; text: string }> => ({
   pending: { bg: colors.warningLight, text: colors.warningDark },
-  accepted: { bg: colors.infoLight, text: colors.infoDark },
-  in_progress: { bg: colors.violetLight, text: colors.violetDark },
+  accepted: { bg: colors.successLight, text: colors.successDark },
+  in_progress: { bg: colors.infoLight, text: colors.infoDark },
   completed: { bg: colors.successLight, text: colors.successDark },
   cancelled: { bg: colors.surfaceSubtle, text: colors.textSecondary }
 });
@@ -92,7 +92,11 @@ export const CustomerBookingsScreen: React.FC = () => {
                       <Text style={styles.bookingCode}>{booking.booking_code}</Text>
                       <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
                         <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                          {booking.status.toUpperCase()}
+                          {booking.status === 'pending'
+                            ? 'REQUESTED'
+                            : booking.status === 'accepted'
+                            ? 'CONFIRMED'
+                            : booking.status.toUpperCase().replace('_', ' ')}
                         </Text>
                       </View>
                     </View>

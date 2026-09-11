@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock, Clock } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
@@ -29,9 +29,9 @@ type RouteParams = {
 
 export const BookingDetailScreen: React.FC = () => {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const typography = makeTypography(colors);
-  const styles = createStyles(colors, typography);
+  const styles = createStyles(colors, typography, isDark);
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'BookingDetail'>>();
   const bookingId = route.params?.bookingId;
@@ -117,6 +117,39 @@ export const BookingDetailScreen: React.FC = () => {
               Alert.alert('Decline Failed', err.message || 'Could not decline bill.');
             } finally {
               setRespondingBill(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCancelBooking = async () => {
+    if (!booking) return;
+    Alert.alert(
+      t('bookingDetail.cancel_title', 'Cancel Booking Request?'),
+      t(
+        'bookingDetail.cancel_msg',
+        'Are you sure you want to cancel this booking request? The technician will be notified immediately and no charges will apply.'
+      ),
+      [
+        { text: t('common.keep', 'Keep Request'), style: 'cancel' },
+        {
+          text: t('bookingDetail.cancel_confirm', 'Yes, Cancel Request'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await ApiClient.updateBookingStatus(booking.id, 'cancelled');
+              Alert.alert(
+                t('bookingDetail.cancel_success_title', 'Booking Request Cancelled'),
+                t('bookingDetail.cancel_success_msg', 'Your service request has been cancelled.')
+              );
+              await fetchBooking();
+            } catch (err: any) {
+              Alert.alert('Cancellation Failed', err.message || 'Could not cancel booking.');
+            } finally {
+              setLoading(false);
             }
           },
         },
@@ -219,10 +252,18 @@ export const BookingDetailScreen: React.FC = () => {
           </Text>
         </View>
         <Badge
-          label={booking.status.toUpperCase().replace('_', ' ')}
+          label={
+            booking.status === 'pending'
+              ? 'REQUESTED • AWAITING WORKER'
+              : booking.status === 'accepted'
+              ? 'CONFIRMED • ON ACTIVE JOB'
+              : booking.status.toUpperCase().replace('_', ' ')
+          }
           variant={
             booking.status === 'completed'
               ? 'success'
+              : booking.status === 'accepted'
+              ? 'info'
               : booking.status === 'in_progress'
               ? 'info'
               : 'warning'
@@ -245,34 +286,135 @@ export const BookingDetailScreen: React.FC = () => {
 
       {/* Progress Stepper */}
       <Card style={styles.stepperCard}>
-        <Text style={styles.sectionTitle}>{t('bookingDetail.status_tracking')}</Text>
-        <View style={styles.stepperRow}>
-          {steps.map((step, idx) => {
-            const isDone = idx <= currentStep;
-            const isCurrent = idx === currentStep;
-            return (
-              <View key={step.key} style={styles.stepItem}>
-                <View
-                  style={[
-                    styles.stepCircle,
-                    isDone && styles.stepCircleDone,
-                    isCurrent && styles.stepCircleCurrent,
-                  ]}
-                >
-                  <Text style={[styles.stepNum, isDone && styles.stepNumDone]}>
-                    {isDone ? '✓' : idx + 1}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.stepLabel,
-                    isDone && styles.stepLabelDone,
-                    isCurrent && styles.stepLabelCurrent,
-                  ]}
-                >
-                  {step.label}
+        <View style={styles.stepperHeaderRow}>
+          <Text style={styles.sectionTitle}>{t('bookingDetail.status_tracking')}</Text>
+          {booking.status === 'pending' && (
+            <View style={styles.dispatchPill}>
+              <View style={styles.dispatchPillDot} />
+              <Text style={styles.dispatchPillText}>DISPATCH ACTIVE</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Status Explainer Banner for Customer */}
+        {booking.status === 'pending' && (
+          <View style={styles.statusExplainerCardPending}>
+            <View style={styles.statusExplainerIconCirclePending}>
+              <Clock size={18} color="#d97706" strokeWidth={2.5} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.statusExplainerTitlePending}>
+                {t('booking.awaiting_worker') || 'Awaiting Worker Confirmation'}
+              </Text>
+              <Text style={styles.statusExplainerDescPending}>
+                {t('booking.awaiting_worker_desc', {
+                  name: worker?.profile?.full_name || 'Assigned Professional',
+                  defaultValue: `${worker?.profile?.full_name || 'Assigned Professional'} has received your job alert. You will be notified as soon as they confirm your booking.`
+                })}
+              </Text>
+              <View style={styles.statusExplainerDivider} />
+              <View style={styles.statusExplainerMetaRow}>
+                <ShieldCheck size={12} color={isDark ? '#FBBF24' : '#B45309'} />
+                <Text style={styles.statusExplainerMetaText}>
+                  Avg response: 2–5 min • Pay upon service completion
                 </Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'accepted' && (
+          <View style={styles.statusExplainerCardAccepted}>
+            <CheckCircle2 size={18} color="#059669" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.statusExplainerTitleAccepted}>
+                {t('booking.confirmed_title') || 'Booking Confirmed! 🎉'}
+              </Text>
+              <Text style={styles.statusExplainerDescAccepted}>
+                {worker?.profile?.full_name || 'Assigned Professional'} has confirmed your booking and is scheduled on active duty for this service.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'cancelled' && (
+          <View style={styles.statusExplainerCardCancelled}>
+            <X size={18} color={colors.danger} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.statusExplainerTitleCancelled}>
+                Booking Cancelled
+              </Text>
+              <Text style={styles.statusExplainerDescCancelled}>
+                This service request has been cancelled. No fees were charged.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.stepperRow}>
+          {steps.map((step, idx) => {
+            const isDone = idx <= currentStep && booking.status !== 'cancelled';
+            const isCurrent = idx === currentStep && booking.status !== 'cancelled';
+            const isAwaiting = idx === 1 && booking.status === 'pending';
+
+            return (
+              <React.Fragment key={step.key}>
+                {idx > 0 && (
+                  <View
+                    style={[
+                      styles.stepperLine,
+                      isDone
+                        ? styles.stepperLineDone
+                        : isAwaiting
+                        ? styles.stepperLineAwaiting
+                        : styles.stepperLinePending,
+                    ]}
+                  />
+                )}
+                <View style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepCircle,
+                      isDone && styles.stepCircleDone,
+                      isAwaiting && styles.stepCircleAwaiting,
+                      !isDone && !isAwaiting && styles.stepCirclePending,
+                    ]}
+                  >
+                    {isDone ? (
+                      <Check size={13} color="#ffffff" strokeWidth={3} />
+                    ) : isAwaiting ? (
+                      <Clock size={12} color="#d97706" strokeWidth={2.5} />
+                    ) : (
+                      <Text style={styles.stepNum}>{idx + 1}</Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      isDone && styles.stepLabelDone,
+                      isAwaiting && styles.stepLabelAwaiting,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {step.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.stepSubLabel,
+                      isDone && styles.stepSubLabelDone,
+                      isAwaiting && styles.stepSubLabelAwaiting,
+                    ]}
+                  >
+                    {idx === 0
+                      ? 'Sent ✓'
+                      : idx === 1
+                      ? (booking.status === 'pending' ? 'Waiting...' : isDone ? 'Confirmed' : 'Step 2')
+                      : idx === 2
+                      ? (isDone ? 'Started' : 'Step 3')
+                      : (isDone ? 'Done' : 'Step 4')}
+                  </Text>
+                </View>
+              </React.Fragment>
             );
           })}
         </View>
@@ -535,7 +677,48 @@ export const BookingDetailScreen: React.FC = () => {
 
       {/* Dynamic Action Buttons */}
       <View style={styles.actionContainer}>
-        {!isPaidOrCompleted && (
+        {booking.status === 'pending' && (
+          <View style={styles.pendingActionCard}>
+            <View style={styles.pendingTrustRow}>
+              <View style={styles.pendingTrustIconCircle}>
+                <ShieldCheck size={18} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingTrustTitle}>
+                  Pay on Service Completion • ₹0 Advance Fee
+                </Text>
+                <Text style={styles.pendingTrustDesc}>
+                  Under Sahakari Seva cooperative rules, payment of ₹{finalPrice.toFixed(0)} is only due after {worker?.profile?.full_name || 'the professional'} finishes the work to your complete satisfaction.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.pendingActionButtonsRow}>
+              <TouchableOpacity
+                style={styles.cancelRequestBtn}
+                onPress={handleCancelBooking}
+                activeOpacity={0.7}
+              >
+                <X size={15} color={colors.danger} />
+                <Text style={styles.cancelRequestBtnText}>
+                  {t('bookingDetail.cancel_request', 'Cancel Request')}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.refreshStatusBtn}
+                onPress={fetchBooking}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.refreshStatusBtnText}>
+                  {t('bookingDetail.refresh_status', 'Refresh Status')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {(booking.status === 'accepted' || booking.status === 'in_progress') && !isPaidOrCompleted && (
           <Button
             title={`Pay Now (₹${finalPrice.toFixed(0)})`}
             variant="primary"
@@ -544,6 +727,22 @@ export const BookingDetailScreen: React.FC = () => {
             onPress={handlePayNow}
             style={styles.actionBtn}
           />
+        )}
+
+        {booking.status === 'cancelled' && (
+          <View style={styles.cancelledActionCard}>
+            <Text style={styles.cancelledTitle}>Booking Request Cancelled</Text>
+            <Text style={styles.cancelledDesc}>
+              This service request was cancelled. No payment was charged.
+            </Text>
+            <Button
+              title="Find Another Professional"
+              variant="primary"
+              size="md"
+              onPress={() => navigation.navigate('CustomerTabs', { screen: 'Search' })}
+              style={{ marginTop: spacing.sm }}
+            />
+          </View>
         )}
 
         {isPaidOrCompleted && (
@@ -630,7 +829,7 @@ export const BookingDetailScreen: React.FC = () => {
   );
 };
 
-const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>) => StyleSheet.create({
+const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypography>, isDark = false) => StyleSheet.create({
   screenWrapper: {
     flex: 1,
     backgroundColor: colors.background,
@@ -938,56 +1137,217 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   stepperCard: {
     marginBottom: spacing.md,
   },
+  stepperHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  dispatchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
+  },
+  dispatchPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F59E0B',
+  },
+  dispatchPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: isDark ? '#FBBF24' : '#B45309',
+    letterSpacing: 0.4,
+  },
+  statusExplainerCardPending: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FFFBEB',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245,158,11,0.35)' : '#FDE68A',
+    borderRadius: radii.md,
+    padding: spacing.sm + 2,
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  statusExplainerIconCirclePending: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: isDark ? 'rgba(245,158,11,0.25)' : '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusExplainerTitlePending: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: isDark ? '#FBBF24' : '#92400E',
+    marginBottom: 3,
+  },
+  statusExplainerDescPending: {
+    fontSize: 11.5,
+    color: isDark ? '#FDE68A' : '#78350F',
+    lineHeight: 16,
+  },
+  statusExplainerDivider: {
+    height: 1,
+    backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+    marginVertical: 7,
+  },
+  statusExplainerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statusExplainerMetaText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: isDark ? '#FBBF24' : '#B45309',
+  },
+  statusExplainerCardAccepted: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#ECFDF5',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(16,185,129,0.3)' : '#A7F3D0',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statusExplainerTitleAccepted: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: isDark ? '#34D399' : '#065F46',
+    marginBottom: 2,
+  },
+  statusExplainerDescAccepted: {
+    fontSize: 11.5,
+    color: isDark ? '#A7F3D0' : '#047857',
+    lineHeight: 16,
+  },
+  statusExplainerCardCancelled: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(244,63,94,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(244,63,94,0.25)',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statusExplainerTitleCancelled: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.danger,
+    marginBottom: 2,
+  },
+  statusExplainerDescCancelled: {
+    fontSize: 11.5,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
   sectionTitle: {
     ...typography.fontSubtitle,
     marginBottom: spacing.md,
   },
   stepperRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  stepperLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: colors.border,
+    marginHorizontal: 2,
+    marginTop: 13,
+  },
+  stepperLineDone: {
+    backgroundColor: '#059669',
+  },
+  stepperLineAwaiting: {
+    backgroundColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
+  },
+  stepperLinePending: {
+    backgroundColor: colors.border,
   },
   stepItem: {
     alignItems: 'center',
+    minWidth: 52,
     flex: 1,
   },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   stepCircleDone: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#059669',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  stepCircleCurrent: {
-    backgroundColor: colors.secondary,
-    borderWidth: 2,
-    borderColor: colors.secondaryLight,
+  stepCircleAwaiting: {
+    backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+  },
+  stepCirclePending: {
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   stepNum: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
   },
-  stepNumDone: {
-    color: colors.textInverse,
-  },
   stepLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
+    fontWeight: '600',
     color: colors.textMuted,
     textAlign: 'center',
   },
   stepLabelDone: {
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  stepLabelCurrent: {
-    color: colors.secondaryDark,
+    color: colors.successDark,
     fontWeight: '700',
+  },
+  stepLabelAwaiting: {
+    color: isDark ? '#FBBF24' : '#D97706',
+    fontWeight: '700',
+  },
+  stepSubLabel: {
+    fontSize: 9,
+    color: colors.textMuted,
+    marginTop: 1,
+    textAlign: 'center',
+  },
+  stepSubLabelDone: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.successDark,
+    marginTop: 1,
+    textAlign: 'center',
+  },
+  stepSubLabelAwaiting: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: isDark ? '#FBBF24' : '#D97706',
+    marginTop: 1,
+    textAlign: 'center',
   },
   workerCard: {
     marginBottom: spacing.md,
@@ -1189,6 +1549,98 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   settledActionRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  pendingActionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.3 : 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: spacing.sm,
+  },
+  pendingTrustRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: spacing.md,
+  },
+  pendingTrustIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingTrustTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  pendingTrustDesc: {
+    fontSize: 11.5,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  pendingActionButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  cancelRequestBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    backgroundColor: isDark ? 'rgba(244,63,94,0.1)' : 'rgba(244,63,94,0.06)',
+  },
+  cancelRequestBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.danger,
+  },
+  refreshStatusBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
+  },
+  refreshStatusBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  cancelledActionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.danger,
+    marginBottom: spacing.sm,
+  },
+  cancelledTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.danger,
+    marginBottom: 4,
+  },
+  cancelledDesc: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
   },
 });
 

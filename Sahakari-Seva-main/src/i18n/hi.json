@@ -213,7 +213,14 @@
     "home_maintenance": "गृह रखरखाव",
     "worker_fallback": "कार्यकर्ता",
     "trade_fallback": "कुशल शिल्पकार",
-    "verified_customer": "सत्यापित ग्राहक"
+    "verified_customer": "सत्यापित ग्राहक",
+    "cancel_request": "अनुरोध रद्द करें",
+    "refresh_status": "स्थिति रीफ़्रेश करें",
+    "cancel_title": "बुकिंग अनुरोध रद्द करें?",
+    "cancel_msg": "क्या आप वाकई इस बुकिंग अनुरोध को रद्द करना चाहते हैं? कार्यकर्ता को तुरंत सूचित किया जाएगा और कोई शुल्क नहीं लगेगा।",
+    "cancel_confirm": "हाँ, अनुरोध रद्द करें",
+    "cancel_success_title": "बुकिंग अनुरोध रद्द कर दिया गया",
+    "cancel_success_msg": "आपका सेवा अनुरोध सफलतापूर्वक रद्द कर दिया गया है।"
   },
   "bookingsList": {
     "empty_title": "कोई बुकिंग नहीं मिली",

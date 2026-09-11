@@ -160,8 +160,13 @@
     "required_title": "आवश्यक फ़ील्ड",
     "required_msg": "कृपया समस्या या सेवा आवश्यकता का विवरण दें।",
     "error_title": "त्रुटि",
+    "requested_title": "बुकिंग अनुरोध भेजा गया! 📋",
+    "requested_msg": "आपका बुकिंग अनुरोध {{name}} को भेज दिया गया है। कार्यकर्ता की पुष्टि की प्रतीक्षा है।",
+    "awaiting_worker": "कार्यकर्ता पुष्टि की प्रतीक्षा",
+    "awaiting_worker_desc": "{{name}} को आपका अनुरोध प्राप्त हो गया है। जैसे ही वे स्वीकार करेंगे, आपको सूचित किया जाएगा।",
+    "awaiting_short": "प्रतीक्षारत",
     "confirmed_title": "बुकिंग पुष्ट! 🎉",
-    "confirmed_msg": "बुकिंग {{code}} {{name}} को भेज दी गई। AI पूर्वानुमान के लिए मांग घटना दर्ज की गई!",
+    "confirmed_msg": "बुकिंग {{code}} की {{name}} द्वारा पुष्टि कर दी गई है।",
     "view_bookings": "बुकिंग देखें"
   },
   "bookingDetail": {
@@ -169,7 +174,8 @@
     "not_found": "बुकिंग रिकॉर्ड नहीं मिला।",
     "back_to_bookings": "बुकिंग पर वापस",
     "step_requested": "अनुरोधित",
-    "step_accepted": "स्वीकृत",
+    "step_accepted": "पुष्टि हुई",
+    "step_confirmed": "पुष्टि हुई",
     "step_in_progress": "प्रगति पर",
     "step_completed": "पूर्ण",
     "emergency_title": "आपातकालीन सेवा बुकिंग",
@@ -207,7 +213,14 @@
     "home_maintenance": "गृह रखरखाव",
     "worker_fallback": "कार्यकर्ता",
     "trade_fallback": "कुशल शिल्पकार",
-    "verified_customer": "सत्यापित ग्राहक"
+    "verified_customer": "सत्यापित ग्राहक",
+    "cancel_request": "अनुरोध रद्द करें",
+    "refresh_status": "स्थिति रीफ़्रेश करें",
+    "cancel_title": "बुकिंग अनुरोध रद्द करें?",
+    "cancel_msg": "क्या आप वाकई इस बुकिंग अनुरोध को रद्द करना चाहते हैं? कार्यकर्ता को तुरंत सूचित किया जाएगा और कोई शुल्क नहीं लगेगा।",
+    "cancel_confirm": "हाँ, अनुरोध रद्द करें",
+    "cancel_success_title": "बुकिंग अनुरोध रद्द कर दिया गया",
+    "cancel_success_msg": "आपका सेवा अनुरोध सफलतापूर्वक रद्द कर दिया गया है।"
   },
   "bookingsList": {
     "empty_title": "कोई बुकिंग नहीं मिली",

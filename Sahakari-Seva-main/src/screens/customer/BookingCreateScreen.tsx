@@ -236,8 +236,13 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
           navigation.navigate('CustomerTabs', { screen: 'Bookings' });
         }}
         onViewBookings={() => {
+          const b = confirmedBooking;
           setConfirmedBooking(null);
-          navigation.navigate('CustomerTabs', { screen: 'Bookings' });
+          if (b?.id) {
+            navigation.navigate('BookingDetail', { bookingId: b.id });
+          } else {
+            navigation.navigate('CustomerTabs', { screen: 'Bookings' });
+          }
         }}
       />
     </View>

@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   Pressable,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
@@ -30,6 +31,7 @@ import {
   X,
   Sparkles,
   CheckCircle2,
+  Send,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -90,6 +92,21 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
 
   const stepperPulse = useRef(new Animated.Value(1)).current;
 
+  const isConfirmed = booking?.status === 'accepted' || booking?.status === 'in_progress' || booking?.status === 'completed';
+  const bookingCode = booking?.booking_code || (isConfirmed ? 'BK-2026-CONFIRMED' : 'BK-2026-REQUESTED');
+  const workerName = worker?.name || booking?.worker?.profile?.full_name || (booking?.worker as any)?.name || 'Assigned Professional';
+  const workerTrade = worker?.service || worker?.skill_category || booking?.service_description || 'Home Service';
+  const workerRating = worker?.rating || worker?.average_rating || 4.9;
+  const bookingDate = booking?.booking_date || 'Today';
+  const bookingTime = booking?.booking_time || '10:00 AM';
+  const finalAmount = booking?.final_amount || worker?.hourly_rate || 249;
+  const workerCut = Math.round(finalAmount * 0.85);
+
+  const rotateInterpolation = checkRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-30deg', '0deg'],
+  });
+
   useEffect(() => {
     if (visible) {
       // Reset values
@@ -107,10 +124,14 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
       contentTranslateY.setValue(15);
       stepperPulse.setValue(1);
 
-      // Trigger celebratory haptic feedback
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      const hapticTimer = setTimeout(() => {
+      // Trigger tailored haptic feedback
+      if (isConfirmed) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      } else {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+      }
+      const hapticTimer = setTimeout(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
       }, 240);
 
       // 1. Entrance backdrop and card
@@ -134,7 +155,7 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
         }),
       ]).start();
 
-      // 2. Flipkart/Amazon bounce scale on checkmark circle (0 -> 1.25 -> 1.0)
+      // 2. Flipkart/Amazon bounce scale on badge circle (0 -> 1.25 -> 1.0)
       Animated.sequence([
         Animated.delay(100),
         Animated.parallel([
@@ -153,57 +174,93 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
         ]),
       ]).start();
 
-      // 3. Concentric radar ripples bursting outward
-      Animated.sequence([
-        Animated.delay(160),
-        Animated.parallel([
-          Animated.timing(ripple1Scale, {
-            toValue: 2.3,
-            duration: 1100,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-          Animated.timing(ripple1Opacity, {
-            toValue: 0,
-            duration: 1100,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-        ]),
-      ]).start();
+      // 3. Concentric radar ripples
+      let radarLoop: Animated.CompositeAnimation | null = null;
+      if (!isConfirmed) {
+        // Continuous gentle radar ripples loop for requested/dispatching state
+        radarLoop = Animated.loop(
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(ripple1Scale, {
+                toValue: 2.3,
+                duration: 1500,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: Platform.OS !== 'web',
+              }),
+              Animated.timing(ripple1Scale, {
+                toValue: 0.6,
+                duration: 0,
+                useNativeDriver: Platform.OS !== 'web',
+              }),
+            ]),
+            Animated.sequence([
+              Animated.timing(ripple1Opacity, {
+                toValue: 0,
+                duration: 1500,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: Platform.OS !== 'web',
+              }),
+              Animated.timing(ripple1Opacity, {
+                toValue: 0.7,
+                duration: 0,
+                useNativeDriver: Platform.OS !== 'web',
+              }),
+            ]),
+          ])
+        );
+        radarLoop.start();
+      } else {
+        Animated.sequence([
+          Animated.delay(160),
+          Animated.parallel([
+            Animated.timing(ripple1Scale, {
+              toValue: 2.3,
+              duration: 1100,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: Platform.OS !== 'web',
+            }),
+            Animated.timing(ripple1Opacity, {
+              toValue: 0,
+              duration: 1100,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: Platform.OS !== 'web',
+            }),
+          ]),
+        ]).start();
 
-      Animated.sequence([
-        Animated.delay(320),
-        Animated.parallel([
-          Animated.timing(ripple2Scale, {
-            toValue: 2.7,
-            duration: 1100,
-            easing: Easing.out(Easing.ease),
+        Animated.sequence([
+          Animated.delay(320),
+          Animated.parallel([
+            Animated.timing(ripple2Scale, {
+              toValue: 2.7,
+              duration: 1100,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: Platform.OS !== 'web',
+            }),
+            Animated.timing(ripple2Opacity, {
+              toValue: 0,
+              duration: 1100,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: Platform.OS !== 'web',
+            }),
+          ]),
+        ]).start();
+
+        // Confetti burst (only when confirmed)
+        Animated.sequence([
+          Animated.delay(200),
+          Animated.timing(confettiBurst, {
+            toValue: 1,
+            duration: 900,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: Platform.OS !== 'web',
           }),
-          Animated.timing(ripple2Opacity, {
-            toValue: 0,
-            duration: 1100,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-        ]),
-      ]).start();
+        ]).start();
+      }
 
-      // 4. Confetti burst
+      // 4. Order details and stepper reveal
       Animated.sequence([
-        Animated.delay(200),
-        Animated.timing(confettiBurst, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-      ]).start();
-
-      // 5. Order details and stepper reveal
-      Animated.sequence([
-        Animated.delay(280),
+        Animated.delay(260),
         Animated.parallel([
           Animated.timing(contentFadeAnim, {
             toValue: 1,
@@ -219,7 +276,7 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
         ]),
       ]).start();
 
-      // 6. Stepper pulse loop
+      // 5. Stepper pulse loop
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(stepperPulse, {
@@ -241,25 +298,12 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
       return () => {
         clearTimeout(hapticTimer);
         pulseLoop.stop();
+        if (radarLoop) radarLoop.stop();
       };
     }
-  }, [visible]);
+  }, [visible, isConfirmed]);
 
   if (!visible && !booking) return null;
-
-  const bookingCode = booking?.booking_code || 'BK-2026-CONFIRMED';
-  const workerName = worker?.name || booking?.worker?.profile?.full_name || (booking?.worker as any)?.name || 'Assigned Professional';
-  const workerTrade = worker?.service || worker?.skill_category || booking?.service_description || 'Home Service';
-  const workerRating = worker?.rating || worker?.average_rating || 4.9;
-  const bookingDate = booking?.booking_date || 'Today';
-  const bookingTime = booking?.booking_time || '10:00 AM';
-  const finalAmount = booking?.final_amount || worker?.hourly_rate || 249;
-  const workerCut = Math.round(finalAmount * 0.85);
-
-  const rotateInterpolation = checkRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-30deg', '0deg'],
-  });
 
   return (
     <Modal
@@ -302,237 +346,318 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
             style={styles.closeBtn}
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityLabel="Close confirmation"
+            accessibilityLabel="Close confirmation modal"
           >
-            <X size={20} color={colors.textSecondary} />
+            <X size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
-          {/* Celebratory Animation Header */}
-          <View style={styles.celebrationArea}>
-            {/* Ripple Ring 1 */}
+          <ScrollView
+            style={styles.scrollArea}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* ============================================================== */}
+            {/* CELEBRATORY TOP ANIMATION (Checkmark / Clock Icon + Ripple + Confetti) */}
+            {/* ============================================================== */}
+            <View style={styles.celebrationArea}>
+              {/* Ripple Ring 1 */}
+              <Animated.View
+                style={[
+                  styles.rippleRing,
+                  !isConfirmed && styles.rippleRingRequested,
+                  {
+                    transform: [{ scale: ripple1Scale }],
+                    opacity: ripple1Opacity,
+                  },
+                ]}
+              />
+
+              {/* Ripple Ring 2 */}
+              <Animated.View
+                style={[
+                  styles.rippleRing,
+                  styles.rippleRingSecondary,
+                  !isConfirmed && styles.rippleRingRequestedSecondary,
+                  {
+                    transform: [{ scale: ripple2Scale }],
+                    opacity: ripple2Opacity,
+                  },
+                ]}
+              />
+
+              {/* Radial Confetti Particles — only shown for Confirmed state */}
+              {isConfirmed &&
+                CONFETTI_PARTICLES.map((p, idx) => {
+                  const rad = (p.angle * Math.PI) / 180;
+                  const targetX = Math.cos(rad) * p.distance;
+                  const targetY = Math.sin(rad) * p.distance;
+
+                  const translateX = confettiBurst.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, targetX],
+                  });
+                  const translateY = confettiBurst.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, targetY],
+                  });
+                  const scale = confettiBurst.interpolate({
+                    inputRange: [0, 0.4, 0.8, 1],
+                    outputRange: [0.1, 1.3, 1.0, 0.3],
+                  });
+                  const opacity = confettiBurst.interpolate({
+                    inputRange: [0, 0.2, 0.7, 1],
+                    outputRange: [0, 1, 0.9, 0],
+                  });
+
+                  return (
+                    <Animated.View
+                      key={idx}
+                      style={[
+                        styles.confettiParticle,
+                        {
+                          transform: [{ translateX }, { translateY }, { scale }],
+                          opacity,
+                        },
+                      ]}
+                      pointerEvents="none"
+                    >
+                      <Text style={{ fontSize: p.size, color: p.color, fontWeight: '800' }}>
+                        {p.symbol}
+                      </Text>
+                    </Animated.View>
+                  );
+                })}
+
+              {/* Main Badge: Green Checkmark (Confirmed) or Warm Amber Clock (Requested) */}
+              <Animated.View
+                style={[
+                  styles.checkCircleBadge,
+                  !isConfirmed && styles.checkCircleBadgeRequested,
+                  {
+                    transform: [
+                      { scale: checkScale },
+                      { rotate: rotateInterpolation },
+                    ],
+                  },
+                ]}
+              >
+                {isConfirmed ? (
+                  <Check size={40} color="#ffffff" strokeWidth={3.8} />
+                ) : (
+                  <Clock size={36} color="#ffffff" strokeWidth={2.8} />
+                )}
+              </Animated.View>
+            </View>
+
+            {/* Animated Content Section */}
             <Animated.View
               style={[
-                styles.rippleRing,
+                styles.contentSection,
                 {
-                  transform: [{ scale: ripple1Scale }],
-                  opacity: ripple1Opacity,
-                },
-              ]}
-            />
-
-            {/* Ripple Ring 2 */}
-            <Animated.View
-              style={[
-                styles.rippleRing,
-                styles.rippleRingSecondary,
-                {
-                  transform: [{ scale: ripple2Scale }],
-                  opacity: ripple2Opacity,
-                },
-              ]}
-            />
-
-            {/* Radial Confetti Particles */}
-            {CONFETTI_PARTICLES.map((p, idx) => {
-              const rad = (p.angle * Math.PI) / 180;
-              const targetX = Math.cos(rad) * p.distance;
-              const targetY = Math.sin(rad) * p.distance;
-
-              const translateX = confettiBurst.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, targetX],
-              });
-              const translateY = confettiBurst.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, targetY],
-              });
-              const scale = confettiBurst.interpolate({
-                inputRange: [0, 0.4, 0.8, 1],
-                outputRange: [0.1, 1.3, 1.0, 0.3],
-              });
-              const opacity = confettiBurst.interpolate({
-                inputRange: [0, 0.2, 0.7, 1],
-                outputRange: [0, 1, 0.9, 0],
-              });
-
-              return (
-                <Animated.View
-                  key={idx}
-                  style={[
-                    styles.confettiParticle,
-                    {
-                      transform: [{ translateX }, { translateY }, { scale }],
-                      opacity,
-                    },
-                  ]}
-                  pointerEvents="none"
-                >
-                  <Text style={{ fontSize: p.size, color: p.color, fontWeight: '800' }}>
-                    {p.symbol}
-                  </Text>
-                </Animated.View>
-              );
-            })}
-
-            {/* Main Green Checkmark Badge */}
-            <Animated.View
-              style={[
-                styles.checkCircleBadge,
-                {
-                  transform: [
-                    { scale: checkScale },
-                    { rotate: rotateInterpolation },
-                  ],
+                  opacity: contentFadeAnim,
+                  transform: [{ translateY: contentTranslateY }],
                 },
               ]}
             >
-              <Check size={42} color="#ffffff" strokeWidth={3.8} />
-            </Animated.View>
-          </View>
-
-          {/* Animated Content Section */}
-          <Animated.View
-            style={[
-              styles.contentSection,
-              {
-                opacity: contentFadeAnim,
-                transform: [{ translateY: contentTranslateY }],
-              },
-            ]}
-          >
-            {/* Title & Badge */}
-            <Text style={styles.titleText}>
-              {t('booking.confirmed_title') || 'Booking Confirmed! 🎉'}
-            </Text>
-
-            <View style={styles.orderCodeBadge}>
-              <View style={styles.liveGreenDot} />
-              <Text style={styles.orderCodeText}>
-                ORDER #{bookingCode}
+              {/* Title & Dynamic Status Badge */}
+              <Text style={styles.titleText}>
+                {isConfirmed
+                  ? (t('booking.confirmed_title') || 'Booking Confirmed! 🎉')
+                  : (t('booking.requested_title') || 'Booking Requested! 📋')}
               </Text>
-            </View>
 
-            <Text style={styles.subtitleText}>
-              Your request has been dispatched to {workerName}. Instant demand recorded!
-            </Text>
-
-            {/* ============================================================== */}
-            {/* FLIPKART / AMAZON 4-STEP TRACKER */}
-            {/* ============================================================== */}
-            <View style={styles.stepperContainer}>
-              <View style={styles.stepperTrackRow}>
-                {/* Step 1: Placed */}
-                <View style={styles.stepItem}>
-                  <View style={[styles.stepCircle, styles.stepCircleDone]}>
-                    <Check size={13} color="#ffffff" strokeWidth={3} />
-                  </View>
-                  <Text style={[styles.stepLabel, styles.stepLabelActive]}>Placed</Text>
-                </View>
-
-                {/* Connecting Line 1-2 */}
-                <View style={[styles.stepLine, styles.stepLineActive]} />
-
-                {/* Step 2: Confirmed */}
-                <View style={styles.stepItem}>
-                  <Animated.View
-                    style={[
-                      styles.stepCircle,
-                      styles.stepCircleDone,
-                      { transform: [{ scale: stepperPulse }] },
-                    ]}
-                  >
-                    <Check size={13} color="#ffffff" strokeWidth={3} />
-                  </Animated.View>
-                  <Text style={[styles.stepLabel, styles.stepLabelActive]}>Confirmed</Text>
-                </View>
-
-                {/* Connecting Line 2-3 */}
-                <View style={styles.stepLine} />
-
-                {/* Step 3: On The Way */}
-                <View style={styles.stepItem}>
-                  <View style={styles.stepCirclePending}>
-                    <Clock size={12} color={colors.textMuted} />
-                  </View>
-                  <Text style={styles.stepLabel}>On The Way</Text>
-                </View>
-
-                {/* Connecting Line 3-4 */}
-                <View style={styles.stepLine} />
-
-                {/* Step 4: Done */}
-                <View style={styles.stepItem}>
-                  <View style={styles.stepCirclePending}>
-                    <ShieldCheck size={12} color={colors.textMuted} />
-                  </View>
-                  <Text style={styles.stepLabel}>Done</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Summary Details Card */}
-            <View style={styles.summaryCard}>
-              <View style={styles.workerRow}>
-                <View style={styles.workerAvatar}>
-                  <Text style={styles.workerAvatarText}>
-                    {workerName.charAt(0)}
-                  </Text>
-                </View>
-                <View style={styles.workerInfo}>
-                  <Text style={styles.workerNameText} numberOfLines={1}>
-                    {workerName}
-                  </Text>
-                  <Text style={styles.workerServiceText}>
-                    {workerTrade} • ★ {workerRating}
-                  </Text>
-                </View>
-                <View style={styles.amountPill}>
-                  <Text style={styles.amountPillText}>₹{finalAmount}</Text>
-                </View>
-              </View>
-
-              <View style={styles.scheduleRow}>
-                <View style={styles.scheduleCol}>
-                  <Calendar size={14} color={colors.primary} />
-                  <Text style={styles.scheduleText}>{bookingDate}</Text>
-                </View>
-                <View style={styles.scheduleCol}>
-                  <Clock size={14} color={colors.primary} />
-                  <Text style={styles.scheduleText}>{bookingTime}</Text>
-                </View>
-              </View>
-
-              {/* Fair Wage Guarantee */}
-              <View style={styles.fairWageBanner}>
-                <ShieldCheck size={15} color={colors.successDark} />
-                <Text style={styles.fairWageText}>
-                  Cooperative Fair Share: ₹{workerCut} (85%) directly to {workerName.split(' ')[0]}
+              <View style={[styles.orderCodeBadge, !isConfirmed && styles.orderCodeBadgeRequested]}>
+                <View style={isConfirmed ? styles.liveGreenDot : styles.liveAmberDot} />
+                <Text style={[styles.orderCodeText, !isConfirmed && styles.orderCodeTextRequested]}>
+                  ORDER #{bookingCode} • {isConfirmed ? 'CONFIRMED' : 'AWAITING WORKER'}
                 </Text>
               </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.actionButtonsCol}>
-              <TouchableOpacity
-                style={styles.primaryBtn}
-                onPress={onViewBookings}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.primaryBtnText}>
-                  {t('booking.view_bookings') || 'Track & View in Bookings'}
-                </Text>
-                <ArrowRight size={18} color="#ffffff" />
-              </TouchableOpacity>
+              <Text style={styles.subtitleText}>
+                {isConfirmed
+                  ? `Your booking has been confirmed by ${workerName}. Technician is scheduled on active duty!`
+                  : `Your service request has been sent to ${workerName}. Awaiting worker confirmation.`}
+              </Text>
 
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={onClose}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.secondaryBtnText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+              {/* ============================================================== */}
+              {/* FLIPKART / AMAZON 4-STEP TRACKER */}
+              {/* ============================================================== */}
+              <View style={styles.stepperContainer}>
+                <View style={styles.stepperTrackRow}>
+                  {/* Step 1: Requested */}
+                  <View style={styles.stepItem}>
+                    <View style={[styles.stepCircle, styles.stepCircleDone]}>
+                      <Check size={12} color="#ffffff" strokeWidth={3} />
+                    </View>
+                    <Text style={[styles.stepLabel, styles.stepLabelActive]}>
+                      {t('bookingDetail.step_requested') || 'Requested'}
+                    </Text>
+                    <Text style={styles.stepSubLabelDone}>Sent ✓</Text>
+                  </View>
+
+                  {/* Connecting Line 1-2 */}
+                  <View style={[styles.stepLine, isConfirmed ? styles.stepLineActive : styles.stepLineAwaiting]} />
+
+                  {/* Step 2: Confirmed / Awaiting */}
+                  <View style={styles.stepItem}>
+                    {isConfirmed ? (
+                      <Animated.View
+                        style={[
+                          styles.stepCircle,
+                          styles.stepCircleDone,
+                          { transform: [{ scale: stepperPulse }] },
+                        ]}
+                      >
+                        <Check size={12} color="#ffffff" strokeWidth={3} />
+                      </Animated.View>
+                    ) : (
+                      <Animated.View
+                        style={[
+                          styles.stepCircle,
+                          styles.stepCircleAwaiting,
+                          { transform: [{ scale: stepperPulse }] },
+                        ]}
+                      >
+                        <Clock size={11} color="#d97706" strokeWidth={2.4} />
+                      </Animated.View>
+                    )}
+                    <Text style={[styles.stepLabel, isConfirmed ? styles.stepLabelActive : styles.stepLabelAwaiting]}>
+                      {isConfirmed ? (t('bookingDetail.step_confirmed') || 'Confirmed') : 'Confirmed'}
+                    </Text>
+                    <Text style={isConfirmed ? styles.stepSubLabelDone : styles.stepSubLabelAwaiting}>
+                      {isConfirmed ? 'Accepted' : 'Waiting...'}
+                    </Text>
+                  </View>
+
+                  {/* Connecting Line 2-3 */}
+                  <View style={styles.stepLine} />
+
+                  {/* Step 3: In Progress */}
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepCirclePending}>
+                      <Clock size={11} color={colors.textMuted} />
+                    </View>
+                    <Text style={styles.stepLabel}>{t('bookingDetail.step_in_progress') || 'In Progress'}</Text>
+                    <Text style={styles.stepSubLabel}>Step 3</Text>
+                  </View>
+
+                  {/* Connecting Line 3-4 */}
+                  <View style={styles.stepLine} />
+
+                  {/* Step 4: Done */}
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepCirclePending}>
+                      <ShieldCheck size={11} color={colors.textMuted} />
+                    </View>
+                    <Text style={styles.stepLabel}>{t('bookingDetail.step_completed') || 'Completed'}</Text>
+                    <Text style={styles.stepSubLabel}>Step 4</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Awaiting Worker Confirmation Notice Card */}
+              {!isConfirmed && (
+                <View style={styles.awaitingNoticeCard}>
+                  <View style={styles.awaitingTopRow}>
+                    <View style={styles.awaitingClockIconCircle}>
+                      <Clock size={16} color="#d97706" strokeWidth={2.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.awaitingNoticeTitle}>
+                        {t('booking.awaiting_worker') || 'Awaiting Worker Confirmation'}
+                      </Text>
+                      <Text style={styles.awaitingNoticeDesc}>
+                        {workerName} has received your job alert. You will be notified as soon as they confirm your booking.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.awaitingNoticeDivider} />
+
+                  <View style={styles.dispatchPillRow}>
+                    <View style={styles.pulseLiveDot} />
+                    <Text style={styles.dispatchPillText}>
+                      Direct Cooperative Dispatch • Avg response 2–5 min
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Summary Details Card */}
+              <View style={styles.summaryCard}>
+                <View style={styles.workerRow}>
+                  <View style={styles.workerAvatar}>
+                    <Text style={styles.workerAvatarText}>
+                      {workerName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.workerInfo}>
+                    <Text style={styles.workerNameText} numberOfLines={1}>
+                      {workerName}
+                    </Text>
+                    <Text style={styles.workerServiceText}>
+                      {workerTrade} • ★ {workerRating}
+                    </Text>
+                  </View>
+                  <View style={styles.amountPill}>
+                    <Text style={styles.amountPillLabel}>Estimated</Text>
+                    <Text style={styles.amountPillText}>₹{finalAmount}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.scheduleRow}>
+                  <View style={styles.scheduleCol}>
+                    <Calendar size={13} color={colors.primary} />
+                    <Text style={styles.scheduleText}>{bookingDate}</Text>
+                  </View>
+                  <View style={styles.scheduleCol}>
+                    <Clock size={13} color={colors.primary} />
+                    <Text style={styles.scheduleText}>{bookingTime}</Text>
+                  </View>
+                </View>
+
+                {/* Fair Wage Guarantee */}
+                <View style={styles.fairWageBanner}>
+                  <ShieldCheck size={14} color={colors.successDark} />
+                  <Text style={styles.fairWageText}>
+                    Cooperative Fair Share: ₹{workerCut} (85%) directly to {workerName.split(' ')[0]}
+                  </Text>
+                </View>
+
+                {/* Pay on Completion Tag */}
+                <View style={styles.payOnCompletionRow}>
+                  <Text style={styles.payOnCompletionText}>
+                    💳 Pay after service completion • No advance fee required
+                  </Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.actionButtonsCol}>
+                <TouchableOpacity
+                  style={styles.primaryBtn}
+                  onPress={onViewBookings}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {t('booking.view_bookings') || 'Track Booking Status'}
+                  </Text>
+                  <ArrowRight size={17} color="#ffffff" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={onClose}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryBtnText}>
+                    {t('common.close', 'Done')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </ScrollView>
         </Animated.View>
       </View>
     </Modal>
@@ -545,7 +670,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 18,
+      padding: 16,
     },
     backdrop: {
       position: 'absolute',
@@ -557,13 +682,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     cardContainer: {
       width: '100%',
-      maxWidth: 400,
+      maxWidth: 410,
+      maxHeight: '90%',
       backgroundColor: colors.surface,
       borderRadius: 24,
-      paddingHorizontal: 22,
-      paddingTop: 24,
-      paddingBottom: 20,
-      alignItems: 'center',
       borderWidth: 1,
       borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)',
       shadowColor: '#000',
@@ -571,33 +693,54 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       shadowOpacity: isDark ? 0.45 : 0.22,
       shadowRadius: 30,
       elevation: 20,
+      overflow: 'hidden',
+    },
+    scrollArea: {
+      width: '100%',
+    },
+    scrollContent: {
+      alignItems: 'center',
+      paddingHorizontal: 18,
+      paddingTop: 22,
+      paddingBottom: 20,
     },
     closeBtn: {
       position: 'absolute',
       top: 14,
       right: 14,
-      zIndex: 10,
+      zIndex: 20,
       padding: 6,
       borderRadius: 16,
       backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
     },
     celebrationArea: {
       width: 140,
-      height: 120,
+      height: 100,
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: 6,
+      marginTop: 2,
       marginBottom: 6,
     },
     rippleRing: {
       position: 'absolute',
-      width: 78,
-      height: 78,
-      borderRadius: 39,
-      backgroundColor: '#10B981',
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      borderWidth: 2,
+      borderColor: '#10B981',
+      backgroundColor: 'rgba(16, 185, 129, 0.08)',
     },
     rippleRingSecondary: {
-      backgroundColor: '#34D399',
+      borderColor: '#34D399',
+      backgroundColor: 'transparent',
+    },
+    rippleRingRequested: {
+      borderColor: '#F59E0B',
+      backgroundColor: 'rgba(245, 158, 11, 0.10)',
+    },
+    rippleRingRequestedSecondary: {
+      borderColor: '#FBBF24',
+      backgroundColor: 'transparent',
     },
     confettiParticle: {
       position: 'absolute',
@@ -605,9 +748,9 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
     },
     checkCircleBadge: {
-      width: 78,
-      height: 78,
-      borderRadius: 39,
+      width: 74,
+      height: 74,
+      borderRadius: 37,
       backgroundColor: '#059669',
       justifyContent: 'center',
       alignItems: 'center',
@@ -619,16 +762,19 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderWidth: 3.5,
       borderColor: '#ffffff',
     },
+    checkCircleBadgeRequested: {
+      backgroundColor: '#D97706',
+      shadowColor: '#D97706',
+    },
     contentSection: {
       width: '100%',
       alignItems: 'center',
     },
     titleText: {
-      fontSize: 22,
+      fontSize: 21,
       fontWeight: '800',
       color: colors.textPrimary,
       textAlign: 'center',
-      marginTop: 4,
       letterSpacing: -0.3,
     },
     orderCodeBadge: {
@@ -636,33 +782,47 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
       backgroundColor: isDark ? 'rgba(16,185,129,0.18)' : '#ECFDF5',
       paddingHorizontal: 12,
-      paddingVertical: 5,
+      paddingVertical: 4.5,
       borderRadius: 20,
-      marginTop: 8,
+      marginTop: 6,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(16,185,129,0.4)' : '#A7F3D0',
     },
+    orderCodeBadgeRequested: {
+      backgroundColor: isDark ? 'rgba(245,158,11,0.18)' : '#FEF3C7',
+      borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
+    },
     liveGreenDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
       backgroundColor: '#10B981',
       marginRight: 6,
     },
+    liveAmberDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#F59E0B',
+      marginRight: 6,
+    },
     orderCodeText: {
-      fontSize: 12,
+      fontSize: 11.5,
       fontWeight: '700',
       color: colors.successDark,
-      letterSpacing: 0.6,
+      letterSpacing: 0.5,
+    },
+    orderCodeTextRequested: {
+      color: isDark ? '#FBBF24' : '#B45309',
     },
     subtitleText: {
-      fontSize: 13,
+      fontSize: 12.5,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginTop: 8,
-      marginBottom: 16,
-      paddingHorizontal: 10,
-      lineHeight: 18,
+      marginTop: 6,
+      marginBottom: 12,
+      paddingHorizontal: 12,
+      lineHeight: 17,
     },
 
     // Stepper styling
@@ -671,8 +831,8 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: colors.surfaceSubtle,
       borderRadius: 14,
       paddingVertical: 12,
-      paddingHorizontal: 12,
-      marginBottom: 14,
+      paddingHorizontal: 8,
+      marginBottom: 12,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -683,15 +843,16 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     stepItem: {
       alignItems: 'center',
-      minWidth: 52,
+      minWidth: 48,
+      flex: 1,
     },
     stepCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 6,
+      marginBottom: 4,
     },
     stepCircleDone: {
       backgroundColor: '#059669',
@@ -701,19 +862,30 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       shadowRadius: 4,
       elevation: 2,
     },
+    stepCircleAwaiting: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+      borderWidth: 1.5,
+      borderColor: '#F59E0B',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
     stepCirclePending: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
       borderWidth: 1.5,
       borderColor: colors.border,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 6,
+      marginBottom: 4,
     },
     stepLabel: {
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: '600',
       color: colors.textMuted,
       textAlign: 'center',
@@ -722,15 +894,95 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.successDark,
       fontWeight: '700',
     },
+    stepLabelAwaiting: {
+      color: isDark ? '#FBBF24' : '#D97706',
+      fontWeight: '700',
+    },
+    stepSubLabel: {
+      fontSize: 9,
+      color: colors.textMuted,
+      marginTop: 1,
+    },
+    stepSubLabelDone: {
+      fontSize: 9,
+      fontWeight: '600',
+      color: colors.successDark,
+      marginTop: 1,
+    },
+    stepSubLabelAwaiting: {
+      fontSize: 9,
+      fontWeight: '600',
+      color: isDark ? '#FBBF24' : '#D97706',
+      marginTop: 1,
+    },
     stepLine: {
       flex: 1,
       height: 2,
       backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border,
-      marginHorizontal: 3,
-      marginTop: 11,
+      marginHorizontal: 2,
+      marginTop: 10,
     },
     stepLineActive: {
       backgroundColor: '#059669',
+    },
+    stepLineAwaiting: {
+      backgroundColor: isDark ? 'rgba(245,158,11,0.3)' : '#FDE68A',
+    },
+
+    // Awaiting Notice Card
+    awaitingNoticeCard: {
+      backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FFFBEB',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(245,158,11,0.35)' : '#FDE68A',
+      borderRadius: 14,
+      padding: 11,
+      marginBottom: 12,
+      width: '100%',
+    },
+    awaitingTopRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    awaitingClockIconCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    awaitingNoticeTitle: {
+      fontSize: 12.5,
+      fontWeight: '700',
+      color: isDark ? '#FBBF24' : '#92400E',
+      marginBottom: 2,
+    },
+    awaitingNoticeDesc: {
+      fontSize: 11.5,
+      color: isDark ? '#FDE68A' : '#78350F',
+      lineHeight: 16,
+    },
+    awaitingNoticeDivider: {
+      height: 1,
+      backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
+      marginVertical: 8,
+    },
+    dispatchPillRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    pulseLiveDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#10B981',
+    },
+    dispatchPillText: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      color: isDark ? '#FBBF24' : '#B45309',
     },
 
     // Summary Card
@@ -739,14 +991,14 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: colors.surfaceSubtle,
       borderRadius: 14,
       padding: 12,
-      marginBottom: 16,
+      marginBottom: 12,
       borderWidth: 1,
       borderColor: colors.border,
     },
     workerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: 8,
     },
     workerAvatar: {
       width: 36,
@@ -759,73 +1011,92 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     workerAvatarText: {
       color: '#ffffff',
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '800',
     },
     workerInfo: {
       flex: 1,
     },
     workerNameText: {
-      fontSize: 14,
+      fontSize: 13.5,
       fontWeight: '700',
       color: colors.textPrimary,
     },
     workerServiceText: {
-      fontSize: 12,
+      fontSize: 11.5,
       color: colors.textSecondary,
       marginTop: 1,
     },
     amountPill: {
-      backgroundColor: isDark ? 'rgba(79,70,229,0.2)' : colors.primaryLight,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(0,90,156,0.2)' : 'rgba(0,90,156,0.08)',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(0,90,156,0.4)' : 'rgba(0,90,156,0.18)',
+      alignItems: 'flex-end',
+    },
+    amountPillLabel: {
+      fontSize: 8.5,
+      fontWeight: '600',
+      color: colors.textMuted,
+      textTransform: 'uppercase',
     },
     amountPillText: {
-      fontSize: 13,
+      fontSize: 12.5,
       fontWeight: '800',
       color: colors.primary,
     },
     scheduleRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: 8,
+      justifyContent: 'space-between',
+      paddingVertical: 6,
       borderTopWidth: 1,
       borderBottomWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border,
-      marginBottom: 8,
+      borderColor: colors.border,
+      marginBottom: 6,
     },
     scheduleCol: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 5,
     },
     scheduleText: {
-      fontSize: 12,
+      fontSize: 11.5,
       fontWeight: '600',
       color: colors.textPrimary,
     },
     fairWageBanner: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(5,150,105,0.14)' : '#ECFDF5',
+      backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : '#ECFDF5',
       paddingHorizontal: 8,
-      paddingVertical: 6,
-      borderRadius: 8,
+      paddingVertical: 5,
+      borderRadius: 6,
       gap: 6,
+      marginBottom: 5,
     },
     fairWageText: {
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: '600',
       color: colors.successDark,
       flex: 1,
+    },
+    payOnCompletionRow: {
+      paddingTop: 2,
+    },
+    payOnCompletionText: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      fontWeight: '500',
     },
 
     // Action buttons
     actionButtonsCol: {
       width: '100%',
-      gap: 8,
+      gap: 7,
     },
     primaryBtn: {
       width: '100%',
@@ -833,30 +1104,33 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 14,
-      borderRadius: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
       gap: 8,
       shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.35,
-      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
       elevation: 4,
     },
     primaryBtnText: {
       color: '#ffffff',
-      fontSize: 15,
-      fontWeight: '800',
-      letterSpacing: 0.2,
+      fontSize: 14,
+      fontWeight: '700',
     },
     secondaryBtn: {
       width: '100%',
-      paddingVertical: 10,
+      paddingVertical: 9,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: 12,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     secondaryBtnText: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
       color: colors.textSecondary,
     },
   });
