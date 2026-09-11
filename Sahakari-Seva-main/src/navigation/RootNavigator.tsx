@@ -4,8 +4,9 @@
 // All labels are localized and update simultaneously on language change.
 // ==============================================================================
 
-import React, { useState, createContext } from 'react';
+import React, { useState, useEffect, createContext } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -141,6 +142,8 @@ function CustomerTabNavigator() {
   const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
+      initialRouteName="Home"
+      backBehavior="firstRoute"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,
@@ -215,6 +218,8 @@ function WorkerTabNavigator() {
   const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
+      initialRouteName="WorkerHome"
+      backBehavior="firstRoute"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,
@@ -287,6 +292,8 @@ function AdminTabNavigator() {
   const tabBarBase = makeTabBarBase(colors, isDark);
   return (
     <Tab.Navigator
+      initialRouteName="AdminDashboard"
+      backBehavior="firstRoute"
       detachInactiveScreens={false}
       screenOptions={{
         ...tabBarBase,
@@ -340,6 +347,23 @@ function AdminTabNavigator() {
   );
 }
 
+const SESSION_STORAGE_KEY = '@sahakari_user_session';
+
+const getInitialSession = (): UserSession => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = window.localStorage.getItem(SESSION_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.role) {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return { role: null, user: null };
+};
+
 // -----------------------------------------------------------------------------
 // MAIN ROOT NAVIGATOR
 // -----------------------------------------------------------------------------
@@ -348,17 +372,48 @@ export const RootNavigator: React.FC = () => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);
-  const [session, setSession] = useState<UserSession>({
-    role: null,
-    user: null
-  });
+  const [session, setSession] = useState<UserSession>(getInitialSession);
 
-  const login = (role: 'customer' | 'worker' | 'admin', user?: any) => {
-    setSession({ role, user: user || { role } });
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.role && (!session.role || session.role !== parsed.role)) {
+            setSession(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to restore session from storage', e);
+      }
+    };
+    restoreSession();
+  }, []);
+
+  const login = async (role: 'customer' | 'worker' | 'admin', user?: any) => {
+    const newSession: UserSession = { role, user: user || { role } };
+    setSession(newSession);
+    try {
+      await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+      }
+    } catch (e) {
+      console.warn('Failed to persist session to storage', e);
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setSession({ role: null, user: null });
+    try {
+      await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.warn('Failed to clear session from storage', e);
+    }
   };
 
   return (

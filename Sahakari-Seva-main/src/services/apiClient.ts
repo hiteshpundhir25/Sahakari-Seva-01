@@ -199,6 +199,25 @@ export class ApiClient {
     }
   }
 
+  public static async updateWorkerProfile(
+    workerId: string,
+    updates: Partial<Worker> & Record<string, any>
+  ): Promise<Worker> {
+    try {
+      return await this.request<Worker>(`/workers/${workerId}/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      });
+    } catch {
+      const w = MOCK_WORKERS.find(x => x.id === workerId) || MOCK_WORKERS[0];
+      if (w) {
+        Object.assign(w, updates);
+        return w;
+      }
+      return { id: workerId, ...updates } as any;
+    }
+  }
+
   public static async updateWorkerLocation(
     workerId: string,
     lat: number,

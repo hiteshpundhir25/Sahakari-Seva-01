@@ -17,8 +17,10 @@ import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Worker } from '../../types';
 import { useTranslation } from 'react-i18next';
+import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
-export const WorkerProfileScreen: React.FC = () => {
+export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const typography = makeTypography(colors);
@@ -68,31 +70,50 @@ export const WorkerProfileScreen: React.FC = () => {
         {
           text: t('workerProfile.doc_ntc'),
           onPress: () => {
-            setCertName('National Trade Certificate (Electrician) - ITI Pusa');
-            Alert.alert(t('workerProfile.uploaded_title'), t('workerProfile.uploaded_ntc'));
+            setCertName('National Trade Certificate (NTC) — Verified');
+            Alert.alert(t('workerProfile.verified_title'), t('workerProfile.doc_ntc'));
           },
         },
         {
-          text: t('workerProfile.doc_nsdc'),
+          text: t('workerProfile.doc_diploma'),
           onPress: () => {
-            setCertName('NSDC Skill India Certified Level 4');
-            Alert.alert(t('workerProfile.uploaded_title'), t('workerProfile.uploaded_nsdc'));
+            setCertName('Polytechnic Electrical Diploma — Verified');
+            Alert.alert(t('workerProfile.verified_title'), t('workerProfile.doc_diploma'));
           },
         },
-        { text: t('workerProfile.cancel'), style: 'cancel' },
+        {
+          text: t('workerProfile.doc_safety'),
+          onPress: () => {
+            setCertName('Central Electricity Authority Safety Pass');
+            Alert.alert(t('workerProfile.verified_title'), t('workerProfile.doc_safety'));
+          },
+        },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
 
-  const handleSave = () => {
+  const handleSaveProfile = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      Alert.alert(
-        t('workerProfile.profile_saved_title'),
-        t('workerProfile.profile_saved_msg')
+    try {
+      await ApiClient.updateWorkerProfile(
+        'w0000000-0000-0000-0000-000000000001',
+        {
+          bio,
+          skill_category: skillCategory,
+          hourly_or_base_rate: Number(hourlyRate),
+          service_area: serviceArea,
+          pincode,
+          skills: skillsInput.split(',').map(s => s.trim()).filter(Boolean),
+          certification_name: certName
+        }
       );
-    }, 600);
+      Alert.alert(t('workerProfile.profile_updated_title'), t('workerProfile.profile_updated_msg'));
+    } catch (err: any) {
+      Alert.alert(t('workerProfile.save_failed'), err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -109,6 +130,14 @@ export const WorkerProfileScreen: React.FC = () => {
       <Header
         title={worker?.profile?.full_name || 'Rahul Sharma'}
         subtitle={t('worker.federation_member')}
+        showBack={true}
+        onBack={() => {
+          if (navigation?.canGoBack?.()) {
+            navigation.goBack();
+          } else if (navigation?.navigate) {
+            navigation.navigate('WorkerHome');
+          }
+        }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Cooperative Digital ID Card */}
@@ -240,7 +269,7 @@ export const WorkerProfileScreen: React.FC = () => {
         variant="primary"
         size="lg"
         loading={saving}
-        onPress={handleSave}
+        onPress={handleSaveProfile}
         style={{ marginTop: spacing.md }}
       />
       </ScrollView>
