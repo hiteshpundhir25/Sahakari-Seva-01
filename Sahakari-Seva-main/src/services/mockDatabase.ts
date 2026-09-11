@@ -315,7 +315,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     address: 'Flat 402, C-Scheme', city: 'Jaipur', state: 'Rajasthan', pincode: '302001',
     service_description: 'Ceiling fan sparking and switchboard loose in the living room.',
     estimated_amount: 349, final_amount: 349, is_emergency: false,
-    status: 'in_progress', payment_status: 'pending',
+    status: 'completed', payment_status: 'paid',
     created_at: '2026-09-04T10:00:00Z', updated_at: '2026-09-05T08:12:00Z',
     worker: worker('w0000000-0000-0000-0000-000000000001'), customer: customer('p0000000-0000-0000-0000-000000000002'), service_category: cat('s0000000-0000-0000-0000-000000000001'),
     supplemental_bill: {
@@ -523,6 +523,30 @@ export const MOCK_BOOKINGS: Booking[] = [
     status: 'pending', payment_status: 'paid', // Prepaid violation before service started!
     created_at: '2026-09-10T10:00:00Z', updated_at: '2026-09-10T10:30:00Z',
     worker: worker('w0000000-0000-0000-0000-000000000001'), customer: customer('p0000000-0000-0000-0000-000000000001'), service_category: cat('s0000000-0000-0000-0000-000000000001'),
+  },
+  {
+    id: 'bk-worker-10', booking_code: 'BK-2026-JPR-110',
+    customer_id: 'p0000000-0000-0000-0000-000000000005', worker_id: 'w0000000-0000-0000-0000-000000000001',
+    service_category_id: 's0000000-0000-0000-0000-000000000001', cooperative_id: coop.id,
+    booking_date: '2026-09-15', booking_time: '14:30', // Exact collision with BK-2026-JPR-108!
+    address: 'C-9, Vaishali Nagar', city: 'Jaipur', state: 'Rajasthan', pincode: '302021',
+    service_description: 'Sub-panel breaker tripping and voltage stabilization check.',
+    estimated_amount: 420, final_amount: 420, is_emergency: false,
+    status: 'pending', payment_status: 'pending',
+    created_at: '2026-09-10T11:00:00Z', updated_at: '2026-09-10T11:00:00Z',
+    worker: worker('w0000000-0000-0000-0000-000000000001'), customer: customer('p0000000-0000-0000-0000-000000000005'), service_category: cat('s0000000-0000-0000-0000-000000000001'),
+  },
+  {
+    id: 'bk-worker-11', booking_code: 'BK-2026-JPR-111',
+    customer_id: 'p0000000-0000-0000-0000-000000000006', worker_id: 'w0000000-0000-0000-0000-000000000001',
+    service_category_id: 's0000000-0000-0000-0000-000000000001', cooperative_id: coop.id,
+    booking_date: '2026-09-15', booking_time: '15:00', // Within 1-hour buffer of BK-2026-JPR-108 (30 mins diff)!
+    address: 'D-4, Vidhyadhar Nagar', city: 'Jaipur', state: 'Rajasthan', pincode: '302039',
+    service_description: 'Balcony LED spotlight installation and power socket rewiring.',
+    estimated_amount: 380, final_amount: 380, is_emergency: false,
+    status: 'pending', payment_status: 'pending',
+    created_at: '2026-09-10T12:00:00Z', updated_at: '2026-09-10T12:00:00Z',
+    worker: worker('w0000000-0000-0000-0000-000000000001'), customer: customer('p0000000-0000-0000-0000-000000000006'), service_category: cat('s0000000-0000-0000-0000-000000000001'),
   },
 ];
 

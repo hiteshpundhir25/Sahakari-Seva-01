@@ -52,9 +52,9 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
     }, [])
   );
 
-  const activeJob = jobs.find(
-    (b) => b.status === 'accepted' || b.status === 'in_progress'
-  );
+  const inProgressJob = jobs.find((b) => b.status === 'in_progress');
+  const acceptedJobs = jobs.filter((b) => b.status === 'accepted');
+  const activeBannerJob = inProgressJob || acceptedJobs[0];
 
   const handleOpenJobDetail = (job: Booking) => {
     if (navigation?.navigate) {
@@ -77,34 +77,58 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadJobs(); }} />}
       >
         {/* Active Commitment Status Banner */}
-        {activeJob ? (
+        {activeBannerJob ? (
           <FadeInView distance={8} duration={260}>
             <TouchableOpacity
-              style={styles.activeBanner}
+              style={[
+                styles.activeBanner,
+                inProgressJob && styles.activeBannerInProgress,
+              ]}
               activeOpacity={0.85}
-              onPress={() => handleOpenJobDetail(activeJob)}
+              onPress={() => handleOpenJobDetail(activeBannerJob)}
             >
               <View style={styles.activeBannerLeft}>
-                <View style={styles.activePulseDot} />
+                <View
+                  style={[
+                    styles.activePulseDot,
+                    inProgressJob && { backgroundColor: '#3b82f6' },
+                  ]}
+                />
                 <View style={{ flex: 1 }}>
                   <View style={styles.activeBannerTitleRow}>
-                    <Text style={styles.activeBannerTitle}>Active Job: {activeJob.booking_code}</Text>
-                    <View style={styles.activeStatusPill}>
+                    <Text style={styles.activeBannerTitle}>
+                      {inProgressJob
+                        ? `On-Site Active: ${inProgressJob.booking_code}`
+                        : `Committed: ${activeBannerJob.booking_code}${acceptedJobs.length > 1 ? ` (+${acceptedJobs.length - 1} more)` : ''}`}
+                    </Text>
+                    <View
+                      style={[
+                        styles.activeStatusPill,
+                        inProgressJob && { backgroundColor: '#3b82f6' },
+                      ]}
+                    >
                       <Text style={styles.activeStatusPillText}>
-                        {activeJob.status === 'in_progress' ? 'ON SITE / WORKING' : 'COMMITTED'}
+                        {inProgressJob ? 'ON SITE / WORKING' : 'COMMITTED'}
                       </Text>
                     </View>
                   </View>
                   <Text style={styles.activeBannerSub} numberOfLines={1}>
-                    {activeJob.service_description}
+                    {activeBannerJob.service_description}
                   </Text>
-                  <Text style={styles.activeBannerPolicyNote}>
-                    Cooperative Policy: Single job active commitment. Tap to open panel.
+                  <Text
+                    style={[
+                      styles.activeBannerPolicyNote,
+                      inProgressJob && { color: '#2563eb' },
+                    ]}
+                  >
+                    {inProgressJob
+                      ? 'Working on-site now. Complete service before starting other jobs.'
+                      : `Scheduled: ${activeBannerJob.booking_date} at ${activeBannerJob.booking_time}. Multiple non-overlapping jobs permitted.`}
                   </Text>
                 </View>
               </View>
               <View style={styles.activeBannerArrow}>
-                <ChevronRight size={18} color="#10b981" />
+                <ChevronRight size={18} color={inProgressJob ? '#2563eb' : '#10b981'} />
               </View>
             </TouchableOpacity>
           </FadeInView>
@@ -115,7 +139,7 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
               <View style={{ flex: 1 }}>
                 <Text style={styles.readyBannerTitle}>Available for Assignment</Text>
                 <Text style={styles.readyBannerSub}>
-                  Review pending job cards below. Click any job to inspect concise details and accept.
+                  Review pending work orders below. You may accept assignments that do not overlap (1-hr buffer).
                 </Text>
               </View>
             </View>
@@ -133,14 +157,17 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
           jobs.map((job, idx) => {
             const isViolation = ApiClient.isPrepaidViolation(job);
             const isThisActive = job.status === 'accepted' || job.status === 'in_progress';
+            const scheduleConflict = ApiClient.checkScheduleConflict(job, jobs, 60);
 
             return (
-              <FadeInView key={job.id} delay={idx * 50} distance={12} duration={280}>
+              <FadeInView key={job.id} delay={idx * 40} distance={12} duration={280}>
                 <TouchableOpacity
                   style={[
                     styles.jobCard,
                     isViolation && styles.jobCardViolation,
                     isThisActive && styles.jobCardActive,
+                    job.status === 'pending' && scheduleConflict.isExactCollision && styles.jobCardCollisionExact,
+                    job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && styles.jobCardCollisionBuffer,
                   ]}
                   activeOpacity={0.78}
                   onPress={() => handleOpenJobDetail(job)}
@@ -160,6 +187,18 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
                           <View style={styles.violationPill}>
                             <Lock size={10} color="#ef4444" />
                             <Text style={styles.violationPillText}>SEC 14-B LOCKOUT</Text>
+                          </View>
+                        )}
+                        {job.status === 'pending' && scheduleConflict.isExactCollision && (
+                          <View style={styles.exactCollisionPill}>
+                            <AlertCircle size={9} color="#ffffff" />
+                            <Text style={styles.exactCollisionPillText}>SAME TIME COLLISION</Text>
+                          </View>
+                        )}
+                        {job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && (
+                          <View style={styles.bufferCollisionPill}>
+                            <Clock size={9} color={isDark ? '#fbbf24' : '#b45309'} />
+                            <Text style={styles.bufferCollisionPillText}>&lt;1H OVERLAP</Text>
                           </View>
                         )}
                       </View>
@@ -237,16 +276,38 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
                   {/* Card Footer: Clear action to open dedicated panel */}
                   <View style={[styles.cardFooter, isViolation && styles.cardFooterViolation]}>
-                    <Text style={[styles.cardFooterText, isViolation && styles.cardFooterTextViolation]}>
+                    <Text
+                      style={[
+                        styles.cardFooterText,
+                        isViolation && styles.cardFooterTextViolation,
+                        job.status === 'pending' && scheduleConflict.isExactCollision && { color: '#ef4444' },
+                        job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && { color: '#d97706' },
+                      ]}
+                    >
                       {isViolation
                         ? '🔒 View Federation Lockout Notice'
-                        : isThisActive
-                        ? '⚡ Manage Ongoing Job Panel →'
+                        : job.status === 'in_progress'
+                        ? '⚡ Manage On-Site Active Work →'
+                        : job.status === 'accepted'
+                        ? '⚡ Manage Confirmed Job Panel →'
                         : job.status === 'pending'
-                        ? '👉 Open Dedicated Job Panel to Review & Accept →'
+                        ? scheduleConflict.isExactCollision
+                          ? `🔒 Acceptance Hidden • Same Time as ${scheduleConflict.conflictingBooking?.booking_code}`
+                          : scheduleConflict.isBufferCollision
+                          ? `⚠️ Collides with ${scheduleConflict.conflictingBooking?.booking_code} (<1 hr buffer)`
+                          : '👉 Open Dedicated Job Panel to Review & Accept →'
                         : 'View Job Details & Wages →'}
                     </Text>
-                    <ChevronRight size={14} color={isViolation ? '#ef4444' : colors.primary} />
+                    <ChevronRight
+                      size={14}
+                      color={
+                        isViolation || (job.status === 'pending' && scheduleConflict.isExactCollision)
+                          ? '#ef4444'
+                          : job.status === 'pending' && scheduleConflict.isBufferCollision
+                          ? '#d97706'
+                          : colors.primary
+                      }
+                    />
                   </View>
                 </TouchableOpacity>
               </FadeInView>
@@ -555,5 +616,45 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.textMuted,
       marginTop: 4,
       textAlign: 'center',
+    },
+    activeBannerInProgress: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.35)' : '#bfdbfe',
+    },
+    jobCardCollisionExact: {
+      borderColor: '#ef4444',
+      borderWidth: 1.3,
+    },
+    jobCardCollisionBuffer: {
+      borderColor: '#f59e0b',
+      borderWidth: 1.3,
+    },
+    exactCollisionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#ef4444',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      gap: 3,
+    },
+    exactCollisionPillText: {
+      fontSize: 8.5,
+      fontWeight: '800',
+      color: '#ffffff',
+    },
+    bufferCollisionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      gap: 3,
+    },
+    bufferCollisionPillText: {
+      fontSize: 8.5,
+      fontWeight: '800',
+      color: isDark ? '#fbbf24' : '#b45309',
     },
   });

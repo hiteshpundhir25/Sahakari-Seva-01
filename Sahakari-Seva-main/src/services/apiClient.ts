@@ -452,6 +452,116 @@ export class ApiClient {
     return booking.payment_status === 'paid' && (booking.status === 'pending' || booking.status === 'accepted');
   }
 
+  /**
+   * Parses time string like "14:30", "10:00", "10:00 AM", "2:30 PM" into minutes from midnight (0 - 1439).
+   */
+  public static parseTimeToMinutes(timeStr?: string): number | null {
+    if (!timeStr) return null;
+    const clean = timeStr.trim();
+    const ampmMatch = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const minutes = parseInt(ampmMatch[2], 10);
+      const modifier = ampmMatch[3]?.toUpperCase();
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+    const parts = clean.split(':');
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      if (!isNaN(hours) && !isNaN(minutes)) return hours * 60 + minutes;
+    }
+    return null;
+  }
+
+  /**
+   * Checks whether a candidate booking collides with any already committed bookings (accepted or in_progress).
+   * Minimum buffer is 1 hour (60 minutes).
+   */
+  public static checkScheduleConflict(
+    candidateBooking: Booking | null | undefined,
+    existingBookings: Booking[],
+    bufferMinutes: number = 60
+  ): {
+    hasConflict: boolean;
+    isExactCollision: boolean;
+    isBufferCollision: boolean;
+    conflictingBooking: Booking | null;
+    timeDifferenceMinutes: number | null;
+    reason?: string;
+  } {
+    if (!candidateBooking) {
+      return {
+        hasConflict: false,
+        isExactCollision: false,
+        isBufferCollision: false,
+        conflictingBooking: null,
+        timeDifferenceMinutes: null,
+      };
+    }
+
+    const candidateDate = candidateBooking.booking_date;
+    const candidateMins = this.parseTimeToMinutes(candidateBooking.booking_time);
+    if (!candidateDate || candidateMins === null) {
+      return {
+        hasConflict: false,
+        isExactCollision: false,
+        isBufferCollision: false,
+        conflictingBooking: null,
+        timeDifferenceMinutes: null,
+      };
+    }
+
+    const candidateWorkerId =
+      candidateBooking.worker_id || (candidateBooking.worker as any)?.id;
+
+    for (const existing of existingBookings) {
+      if (existing.id === candidateBooking.id) continue;
+      // Only check against committed jobs
+      if (existing.status !== 'accepted' && existing.status !== 'in_progress') continue;
+
+      const existingWorkerId =
+        existing.worker_id || (existing.worker as any)?.id;
+      if (candidateWorkerId && existingWorkerId && candidateWorkerId !== existingWorkerId) continue;
+
+      if (existing.booking_date === candidateDate) {
+        const existingMins = this.parseTimeToMinutes(existing.booking_time);
+        if (existingMins !== null) {
+          const diff = Math.abs(candidateMins - existingMins);
+          if (diff === 0) {
+            return {
+              hasConflict: true,
+              isExactCollision: true,
+              isBufferCollision: true,
+              conflictingBooking: existing,
+              timeDifferenceMinutes: 0,
+              reason: `Exact schedule collision: Already committed to job ${existing.booking_code} on ${existing.booking_date} at ${existing.booking_time}.`,
+            };
+          } else if (diff < bufferMinutes) {
+            return {
+              hasConflict: true,
+              isExactCollision: false,
+              isBufferCollision: true,
+              conflictingBooking: existing,
+              timeDifferenceMinutes: diff,
+              reason: `Schedule buffer conflict: Scheduled within ${diff} mins of committed job ${existing.booking_code} (${existing.booking_time}). Minimum ${bufferMinutes}-minute buffer required.`,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      hasConflict: false,
+      isExactCollision: false,
+      isBufferCollision: false,
+      conflictingBooking: null,
+      timeDifferenceMinutes: null,
+    };
+  }
+
   public static async updateBookingStatus(bookingId: string, status: string): Promise<Booking> {
     const targetBooking = MOCK_BOOKINGS.find(x => x.id === bookingId);
     if (targetBooking && this.isPrepaidViolation(targetBooking)) {
@@ -460,22 +570,34 @@ export class ApiClient {
       );
     }
 
-    if (status === 'accepted' || status === 'in_progress') {
-      const assignedWorkerId =
-        targetBooking?.worker_id ||
-        (targetBooking?.worker as any)?.id ||
-        'w0000000-0000-0000-0000-000000000001';
+    const assignedWorkerId =
+      targetBooking?.worker_id ||
+      (targetBooking?.worker as any)?.id ||
+      'w0000000-0000-0000-0000-000000000001';
 
-      const existingActive = MOCK_BOOKINGS.find(
+    // 1. If accepting a job, verify that it does not collide with existing committed jobs (1-hour buffer)
+    if (status === 'accepted' && targetBooking) {
+      const conflict = this.checkScheduleConflict(targetBooking, MOCK_BOOKINGS, 60);
+      if (conflict.hasConflict) {
+        throw new Error(
+          conflict.reason ||
+            `Schedule collision: This job collides with committed job ${conflict.conflictingBooking?.booking_code} (1-hour buffer required).`
+        );
+      }
+    }
+
+    // 2. If starting a job, ensure the worker does not have another job actively in progress right now
+    if (status === 'in_progress') {
+      const ongoingJob = MOCK_BOOKINGS.find(
         b =>
           (b.worker_id === assignedWorkerId || (b.worker as any)?.id === assignedWorkerId) &&
           b.id !== bookingId &&
-          (b.status === 'accepted' || b.status === 'in_progress')
+          b.status === 'in_progress'
       );
 
-      if (existingActive) {
+      if (ongoingJob) {
         throw new Error(
-          `Cannot accept or start multiple jobs simultaneously. You already have active job ${existingActive.booking_code}. Complete it before taking on another job.`
+          `Cannot start multiple jobs simultaneously. You already have job ${ongoingJob.booking_code} actively in progress. Complete it before starting this service.`
         );
       }
     }

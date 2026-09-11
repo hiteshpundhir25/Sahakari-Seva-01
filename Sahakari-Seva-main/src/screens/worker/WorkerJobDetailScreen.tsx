@@ -71,7 +71,21 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
   const [job, setJob] = useState<Booking | null>(route?.params?.job || null);
   const [loading, setLoading] = useState(!route?.params?.job);
   const [updating, setUpdating] = useState(false);
-  const [activeJobConflict, setActiveJobConflict] = useState<Booking | null>(null);
+  const [scheduleConflict, setScheduleConflict] = useState<{
+    hasConflict: boolean;
+    isExactCollision: boolean;
+    isBufferCollision: boolean;
+    conflictingBooking: Booking | null;
+    timeDifferenceMinutes: number | null;
+    reason?: string;
+  }>({
+    hasConflict: false,
+    isExactCollision: false,
+    isBufferCollision: false,
+    conflictingBooking: null,
+    timeDifferenceMinutes: null,
+  });
+  const [ongoingServiceConflict, setOngoingServiceConflict] = useState<Booking | null>(null);
   const [billModalVisible, setBillModalVisible] = useState(false);
 
   const fetchJob = async () => {
@@ -80,15 +94,22 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
       setLoading(true);
       const allJobs = await ApiClient.getBookings(undefined, 'w0000000-0000-0000-0000-000000000001');
       const found = allJobs.find((b) => b.id === bookingId);
+      const currentJob = found || job;
       if (found) {
         setJob(found);
       }
 
-      // Check if worker already has another active job (accepted or in_progress)
-      const otherActive = allJobs.find(
-        (b) => b.id !== bookingId && (b.status === 'accepted' || b.status === 'in_progress')
+      // Check if candidate job collides with any existing committed job (1-hour buffer)
+      if (currentJob) {
+        const conflict = ApiClient.checkScheduleConflict(currentJob, allJobs, 60);
+        setScheduleConflict(conflict);
+      }
+
+      // Check if worker already has another job actively in progress on-site
+      const ongoing = allJobs.find(
+        (b) => b.id !== bookingId && b.status === 'in_progress'
       );
-      setActiveJobConflict(otherActive || null);
+      setOngoingServiceConflict(ongoing || null);
     } catch (err) {
       console.warn('Failed to load job details:', err);
     } finally {
@@ -128,12 +149,25 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
       return;
     }
 
-    // Guard: Prevent accepting or starting multiple active jobs
-    if (newStatus === 'accepted' || newStatus === 'in_progress') {
-      if (activeJobConflict) {
+    // Guard: Prevent accepting a job that collides with an existing committed job
+    if (newStatus === 'accepted') {
+      if (scheduleConflict.hasConflict) {
         Alert.alert(
-          'Active Job Conflict ⚠️',
-          `You are already committed to active job ${activeJobConflict.booking_code}. Under Sahakari Seva cooperative rules, you cannot take on multiple jobs simultaneously. Complete or finish ${activeJobConflict.booking_code} first.`,
+          'Schedule Collision ⚠️',
+          scheduleConflict.reason ||
+            `This job collides with committed job ${scheduleConflict.conflictingBooking?.booking_code}. You cannot accept overlapping bookings.`,
+          [{ text: 'Understand' }]
+        );
+        return;
+      }
+    }
+
+    // Guard: Prevent starting service if another job is actively in progress on-site
+    if (newStatus === 'in_progress') {
+      if (ongoingServiceConflict) {
+        Alert.alert(
+          'Active Service In Progress ⚠️',
+          `You already have on-site work underway for job ${ongoingServiceConflict.booking_code}. Mark that job completed before starting service work on this booking.`,
           [{ text: 'Understand' }]
         );
         return;
@@ -310,17 +344,51 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
           </FadeInView>
         ) : (
           <>
-            {/* Active Job Conflict Alert Banner */}
-            {activeJobConflict && job.status === 'pending' && (
+            {/* Schedule Collision: Exact Same Date & Time */}
+            {job.status === 'pending' && scheduleConflict.isExactCollision && (
+              <FadeInView distance={10} duration={260}>
+                <View style={styles.exactConflictBanner}>
+                  <AlertCircle size={18} color="#ef4444" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.exactConflictBannerTitle}>
+                      Same Date & Time Collision ({scheduleConflict.conflictingBooking?.booking_code})
+                    </Text>
+                    <Text style={styles.exactConflictBannerDesc}>
+                      You are already committed to {scheduleConflict.conflictingBooking?.booking_code} on {job.booking_date} at {job.booking_time}. Acceptance option is hidden to prevent double-booking.
+                    </Text>
+                  </View>
+                </View>
+              </FadeInView>
+            )}
+
+            {/* Schedule Collision: Buffer Overlap (< 1 hour) */}
+            {job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && (
               <FadeInView distance={10} duration={260}>
                 <View style={styles.conflictBanner}>
                   <AlertTriangle size={18} color="#b45309" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.conflictBannerTitle}>
-                      Active Job in Progress ({activeJobConflict.booking_code})
+                      Schedule Overlap ({scheduleConflict.timeDifferenceMinutes}m Difference)
                     </Text>
                     <Text style={styles.conflictBannerDesc}>
-                      You are currently committed to another service job. Cooperative rules require finishing your ongoing job before accepting another request.
+                      Starts within {scheduleConflict.timeDifferenceMinutes} minutes of committed job {scheduleConflict.conflictingBooking?.booking_code} ({scheduleConflict.conflictingBooking?.booking_time}). Minimum 1-hour buffer is required between jobs.
+                    </Text>
+                  </View>
+                </View>
+              </FadeInView>
+            )}
+
+            {/* On-Site Service In Progress Warning for Accepted Jobs */}
+            {job.status === 'accepted' && ongoingServiceConflict && (
+              <FadeInView distance={10} duration={260}>
+                <View style={styles.conflictBanner}>
+                  <Clock size={18} color="#b45309" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.conflictBannerTitle}>
+                      On-Site Work in Progress ({ongoingServiceConflict.booking_code})
+                    </Text>
+                    <Text style={styles.conflictBannerDesc}>
+                      You are actively on-site for {ongoingServiceConflict.booking_code}. Mark that job completed before beginning service on this booking.
                     </Text>
                   </View>
                 </View>
@@ -503,43 +571,93 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
             <FadeInView delay={230} distance={12} duration={300}>
               <View style={styles.actionCard}>
                 {job.status === 'pending' && (
-                  <View style={styles.pendingActionGrid}>
-                    <TouchableOpacity
-                      style={styles.declineBtn}
-                      onPress={() => handleUpdateStatus('rejected')}
-                      disabled={updating}
-                      activeOpacity={0.7}
-                    >
-                      <X size={16} color={colors.danger} />
-                      <Text style={styles.declineBtnText}>{t('worker.decline_btn', 'Decline')}</Text>
-                    </TouchableOpacity>
+                  scheduleConflict.isExactCollision ? (
+                    // Exact same date & time: ACCEPT OPTION IS HIDDEN completely
+                    <View style={styles.exactHiddenActionBox}>
+                      <View style={styles.exactCollisionNotice}>
+                        <AlertCircle size={14} color="#ef4444" />
+                        <Text style={styles.exactCollisionNoticeText}>
+                          Acceptance hidden: Exact time overlap with {scheduleConflict.conflictingBooking?.booking_code} ({job.booking_date} at {job.booking_time}).
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.fullDeclineBtn}
+                        onPress={() => handleUpdateStatus('rejected')}
+                        disabled={updating}
+                        activeOpacity={0.7}
+                      >
+                        <X size={16} color={colors.danger} />
+                        <Text style={styles.declineBtnText}>{t('worker.decline_btn', 'Decline Request')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : scheduleConflict.isBufferCollision ? (
+                    // Buffer overlap: Worker cannot accept it
+                    <View style={styles.pendingActionGrid}>
+                      <TouchableOpacity
+                        style={styles.declineBtn}
+                        onPress={() => handleUpdateStatus('rejected')}
+                        disabled={updating}
+                        activeOpacity={0.7}
+                      >
+                        <X size={16} color={colors.danger} />
+                        <Text style={styles.declineBtnText}>{t('worker.decline_btn', 'Decline')}</Text>
+                      </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={[
-                        styles.acceptBtn,
-                        activeJobConflict && styles.acceptBtnDisabled,
-                      ]}
-                      onPress={() => handleUpdateStatus('accepted')}
-                      disabled={updating || !!activeJobConflict}
-                      activeOpacity={0.85}
-                    >
-                      {updating ? (
-                        <ActivityIndicator size="small" color="#ffffff" />
-                      ) : (
-                        <>
-                          <Check size={16} color="#ffffff" strokeWidth={2.5} />
-                          <Text style={styles.acceptBtnText}>
-                            {activeJobConflict ? 'Busy on Active Job' : t('worker.accept_btn', 'Accept Request')}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                      <TouchableOpacity
+                        style={[styles.acceptBtn, styles.acceptBtnDisabled]}
+                        disabled={true}
+                        activeOpacity={1}
+                        onPress={() => {
+                          Alert.alert(
+                            'Collision Warning',
+                            scheduleConflict.reason || 'This job collides with another scheduled job (1-hour buffer required).'
+                          );
+                        }}
+                      >
+                        <AlertTriangle size={15} color="#ffffff" />
+                        <Text style={styles.acceptBtnText}>Collides (&lt;1h Buffer)</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    // No collision: Normal active buttons
+                    <View style={styles.pendingActionGrid}>
+                      <TouchableOpacity
+                        style={styles.declineBtn}
+                        onPress={() => handleUpdateStatus('rejected')}
+                        disabled={updating}
+                        activeOpacity={0.7}
+                      >
+                        <X size={16} color={colors.danger} />
+                        <Text style={styles.declineBtnText}>{t('worker.decline_btn', 'Decline')}</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.acceptBtn}
+                        onPress={() => handleUpdateStatus('accepted')}
+                        disabled={updating}
+                        activeOpacity={0.85}
+                      >
+                        {updating ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <>
+                            <Check size={16} color="#ffffff" strokeWidth={2.5} />
+                            <Text style={styles.acceptBtnText}>
+                              {t('worker.accept_btn', 'Accept Request')}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  )
                 )}
 
                 {job.status === 'accepted' && (
                   <TouchableOpacity
-                    style={styles.startBtn}
+                    style={[
+                      styles.startBtn,
+                      ongoingServiceConflict && styles.startBtnBlocked,
+                    ]}
                     onPress={() => handleUpdateStatus('in_progress')}
                     disabled={updating}
                     activeOpacity={0.85}
@@ -549,7 +667,11 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                     ) : (
                       <>
                         <Zap size={16} color="#ffffff" />
-                        <Text style={styles.startBtnText}>{t('worker.start_service', 'Start Service Work')}</Text>
+                        <Text style={styles.startBtnText}>
+                          {ongoingServiceConflict
+                            ? `Finish Ongoing Job First (${ongoingServiceConflict.booking_code})`
+                            : t('worker.start_service', 'Start Service Work')}
+                        </Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -1059,6 +1181,63 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: isDark ? '#fde68a' : '#92400e',
       marginTop: 2,
       lineHeight: 15,
+    },
+    exactConflictBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#fee2e2',
+      borderWidth: 1.2,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#fca5a5',
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 14,
+    },
+    exactConflictBannerTitle: {
+      fontSize: 12.5,
+      fontWeight: '800',
+      color: '#ef4444',
+    },
+    exactConflictBannerDesc: {
+      fontSize: 11,
+      color: isDark ? '#fca5a5' : '#b91c1c',
+      marginTop: 2,
+      lineHeight: 15,
+    },
+    exactHiddenActionBox: {
+      gap: 10,
+    },
+    exactCollisionNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#fee2e2',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#fca5a5',
+      padding: 10,
+      borderRadius: 10,
+    },
+    exactCollisionNoticeText: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: '#ef4444',
+      flex: 1,
+      lineHeight: 16,
+    },
+    fullDeclineBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1.2,
+      borderColor: colors.danger,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#fef2f2',
+    },
+    startBtnBlocked: {
+      backgroundColor: '#64748b',
+      opacity: 0.85,
     },
     lockoutCard: {
       backgroundColor: isDark ? '#1e1b1b' : '#ffffff',
