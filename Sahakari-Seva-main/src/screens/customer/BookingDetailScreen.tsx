@@ -245,31 +245,50 @@ export const BookingDetailScreen: React.FC = () => {
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* Header Info */}
         <View style={styles.header}>
-        <View>
-          <Text style={styles.codeText}>{booking.booking_code}</Text>
-          <Text style={styles.serviceTitle}>
-            {translateTrade(booking.service_category?.name) || t('bookingDetail.home_maintenance')}
-          </Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.serviceTitle} numberOfLines={2}>
+              {translateTrade(booking.service_category?.name) || t('bookingDetail.home_maintenance')}
+            </Text>
+            <View style={styles.codeRow}>
+              <Text style={styles.codeText}>{booking.booking_code}</Text>
+              <Text style={styles.codeDot}>•</Text>
+              <Text style={styles.codeStatusText}>
+                {booking.status === 'pending'
+                  ? (t('booking.awaiting_worker') || 'Awaiting Worker')
+                  : booking.status === 'accepted'
+                  ? 'Confirmed'
+                  : booking.status === 'in_progress'
+                  ? 'In Progress'
+                  : booking.status === 'completed'
+                  ? 'Completed'
+                  : 'Cancelled'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.headerBadgeWrapper}>
+            <Badge
+              label={
+                booking.status === 'pending'
+                  ? (t('bookingDetail.step_requested') || 'REQUESTED').toUpperCase()
+                  : booking.status === 'accepted'
+                  ? (t('bookingDetail.step_confirmed') || 'CONFIRMED').toUpperCase()
+                  : booking.status === 'in_progress'
+                  ? 'IN PROGRESS'
+                  : booking.status.toUpperCase().replace('_', ' ')
+              }
+              variant={
+                booking.status === 'completed' || booking.status === 'accepted'
+                  ? 'success'
+                  : booking.status === 'in_progress'
+                  ? 'info'
+                  : booking.status === 'cancelled'
+                  ? 'danger'
+                  : 'warning'
+              }
+              size="sm"
+            />
+          </View>
         </View>
-        <Badge
-          label={
-            booking.status === 'pending'
-              ? 'REQUESTED • AWAITING WORKER'
-              : booking.status === 'accepted'
-              ? 'CONFIRMED • ON ACTIVE JOB'
-              : booking.status.toUpperCase().replace('_', ' ')
-          }
-          variant={
-            booking.status === 'completed'
-              ? 'success'
-              : booking.status === 'accepted'
-              ? 'info'
-              : booking.status === 'in_progress'
-              ? 'info'
-              : 'warning'
-          }
-        />
-      </View>
 
       {/* Emergency Alert Banner */}
       {booking.is_emergency && (
@@ -394,7 +413,7 @@ export const BookingDetailScreen: React.FC = () => {
                       isDone && styles.stepLabelDone,
                       isAwaiting && styles.stepLabelAwaiting,
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
                     {step.label}
                   </Text>
@@ -1099,16 +1118,46 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.md,
+    gap: 12,
   },
-  codeText: {
-    ...typography.fontCaption,
-    color: colors.textMuted,
-    letterSpacing: 1,
+  headerLeft: {
+    flex: 1,
+    minWidth: 0,
   },
   serviceTitle: {
     ...typography.fontHeadline,
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    lineHeight: 25,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 3,
+  },
+  codeText: {
+    ...typography.fontCaption,
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  codeDot: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  codeStatusText: {
+    ...typography.fontCaption,
+    fontSize: 12,
+    fontWeight: '600',
+    color: isDark ? '#FBBF24' : '#B45309',
+  },
+  headerBadgeWrapper: {
+    flexShrink: 0,
     marginTop: 2,
   },
   emergencyBanner: {
