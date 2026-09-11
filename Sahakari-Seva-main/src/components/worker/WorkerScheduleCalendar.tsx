@@ -349,7 +349,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
             </View>
             <View style={styles.titleTextCol}>
               <Text style={styles.sectionTitle} numberOfLines={1}>
-                {t('calendar.title')}
+                {t('calendar.title', 'Accepted & Scheduled')}
               </Text>
               <Text style={styles.sectionSubtitle} numberOfLines={1}>
                 {t('calendar.subtitle', { count: currentMonthJobsCount })}

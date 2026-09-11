@@ -21,11 +21,70 @@ import {
   HeartHandshake,
   MapPin,
   Sparkles,
+  Radio,
+  Briefcase,
+  Zap,
+  Power,
+  Check,
 } from 'lucide-react-native';
 import { FadeInView, ScalePressable, AnimatedNumber, PulseDot } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
+
+interface StatusOptionItem {
+  id: AvailabilityStatus;
+  titleKey: string;
+  defaultTitle: string;
+  descKey: string;
+  defaultDesc: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  lightBg: string;
+}
+
+const STATUS_OPTIONS: StatusOptionItem[] = [
+  {
+    id: 'available',
+    titleKey: 'worker.online_ready',
+    defaultTitle: 'Online Ready',
+    descKey: 'worker.status_online_sub',
+    defaultDesc: 'Accepting new jobs',
+    icon: Radio,
+    color: '#10b981',
+    lightBg: '#ecfdf5',
+  },
+  {
+    id: 'busy',
+    titleKey: 'workerProfile.status_busy',
+    defaultTitle: 'On Active Job',
+    descKey: 'worker.status_busy_sub',
+    defaultDesc: 'Busy on active site',
+    icon: Briefcase,
+    color: '#f59e0b',
+    lightBg: '#fffbeb',
+  },
+  {
+    id: 'emergency_only',
+    titleKey: 'worker.emergency_24_7',
+    defaultTitle: 'Emergency SOS',
+    descKey: 'worker.status_emergency_sub',
+    defaultDesc: '24/7 priority call',
+    icon: Zap,
+    color: '#ef4444',
+    lightBg: '#fef2f2',
+  },
+  {
+    id: 'offline',
+    titleKey: 'worker.offline',
+    defaultTitle: 'Offline Mode',
+    descKey: 'worker.status_offline_sub',
+    defaultDesc: 'Resting standby',
+    icon: Power,
+    color: '#64748b',
+    lightBg: '#f1f5f9',
+  },
+];
 
 export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: true });
@@ -78,16 +137,39 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
         <FadeInView distance={12} duration={320}>
           <View style={styles.statusCard}>
             <View style={styles.statusHeadingRow}>
-              <Text style={styles.statusHeading}>{t('worker.online_status')}</Text>
-              <View style={styles.liveIndicatorRow}>
+              <View style={styles.statusTitleCol}>
+                <Text style={styles.statusHeading}>{t('worker.online_status', 'Availability Status')}</Text>
+                <Text style={styles.statusSubheading}>
+                  {status === 'available'
+                    ? t('worker.status_sub_available', 'Live on dispatch • Ready for new jobs')
+                    : status === 'busy'
+                    ? t('worker.status_sub_busy', 'Currently on active service booking')
+                    : status === 'emergency_only'
+                    ? t('worker.status_sub_emergency', 'Emergency SOS priority response only')
+                    : t('worker.status_sub_offline', 'Off-duty standby • Not taking jobs')}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.liveIndicatorRow,
+                  status === 'available' && styles.liveIndicatorAvailable,
+                  status === 'busy' && styles.liveIndicatorBusy,
+                  status === 'emergency_only' && styles.liveIndicatorEmergency,
+                  status === 'offline' && styles.liveIndicatorOffline,
+                ]}
+              >
                 {status === 'available' && <PulseDot color="#10b981" size={7} ringScale={2.4} duration={1400} />}
                 {status === 'emergency_only' && <PulseDot color="#ef4444" size={7} ringScale={2.4} duration={1200} />}
                 {status === 'busy' && <PulseDot color="#f59e0b" size={7} ringScale={2.4} duration={1200} />}
+                {status === 'offline' && <View style={styles.offlineDot} />}
                 <Text
                   style={[
                     styles.liveIndicatorText,
-                    status === 'busy' && { color: '#f59e0b' },
-                    status === 'emergency_only' && { color: colors.danger },
+                    status === 'available' && { color: '#059669' },
+                    status === 'busy' && { color: '#b45309' },
+                    status === 'emergency_only' && { color: '#dc2626' },
+                    status === 'offline' && { color: colors.textSecondary },
                   ]}
                 >
                   {status === 'available'
@@ -116,66 +198,90 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               </View>
             )}
 
-            <View style={styles.statusPills}>
-              <ScalePressable
-                onPress={() => handleToggleStatus('available')}
-                style={styles.statusPillFlex}
-                scaleTo={0.95}
-              >
-                <View style={[styles.statusPill, status === 'available' && styles.statusPillActive]}>
-                  <Text
-                    style={[styles.statusPillText, status === 'available' && styles.statusTextActive]}
-                    numberOfLines={1}
+            {/* 2x2 Availability Selection Grid */}
+            <View style={styles.statusGrid}>
+              {STATUS_OPTIONS.map((item) => {
+                const isSelected = status === item.id;
+                const IconComponent = item.icon;
+                return (
+                  <ScalePressable
+                    key={item.id}
+                    onPress={() => handleToggleStatus(item.id)}
+                    style={styles.gridItemWrap}
+                    scaleTo={0.96}
                   >
-                    {t('worker.online_ready')}
-                  </Text>
-                </View>
-              </ScalePressable>
+                    <View
+                      style={[
+                        styles.statusCardOption,
+                        isSelected
+                          ? [
+                              styles.statusCardOptionActive,
+                              {
+                                backgroundColor: isDark ? `${item.color}22` : item.lightBg,
+                                borderColor: item.color,
+                              },
+                            ]
+                          : styles.statusCardOptionInactive,
+                      ]}
+                    >
+                      <View style={styles.statusCardTopRow}>
+                        <View
+                          style={[
+                            styles.statusIconWrap,
+                            {
+                              backgroundColor: isSelected
+                                ? item.color
+                                : isDark
+                                ? 'rgba(255, 255, 255, 0.08)'
+                                : colors.surfaceSubtle,
+                            },
+                          ]}
+                        >
+                          <IconComponent
+                            size={16}
+                            color={isSelected ? '#ffffff' : item.color}
+                          />
+                        </View>
 
-              <ScalePressable
-                onPress={() => handleToggleStatus('busy')}
-                style={styles.statusPillFlex}
-                scaleTo={0.95}
-              >
-                <View style={[styles.statusPill, status === 'busy' && styles.busyPillActive]}>
-                  <Text
-                    style={[styles.statusPillText, status === 'busy' && { color: colors.textInverse }]}
-                    numberOfLines={1}
-                  >
-                    {t('workerProfile.status_busy', 'On Active Job')}
-                  </Text>
-                </View>
-              </ScalePressable>
+                        {isSelected ? (
+                          <View style={[styles.activeBadge, { backgroundColor: item.color }]}>
+                            <Check size={10} color="#ffffff" strokeWidth={3} />
+                            <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.inactiveIndicator} />
+                        )}
+                      </View>
 
-              <ScalePressable
-                onPress={() => handleToggleStatus('emergency_only')}
-                style={styles.statusPillFlex}
-                scaleTo={0.95}
-              >
-                <View style={[styles.statusPill, status === 'emergency_only' && styles.emergencyPillActive]}>
-                  <Text
-                    style={[styles.statusPillText, status === 'emergency_only' && { color: colors.textInverse }]}
-                    numberOfLines={1}
-                  >
-                    {t('worker.emergency_24_7')}
-                  </Text>
-                </View>
-              </ScalePressable>
-
-              <ScalePressable
-                onPress={() => handleToggleStatus('offline')}
-                style={styles.statusPillFlex}
-                scaleTo={0.95}
-              >
-                <View style={[styles.statusPill, status === 'offline' && styles.offlinePillActive]}>
-                  <Text
-                    style={[styles.statusPillText, status === 'offline' && { color: colors.textInverse }]}
-                    numberOfLines={1}
-                  >
-                    {t('worker.offline')}
-                  </Text>
-                </View>
-              </ScalePressable>
+                      <View style={styles.statusCardBody}>
+                        <Text
+                          style={[
+                            styles.statusOptionTitle,
+                            isSelected && {
+                              color: isDark ? '#ffffff' : colors.textPrimary,
+                              fontWeight: '800',
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {t(item.titleKey, item.defaultTitle)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.statusOptionSub,
+                            isSelected && {
+                              color: isDark ? 'rgba(255, 255, 255, 0.8)' : colors.textSecondary,
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {t(item.descKey, item.defaultDesc)}
+                        </Text>
+                      </View>
+                    </View>
+                  </ScalePressable>
+                );
+              })}
             </View>
           </View>
         </FadeInView>
@@ -281,38 +387,73 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
   statusCard: {
     backgroundColor: colors.surface,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.2,
     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 6,
     elevation: 2,
   },
   statusHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
+    gap: 8,
+  },
+  statusTitleCol: {
+    flex: 1,
   },
   statusHeading: {
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: '800',
     color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  statusSubheading: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   liveIndicatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.surfaceSubtle,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surfaceSubtle,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    flexShrink: 0,
+  },
+  liveIndicatorAvailable: {
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.14)' : '#ecfdf5',
+    borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#a7f3d0',
+  },
+  liveIndicatorBusy: {
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.14)' : '#fffbeb',
+    borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
+  },
+  liveIndicatorEmergency: {
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.14)' : '#fef2f2',
+    borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#fecaca',
+  },
+  liveIndicatorOffline: {
+    backgroundColor: isDark ? 'rgba(100, 116, 139, 0.12)' : '#f1f5f9',
+    borderColor: isDark ? 'rgba(100, 116, 139, 0.25)' : '#e2e8f0',
+  },
+  offlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#64748b',
   },
   liveIndicatorText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
     color: colors.textSecondary,
@@ -326,8 +467,8 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 14,
   },
   activeJobDotGlow: {
     width: 10,
@@ -349,63 +490,80 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     marginTop: 2,
     lineHeight: 15,
   },
-  statusPills: {
+  statusGrid: {
     flexDirection: 'row',
-    gap: 6,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  statusPillFlex: {
-    flex: 1,
+  gridItemWrap: {
+    flexBasis: '48%',
+    flexGrow: 1,
   },
-  statusPill: {
+  statusCardOption: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    justifyContent: 'space-between',
+    minHeight: 84,
+  },
+  statusCardOptionInactive: {
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.surfaceSubtle,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+  },
+  statusCardOptionActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  statusCardTopRow: {
     flexDirection: 'row',
-    paddingVertical: 9.5,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    borderWidth: 1.2,
-    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  statusIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceSubtle,
   },
-  busyPillActive: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#d97706',
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.28,
-    shadowRadius: 4,
-    elevation: 2,
+  activeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
   },
-  statusPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
+  activeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
-  emergencyPillActive: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
-    shadowColor: colors.danger,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
+  inactiveIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#cbd5e1',
   },
-  offlinePillActive: {
-    backgroundColor: colors.textSecondary,
-    borderColor: colors.textSecondary,
+  statusCardBody: {
+    marginTop: 'auto',
   },
-  statusPillText: {
-    fontSize: 10.5,
+  statusOptionTitle: {
+    fontSize: 13,
     fontWeight: '700',
-    color: colors.textSecondary,
-    textAlign: 'center',
+    color: colors.textPrimary,
+    letterSpacing: -0.1,
   },
-  statusTextActive: {
-    color: colors.textInverse,
+  statusOptionSub: {
+    fontSize: 10.5,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   metricsGrid: {
     flexDirection: 'row',
