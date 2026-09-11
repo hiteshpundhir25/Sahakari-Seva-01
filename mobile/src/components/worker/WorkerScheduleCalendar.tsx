@@ -64,10 +64,26 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   const [loading, setLoading] = useState(true);
   const [allJobs, setAllJobs] = useState<Booking[]>([]);
 
+  // Dynamic current date helper
+  const getTodayDate = () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return {
+      year: y,
+      month: now.getMonth(), // 0-11
+      day: now.getDate(),
+      dateStr: `${y}-${m}-${d}`,
+    };
+  };
+
+  const todayInfo = useMemo(() => getTodayDate(), []);
+
   // Calendar View State: Year & Month (0-11)
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(8); // September 2026 default for demo
-  const [selectedDate, setSelectedDate] = useState<string>('2026-09-10');
+  const [currentYear, setCurrentYear] = useState<number>(todayInfo.year);
+  const [currentMonth, setCurrentMonth] = useState<number>(todayInfo.month);
+  const [selectedDate, setSelectedDate] = useState<string>(todayInfo.dateStr);
 
   // Selected Job for Detail / Reschedule Modal
   const [activeJob, setActiveJob] = useState<Booking | null>(null);
@@ -88,22 +104,21 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
       );
       setAllJobs(filtered);
 
-      // Smart initial date: check if any job is scheduled for today or upcoming in September
+      // Smart initial date: check if any job is scheduled for today or upcoming in current month
       const activeAccepted = filtered.filter(b => b.status === 'accepted' || b.status === 'in_progress');
       if (activeAccepted.length > 0) {
-        // Find if any job exists on or near 2026-09-10
-        const sorted = [...activeAccepted].sort((a, b) => a.booking_date.localeCompare(b.booking_date));
-        const todayJob = sorted.find(b => b.booking_date === '2026-09-10');
+        const curToday = getTodayDate();
+        const todayJob = activeAccepted.find(b => b.booking_date === curToday.dateStr);
         if (todayJob) {
           setSelectedDate(todayJob.booking_date);
           const [y, m] = todayJob.booking_date.split('-').map(Number);
           setCurrentYear(y);
           setCurrentMonth(m - 1);
-        } else if (sorted[0]) {
-          setSelectedDate(sorted[0].booking_date);
-          const [y, m] = sorted[0].booking_date.split('-').map(Number);
-          setCurrentYear(y);
-          setCurrentMonth(m - 1);
+        } else {
+          // If no job today, remain on today's date so worker views today by default
+          setCurrentYear(curToday.year);
+          setCurrentMonth(curToday.month);
+          setSelectedDate(curToday.dateStr);
         }
       }
     } catch (err) {
@@ -172,7 +187,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
     // Days of the month
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const isToday = dateStr === '2026-09-10'; // synchronized demo today
+      const isToday = dateStr === todayInfo.dateStr;
       const isSelected = dateStr === selectedDate;
       const dayJobs = jobsByDate[dateStr] || [];
 
@@ -186,7 +201,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
     }
 
     return days;
-  }, [currentYear, currentMonth, selectedDate, jobsByDate]);
+  }, [currentYear, currentMonth, selectedDate, jobsByDate, todayInfo]);
 
   // Month navigation handlers
   const handlePrevMonth = () => {
@@ -208,9 +223,10 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   };
 
   const handleJumpToToday = () => {
-    setCurrentYear(2026);
-    setCurrentMonth(8); // September
-    setSelectedDate('2026-09-10');
+    const cur = getTodayDate();
+    setCurrentYear(cur.year);
+    setCurrentMonth(cur.month);
+    setSelectedDate(cur.dateStr);
   };
 
   const handleJumpToDate = (targetDate: string) => {
@@ -301,6 +317,25 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
       return selectedDate;
     }
   }, [selectedDate]);
+
+  // Dynamic quick dates for reschedule modal (Today, Tomorrow, and upcoming 6 days)
+  const quickRescheduleDates = useMemo(() => {
+    const list: Array<{ label: string; date: string }> = [];
+    const base = new Date();
+    for (let offset = 0; offset <= 7; offset++) {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${y}-${m}-${dayNum}`;
+      const monthAbbr = MONTH_NAMES[d.getMonth()].slice(0, 3);
+      let label = `${d.getDate()} ${monthAbbr}`;
+      if (offset === 0) label = `Today (${d.getDate()} ${monthAbbr})`;
+      else if (offset === 1) label = `Tomorrow (${d.getDate()} ${monthAbbr})`;
+      list.push({ label, date: dateStr });
+    }
+    return list;
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -706,15 +741,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                   <View style={styles.rescheduleForm}>
                     <Text style={styles.formLabel}>{t('calendar.select_new_date')}</Text>
                     <View style={styles.quickDatePills}>
-                      {[
-                        { label: 'Today (10 Sep)', date: '2026-09-10' },
-                        { label: 'Tomorrow (11 Sep)', date: '2026-09-11' },
-                        { label: '12 Sep', date: '2026-09-12' },
-                        { label: '14 Sep', date: '2026-09-14' },
-                        { label: '15 Sep', date: '2026-09-15' },
-                        { label: '16 Sep', date: '2026-09-16' },
-                        { label: '20 Sep', date: '2026-09-20' },
-                      ].map(item => (
+                      {quickRescheduleDates.map(item => (
                         <TouchableOpacity
                           key={item.date}
                           style={[
