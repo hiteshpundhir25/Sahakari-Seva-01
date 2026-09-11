@@ -456,6 +456,12 @@
     "seal_desc": "This digital invoice is verifiable under the Rajasthan Cooperative Societies Act. No middleman deductions or commissions were applied.",
     "share_receipt": "Share / Save Receipt",
     "back_to_job": "Back to Job",
+    "download_pdf": "Download Official PDF",
+    "downloading_pdf": "Generating PDF...",
+    "download_success": "Official PDF Invoice downloaded successfully",
+    "print_pdf": "Preview / Print",
+    "pdf_banner_title": "Official Cooperative PDF Tax Receipt",
+    "pdf_banner_desc": "Government-recognized A4 tax invoice featuring registration credentials, itemized billing, digital seal, and the 85/10/5 fair wage split.",
     "share_message": "🧾 Sahakari Seva Tax Invoice\nInvoice: {{invoice}}\nTotal: ₹{{total}}\n• 85% Worker Payout: ₹{{worker}}\n• 10% Social Security Welfare: ₹{{welfare}}\n• 5% Platform: ₹{{platform}}\nCertified by Jaipur Shramik Sahakari Sangh."
   },
   "ratings": {

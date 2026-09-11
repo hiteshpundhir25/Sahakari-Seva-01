@@ -29,10 +29,13 @@ import {
   Star,
   Copy,
   ArrowRight,
+  Download,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import type { Booking, Invoice, Payment } from '../../types';
+import { ApiClient } from '../../services/apiClient';
+import { downloadInvoicePDF } from '../../services/pdfGenerator';
 
 interface PaymentConfirmedModalProps {
   visible: boolean;
@@ -74,6 +77,7 @@ export const PaymentConfirmedModal: React.FC<PaymentConfirmedModalProps> = ({
   const styles = createStyles(colors, isDark);
 
   const [copiedTxn, setCopiedTxn] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Animation values
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -271,6 +275,26 @@ export const PaymentConfirmedModal: React.FC<PaymentConfirmedModalProps> = ({
     } catch {
       setCopiedTxn(true);
       setTimeout(() => setCopiedTxn(false), 2500);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!booking) return;
+    setDownloadingPdf(true);
+    try {
+      let inv = invoice;
+      if (!inv) {
+        inv = await ApiClient.getInvoice(booking.id);
+      }
+      if (inv) {
+        await downloadInvoicePDF(inv, booking);
+      } else if (onViewInvoice) {
+        onViewInvoice();
+      }
+    } catch {
+      if (onViewInvoice) onViewInvoice();
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -525,20 +549,32 @@ export const PaymentConfirmedModal: React.FC<PaymentConfirmedModalProps> = ({
             <View style={styles.actionsContainer}>
               <TouchableOpacity
                 style={styles.primaryActionBtn}
-                onPress={onViewInvoice}
+                onPress={handleDownloadPdf}
+                disabled={downloadingPdf}
                 activeOpacity={0.85}
               >
-                <Receipt size={17} color="#ffffff" />
-                <Text style={styles.primaryActionBtnText}>View Tax Invoice & Receipt</Text>
+                <Download size={17} color="#ffffff" />
+                <Text style={styles.primaryActionBtnText}>
+                  {downloadingPdf ? 'Generating PDF...' : 'Download Official PDF Invoice'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.secondaryActionBtn}
+                onPress={onViewInvoice}
+                activeOpacity={0.85}
+              >
+                <Receipt size={16} color={colors.textPrimary} />
+                <Text style={styles.secondaryActionBtnText}>View Breakdown & Receipt</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.ratingActionBtn}
                 onPress={onRateWorker}
                 activeOpacity={0.8}
               >
                 <Star size={16} color="#F59E0B" fill="#F59E0B" />
-                <Text style={styles.secondaryActionBtnText}>Rate Professional</Text>
+                <Text style={styles.ratingActionBtnText}>Rate Professional</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -858,13 +894,29 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
+      backgroundColor: colors.surfaceSubtle,
+      borderRadius: 12,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryActionBtnText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
+    },
+    ratingActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
       backgroundColor: colors.surface,
       borderRadius: 12,
       paddingVertical: 10,
       borderWidth: 1.5,
       borderColor: '#F59E0B',
     },
-    secondaryActionBtnText: {
+    ratingActionBtnText: {
       fontSize: 13,
       fontWeight: '700',
       color: colors.textPrimary,

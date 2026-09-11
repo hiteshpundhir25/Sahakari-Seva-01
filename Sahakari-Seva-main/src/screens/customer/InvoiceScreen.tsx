@@ -1,4 +1,3 @@
-// mobile/src/screens/customer/InvoiceScreen.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,16 +8,25 @@ import {
   Share,
   Alert,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Download,
+  Printer,
+  FileText,
+  CheckCircle2,
+  Share2,
+} from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
 import { ApiClient } from '../../services/apiClient';
 import { Invoice, Booking } from '../../types';
 import { translateTrade } from '../../i18n';
+import { downloadInvoicePDF, openInvoicePDF } from '../../services/pdfGenerator';
 
 type RouteParams = {
   Invoice: { bookingId: string };
@@ -36,6 +44,8 @@ export const InvoiceScreen: React.FC = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -56,6 +66,30 @@ export const InvoiceScreen: React.FC = () => {
     };
     load();
   }, [bookingId]);
+
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    setDownloading(true);
+    setDownloadSuccess(null);
+    try {
+      const result = await downloadInvoicePDF(invoice, booking);
+      setDownloadSuccess(result.filename);
+      setTimeout(() => setDownloadSuccess(null), 6000);
+    } catch {
+      Alert.alert(t('invoice.title', 'Tax Invoice'), 'Could not generate PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handlePrintPDF = () => {
+    if (!invoice) return;
+    try {
+      openInvoicePDF(invoice, booking);
+    } catch {
+      Alert.alert(t('invoice.title', 'Tax Invoice'), 'Could not open print preview.');
+    }
+  };
 
   const handleShare = async () => {
     if (!invoice) return;
@@ -120,7 +154,23 @@ export const InvoiceScreen: React.FC = () => {
         <Text style={styles.topBarTitle} numberOfLines={1}>
           {invoice.invoice_number}
         </Text>
-        <View style={styles.topBarRightPlaceholder} />
+        <TouchableOpacity
+          style={styles.topDownloadBtn}
+          onPress={handleDownloadPDF}
+          disabled={downloading}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Download PDF"
+        >
+          {downloading ? (
+            <ActivityIndicator size="small" color="#047857" />
+          ) : (
+            <>
+              <Download size={14} color="#047857" />
+              <Text style={styles.topDownloadBtnText}>PDF</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -268,19 +318,86 @@ export const InvoiceScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* Action Buttons */}
-      <View style={styles.actionRow}>
-        <Button
-          title={t('invoice.share_receipt')}
-          variant="primary"
-          size="lg"
+      {/* Official PDF Export Card */}
+      <Card style={styles.pdfBannerCard}>
+        <View style={styles.pdfBannerTop}>
+          <View style={styles.pdfBadgeCircle}>
+            <FileText size={22} color="#047857" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.pdfTitleRow}>
+              <Text style={styles.pdfBannerTitle}>
+                {t('invoice.pdf_banner_title', 'Official Cooperative PDF Tax Receipt')}
+              </Text>
+              <Badge label="A4 PDF" variant="success" size="sm" />
+            </View>
+            <Text style={styles.pdfBannerDesc}>
+              {t(
+                'invoice.pdf_banner_desc',
+                'Government-recognized A4 tax invoice featuring registration credentials, itemized billing, digital seal, and the 85/10/5 fair wage split.'
+              )}
+            </Text>
+          </View>
+        </View>
+
+        {downloadSuccess ? (
+          <View style={styles.downloadSuccessBox}>
+            <CheckCircle2 size={16} color="#047857" />
+            <Text style={styles.downloadSuccessText}>
+              {t('invoice.download_success', 'Official PDF Invoice downloaded successfully')}: {downloadSuccess}
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.pdfActionRow}>
+          <TouchableOpacity
+            style={[styles.downloadPdfBtn, downloading && styles.downloadPdfBtnDisabled]}
+            onPress={handleDownloadPDF}
+            disabled={downloading}
+            activeOpacity={0.85}
+          >
+            {downloading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Download size={18} color="#ffffff" />
+            )}
+            <Text style={styles.downloadPdfBtnText}>
+              {downloading
+                ? t('invoice.downloading_pdf', 'Generating PDF...')
+                : t('invoice.download_pdf', 'Download Official PDF')}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.printPdfBtn}
+            onPress={handlePrintPDF}
+            activeOpacity={0.8}
+          >
+            <Printer size={17} color={colors.textPrimary} />
+            <Text style={styles.printPdfBtnText}>
+              {t('invoice.print_pdf', 'Preview / Print')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Card>
+
+      {/* Action Buttons & Secondary Options */}
+      <View style={styles.bottomNavRow}>
+        <TouchableOpacity
+          style={styles.shareTextBtn}
           onPress={handleShare}
-          style={{ flex: 1 }}
-        />
+          activeOpacity={0.75}
+        >
+          <Share2 size={16} color={colors.textSecondary} />
+          <Text style={styles.shareTextBtnText}>
+            {t('invoice.share_receipt', 'Share Summary')}
+          </Text>
+        </TouchableOpacity>
+
         <Button
-          title={t('invoice.back_to_job')}
+          title={t('invoice.back_to_job', 'Back to Booking')}
           variant="outline"
-          size="lg"
+          size="md"
           onPress={() => navigation.goBack()}
           style={{ flex: 1 }}
         />
@@ -516,6 +633,151 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   actionRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  topDownloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#d1fae5',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  topDownloadBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#047857',
+  },
+  pdfBannerCard: {
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderColor: '#a7f3d0',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    marginBottom: spacing.md,
+  },
+  pdfBannerTop: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  pdfBadgeCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#d1fae5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pdfTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  pdfBannerTitle: {
+    ...typography.fontSubtitle,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: 6,
+  },
+  pdfBannerDesc: {
+    ...typography.fontCaption,
+    color: colors.textSecondary,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  downloadSuccessBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginVertical: spacing.xs,
+  },
+  downloadSuccessText: {
+    ...typography.fontCaption,
+    color: '#047857',
+    fontWeight: '600',
+    flex: 1,
+  },
+  pdfActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  downloadPdfBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#047857',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    shadowColor: '#047857',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  downloadPdfBtnDisabled: {
+    opacity: 0.65,
+  },
+  downloadPdfBtnText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  printPdfBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  printPdfBtnText: {
+    ...typography.fontBodySm,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  bottomNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  shareTextBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  shareTextBtnText: {
+    ...typography.fontBodySm,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
 });
 
