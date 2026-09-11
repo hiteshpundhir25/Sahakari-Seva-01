@@ -178,6 +178,41 @@ export const InvoiceScreen: React.FC = () => {
 
         <View style={styles.divider} />
 
+        {/* Service & Itemized Supplemental Parts Breakdown */}
+        <Text style={styles.sectionHeader}>Service Tasks & Approved Work</Text>
+
+        <View style={styles.lineItemRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.lineItemTitle}>
+              Base Inspection & Service: {translateTrade(booking?.service_category?.name) || 'Home Maintenance'}
+            </Text>
+            <Text style={styles.lineItemDesc}>Scheduled primary labor and diagnosis</Text>
+          </View>
+          <Text style={styles.lineItemAmount}>
+            ₹{Number(booking?.estimated_amount || invoice.subtotal).toFixed(2)}
+          </Text>
+        </View>
+
+        {booking?.supplemental_bill?.status === 'approved' &&
+          booking.supplemental_bill.items?.map((item, idx) => (
+            <View key={item.id || idx} style={styles.lineItemRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.lineItemTitle, { color: colors.textPrimary }]}>
+                  + {item.title}
+                </Text>
+                <Text style={styles.lineItemDesc}>
+                  {item.type === 'part' ? 'Authorized Spare Part' : 'Supplemental Repair Labor'}
+                  {item.description ? ` • ${item.description}` : ''}
+                </Text>
+              </View>
+              <Text style={[styles.lineItemAmount, { color: '#10b981', fontWeight: '800' }]}>
+                +₹{Number(item.cost).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+
+        <View style={styles.divider} />
+
         {/* Line Items & Breakdown */}
         <Text style={styles.sectionHeader}>{t('invoice.distribution_header')}</Text>
 

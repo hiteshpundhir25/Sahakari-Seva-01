@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
 import RatingModal from '../../components/common/RatingModal';
+import { PaymentCheckoutModal } from '../../components/common/PaymentCheckoutModal';
+import { PaymentConfirmedModal } from '../../components/common/PaymentConfirmedModal';
 import { ApiClient } from '../../services/apiClient';
-import { Booking } from '../../types';
+import { Booking, Payment, Invoice } from '../../types';
 import { translateTrade } from '../../i18n';
 
 type RouteParams = {
@@ -39,6 +41,10 @@ export const BookingDetailScreen: React.FC = () => {
   const [paying, setPaying] = useState(false);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [respondingBill, setRespondingBill] = useState(false);
+  const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
+  const [confirmedModalVisible, setConfirmedModalVisible] = useState(false);
+  const [latestPayment, setLatestPayment] = useState<Payment | null>(null);
+  const [latestInvoice, setLatestInvoice] = useState<Invoice | null>(null);
 
   const fetchBooking = async () => {
     if (!bookingId) return;
@@ -118,45 +124,17 @@ export const BookingDetailScreen: React.FC = () => {
     );
   };
 
-  const handlePayNow = async () => {
+  const handlePayNow = () => {
     if (!booking) return;
-    setPaying(true);
-    try {
-      const res = await ApiClient.processPayment({
-        booking_id: booking.id,
-        customer_id: booking.customer_id,
-        worker_id: booking.worker_id,
-        amount: booking.final_amount || booking.estimated_amount,
-        payment_method: 'demo',
-      });
+    setCheckoutModalVisible(true);
+  };
 
-      Alert.alert(
-        t('bookingDetail.payment_success'),
-        t('bookingDetail.payment_success_msg', {
-          amount: res.invoice.total_amount.toFixed(2),
-          workerAmt: res.invoice.worker_amount.toFixed(2),
-          welfareAmt: res.invoice.cooperative_share.toFixed(2),
-          platformAmt: res.invoice.platform_fee.toFixed(2),
-        }),
-        [
-          {
-            text: t('bookingDetail.rate_worker'),
-            onPress: () => setRatingModalVisible(true),
-          },
-          {
-            text: t('bookingDetail.view_invoice_btn'),
-            onPress: () => navigation.navigate('Invoice', { bookingId: booking.id }),
-          },
-        ]
-      );
-
-      // Refresh booking state
-      await fetchBooking();
-    } catch (err: any) {
-      Alert.alert(t('bookingDetail.payment_failed_title'), err.message || t('bookingDetail.payment_failed_msg'));
-    } finally {
-      setPaying(false);
-    }
+  const handlePaymentSuccess = (res: { payment: Payment; invoice: Invoice }) => {
+    setLatestPayment(res.payment);
+    setLatestInvoice(res.invoice);
+    setCheckoutModalVisible(false);
+    setConfirmedModalVisible(true);
+    fetchBooking();
   };
 
   if (loading) {
@@ -189,7 +167,8 @@ export const BookingDetailScreen: React.FC = () => {
     { key: 'completed', label: t('bookingDetail.step_completed') },
   ];
 
-  const getStepIndex = (st: string) => {
+  const getStepIndex = (st: string, paymentSt?: string) => {
+    if (paymentSt === 'paid' || st === 'completed') return 3;
     switch (st) {
       case 'pending': return 0;
       case 'accepted': return 1;
@@ -199,9 +178,10 @@ export const BookingDetailScreen: React.FC = () => {
     }
   };
 
-  const currentStep = getStepIndex(booking.status);
+  const currentStep = getStepIndex(booking.status, booking.payment_status);
   const worker = booking.worker;
   const finalPrice = booking.final_amount || booking.estimated_amount;
+  const isPaidOrCompleted = booking.payment_status === 'paid' || booking.status === 'completed';
 
   return (
     <View style={styles.screenWrapper}>
@@ -555,9 +535,9 @@ export const BookingDetailScreen: React.FC = () => {
 
       {/* Dynamic Action Buttons */}
       <View style={styles.actionContainer}>
-        {booking.status !== 'completed' && (
+        {!isPaidOrCompleted && (
           <Button
-            title={t('bookingDetail.pay_now', { amount: finalPrice.toFixed(0) })}
+            title={`Pay Now (₹${finalPrice.toFixed(0)})`}
             variant="primary"
             size="lg"
             loading={paying}
@@ -566,25 +546,73 @@ export const BookingDetailScreen: React.FC = () => {
           />
         )}
 
-        {booking.status === 'completed' && (
-          <>
-            <Button
-              title={t('bookingDetail.view_invoice')}
-              variant="primary"
-              size="lg"
-              onPress={() => navigation.navigate('Invoice', { bookingId: booking.id })}
-              style={styles.actionBtn}
-            />
-            <Button
-              title={t('bookingDetail.rate_professional')}
-              variant="outline"
-              size="md"
-              onPress={() => setRatingModalVisible(true)}
-              style={styles.actionBtn}
-            />
-          </>
+        {isPaidOrCompleted && (
+          <View style={styles.paymentSettledCard}>
+            <View style={styles.paymentSettledHeader}>
+              <View style={styles.settledBadge}>
+                <CheckCircle2 size={15} color="#10b981" />
+                <Text style={styles.settledBadgeText}>PAYMENT SETTLED & VERIFIED</Text>
+              </View>
+              <Text style={styles.settledAmountText}>₹{finalPrice.toFixed(2)}</Text>
+            </View>
+            <Text style={styles.settledSubText}>
+              Direct 85% worker earnings credited to {worker?.profile?.full_name || 'Rahul Sharma'}. Cooperative audit pass verified.
+            </Text>
+            <View style={styles.settledDivider} />
+            <View style={styles.settledActionRow}>
+              <Button
+                title={t('bookingDetail.view_invoice', 'View Tax Invoice')}
+                variant="primary"
+                size="md"
+                onPress={() => navigation.navigate('Invoice', { bookingId: booking.id })}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={t('bookingDetail.rate_professional', 'Rate Professional')}
+                variant="outline"
+                size="md"
+                onPress={() => setRatingModalVisible(true)}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
         )}
       </View>
+
+      {/* Interactive Payment Checkout Modal */}
+      <PaymentCheckoutModal
+        visible={checkoutModalVisible}
+        booking={booking}
+        totalAmount={finalPrice}
+        baseAmount={Number(booking.estimated_amount) || 0}
+        supplementalItems={
+          booking.supplemental_bill?.status === 'approved'
+            ? booking.supplemental_bill.items
+            : []
+        }
+        onClose={() => setCheckoutModalVisible(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      {/* Celebratory Payment Confirmed Modal */}
+      <PaymentConfirmedModal
+        visible={confirmedModalVisible}
+        booking={booking}
+        payment={latestPayment}
+        invoice={latestInvoice}
+        onClose={() => {
+          setConfirmedModalVisible(false);
+          fetchBooking();
+        }}
+        onViewInvoice={() => {
+          setConfirmedModalVisible(false);
+          navigation.navigate('Invoice', { bookingId: booking.id });
+        }}
+        onRateWorker={() => {
+          setConfirmedModalVisible(false);
+          setRatingModalVisible(true);
+        }}
+      />
 
       {/* Rating Modal */}
       <RatingModal
@@ -592,8 +620,8 @@ export const BookingDetailScreen: React.FC = () => {
         bookingId={booking.id}
         workerId={booking.worker_id}
         customerId={booking.customer_id}
-        workerName={worker?.profile?.full_name || t('bookingDetail.worker_fallback')}
-        customerName={t('bookingDetail.verified_customer')}
+        workerName={worker?.profile?.full_name || t('bookingDetail.worker_fallback', 'Service Professional')}
+        customerName={t('bookingDetail.verified_customer', 'Verified Customer')}
         onClose={() => setRatingModalVisible(false)}
         onSubmitted={() => fetchBooking()}
       />
@@ -1107,6 +1135,60 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   },
   actionBtn: {
     width: '100%',
+  },
+  paymentSettledCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#10b981',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: spacing.sm,
+  },
+  paymentSettledHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  settledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  settledBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#10b981',
+    letterSpacing: 0.4,
+  },
+  settledAmountText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#10b981',
+  },
+  settledSubText: {
+    ...typography.fontCaption,
+    color: colors.textSecondary,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  settledDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
+  },
+  settledActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });
 

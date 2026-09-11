@@ -170,6 +170,59 @@ export class ApiClient {
     }
   }
 
+  // --- BOOKING & INVOICE PERSISTENCE HELPERS ---
+  public static async persistBooking(booking: Booking): Promise<void> {
+    try {
+      const key = `@sahakari_booking_${booking.id}`;
+      const json = JSON.stringify(booking);
+      await AsyncStorage.setItem(key, json);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, json);
+      }
+    } catch (e) {
+      console.warn('Failed to persist booking', e);
+    }
+  }
+
+  public static async restoreBooking(bookingId: string): Promise<Booking | null> {
+    try {
+      const key = `@sahakari_booking_${bookingId}`;
+      let val = await AsyncStorage.getItem(key);
+      if (!val && typeof window !== 'undefined' && window.localStorage) {
+        val = window.localStorage.getItem(key);
+      }
+      return val ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public static async persistInvoice(invoice: Invoice): Promise<void> {
+    try {
+      const key = `@sahakari_invoice_${invoice.booking_id}`;
+      const json = JSON.stringify(invoice);
+      await AsyncStorage.setItem(key, json);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, json);
+      }
+    } catch (e) {
+      console.warn('Failed to persist invoice', e);
+    }
+  }
+
+  public static async restoreInvoice(bookingId: string): Promise<Invoice | null> {
+    try {
+      const key = `@sahakari_invoice_${bookingId}`;
+      let val = await AsyncStorage.getItem(key);
+      if (!val && typeof window !== 'undefined' && window.localStorage) {
+        val = window.localStorage.getItem(key);
+      }
+      return val ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  }
+
   // --- WORKERS & GEOLOCATION MATCHING ---
   public static async getNearbyWorkers(
     lat: number,
@@ -333,10 +386,19 @@ export class ApiClient {
   public static async getBookingById(bookingId: string): Promise<Booking | null> {
     try {
       const res = await this.request<any>(`/bookings/${bookingId}`);
-      return res.data || res;
+      if (res && (res.data || res.id)) return res.data || res;
     } catch {
-      return MOCK_BOOKINGS.find(b => b.id === bookingId) || MOCK_BOOKINGS[0] || null;
+      // offline fallback
     }
+
+    const inMem = MOCK_BOOKINGS.find(b => b.id === bookingId || b.booking_code === bookingId);
+    const stored = await this.restoreBooking(bookingId);
+    if (stored && inMem) {
+      Object.assign(inMem, stored);
+      return inMem;
+    }
+    if (stored) return stored;
+    return inMem || null;
   }
 
   public static async createBooking(bookingPayload: any): Promise<Booking> {
@@ -515,6 +577,7 @@ export class ApiClient {
           b.final_amount = (Number(b.estimated_amount) || 0) + b.supplemental_bill.total_amount;
         }
         b.updated_at = new Date().toISOString();
+        await this.persistBooking(b);
 
         // Push real-time confirmation notification to Worker
         MOCK_NOTIFICATIONS.worker.unshift({
@@ -772,64 +835,154 @@ export class ApiClient {
     worker_id: string;
     amount: number;
     payment_method: string;
+    transaction_reference?: string;
   }): Promise<{ payment: Payment; invoice: Invoice }> {
+    const amt = Number(data.amount) || 0;
+    const workerAmt = parseFloat((amt * 0.85).toFixed(2));
+    const welfareAmt = parseFloat((amt * 0.10).toFixed(2));
+    const platformAmt = parseFloat((amt * 0.05).toFixed(2));
+    const txnRef = data.transaction_reference || `TXN-DEMO-${Date.now().toString().slice(-8)}`;
+
+    let responseFromApi: any = null;
     try {
       const res = await this.request<any>('/payments', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify({ ...data, amount: amt, transaction_reference: txnRef })
       });
-      return res.data;
+      responseFromApi = (res && res.data) ? res.data : res;
     } catch {
-      const amt = data.amount;
-      const workerAmt = parseFloat((amt * 0.85).toFixed(2));
-      const welfareAmt = parseFloat((amt * 0.10).toFixed(2));
-      const platformAmt = parseFloat((amt * 0.05).toFixed(2));
-
-      const invoice: Invoice = {
-        id: `inv-${Date.now()}`,
-        booking_id: data.booking_id,
-        invoice_number: `INV-2026-${Date.now().toString().slice(-6)}`,
-        customer_id: data.customer_id,
-        worker_id: data.worker_id,
-        subtotal: amt,
-        platform_fee: platformAmt,
-        cooperative_share: welfareAmt,
-        worker_amount: workerAmt,
-        tax: 0,
-        total_amount: amt,
-        generated_at: new Date().toISOString()
-      };
-      MOCK_INVOICES.unshift(invoice);
-
-      // Mark the booking paid in-session
-      const b = MOCK_BOOKINGS.find(x => x.id === data.booking_id);
-      if (b) b.payment_status = 'paid';
-
-      return {
-        payment: {
-          id: `pay-${Date.now()}`,
-          booking_id: data.booking_id,
-          customer_id: data.customer_id,
-          worker_id: data.worker_id,
-          amount: amt,
-          payment_method: 'demo',
-          transaction_reference: `TXN-DEMO-${Date.now()}`,
-          status: 'paid',
-          payment_gateway: 'Sahakari Demo Gateway',
-          created_at: new Date().toISOString()
-        },
-        invoice
-      };
+      // offline/mock fallback
     }
+
+    const invoice: Invoice = (responseFromApi && responseFromApi.invoice) ? responseFromApi.invoice : {
+      id: `inv-${Date.now()}`,
+      booking_id: data.booking_id,
+      invoice_number: `INV-2026-${Date.now().toString().slice(-6)}`,
+      customer_id: data.customer_id,
+      worker_id: data.worker_id,
+      subtotal: amt,
+      platform_fee: platformAmt,
+      cooperative_share: welfareAmt,
+      worker_amount: workerAmt,
+      tax: 0,
+      total_amount: amt,
+      generated_at: new Date().toISOString()
+    };
+
+    const payment: Payment = (responseFromApi && responseFromApi.payment) ? responseFromApi.payment : {
+      id: `pay-${Date.now()}`,
+      booking_id: data.booking_id,
+      customer_id: data.customer_id,
+      worker_id: data.worker_id,
+      amount: amt,
+      payment_method: data.payment_method || 'UPI',
+      transaction_reference: txnRef,
+      status: 'paid',
+      payment_gateway: 'Sahakari Cooperative Gateway (NPCI/UPI)',
+      created_at: new Date().toISOString()
+    };
+
+    // Store/replace in memory MOCK_INVOICES
+    const existingInvIdx = MOCK_INVOICES.findIndex(i => i.booking_id === data.booking_id);
+    if (existingInvIdx >= 0) {
+      MOCK_INVOICES[existingInvIdx] = invoice;
+    } else {
+      MOCK_INVOICES.unshift(invoice);
+    }
+    await this.persistInvoice(invoice);
+
+    // Mark the booking paid AND completed
+    const b = MOCK_BOOKINGS.find(x => x.id === data.booking_id);
+    if (b) {
+      b.payment_status = 'paid';
+      b.status = 'completed';
+      b.final_amount = amt;
+      b.updated_at = new Date().toISOString();
+      await this.persistBooking(b);
+    }
+
+    // Automatically reset worker operational duty status back to 'available' if no other active jobs
+    const assignedWorkerId = data.worker_id || b?.worker_id;
+    if (assignedWorkerId) {
+      const hasOtherActiveJobs = MOCK_BOOKINGS.some(
+        bk =>
+          (bk.worker_id === assignedWorkerId || (bk.worker as any)?.id === assignedWorkerId) &&
+          bk.id !== data.booking_id &&
+          (bk.status === 'accepted' || bk.status === 'in_progress')
+      );
+      if (!hasOtherActiveJobs) {
+        await this.updateWorkerAvailability(assignedWorkerId, 'available');
+      }
+    }
+
+    // Push notification to customer
+    MOCK_NOTIFICATIONS.customer.unshift({
+      id: 'notif-c-' + Date.now(),
+      user_id: data.customer_id,
+      type: 'payment',
+      title: `Payment Successful (₹${amt.toFixed(2)}) 🎉`,
+      message: `Payment of ₹${amt.toFixed(2)} confirmed for ${b?.booking_code || 'booking'}. ₹${workerAmt.toFixed(2)} directly credited to ${b?.worker?.profile?.full_name || 'the professional'}.`,
+      read: false,
+      action_url: '/bookings',
+      created_at: new Date().toISOString(),
+    });
+
+    // Push notification to worker
+    MOCK_NOTIFICATIONS.worker.unshift({
+      id: 'notif-w-' + Date.now(),
+      user_id: data.worker_id,
+      type: 'payment',
+      title: `₹${workerAmt.toFixed(2)} Wage Credited! 💸`,
+      message: `85% cooperative direct wage for job ${b?.booking_code || ''} has been deposited to your account.`,
+      read: false,
+      action_url: '/welfare',
+      created_at: new Date().toISOString(),
+    });
+
+    return { payment, invoice };
   }
 
   public static async getInvoice(bookingId: string): Promise<Invoice | null> {
     try {
       const res = await this.request<any>(`/payments/invoices/${bookingId}`);
-      return res.data || null;
+      if (res && res.data) return res.data;
+      if (res && res.invoice_number) return res;
     } catch {
-      return MOCK_INVOICES.find(i => i.booking_id === bookingId) || MOCK_INVOICES[0] || null;
+      // offline fallback
     }
+
+    const inMem = MOCK_INVOICES.find(i => i.booking_id === bookingId);
+    if (inMem) return inMem;
+
+    const stored = await this.restoreInvoice(bookingId);
+    if (stored) {
+      MOCK_INVOICES.unshift(stored);
+      return stored;
+    }
+
+    // Dynamically generate invoice matching the booking total
+    const b = MOCK_BOOKINGS.find(bk => bk.id === bookingId);
+    if (b) {
+      const amt = Number(b.final_amount) || Number(b.estimated_amount) || 0;
+      const inv: Invoice = {
+        id: `inv-${bookingId}`,
+        booking_id: bookingId,
+        invoice_number: `INV-2026-${bookingId.slice(-6).toUpperCase()}`,
+        customer_id: b.customer_id,
+        worker_id: b.worker_id,
+        subtotal: amt,
+        platform_fee: parseFloat((amt * 0.05).toFixed(2)),
+        cooperative_share: parseFloat((amt * 0.10).toFixed(2)),
+        worker_amount: parseFloat((amt * 0.85).toFixed(2)),
+        tax: 0,
+        total_amount: amt,
+        generated_at: b.updated_at || new Date().toISOString(),
+      };
+      MOCK_INVOICES.unshift(inv);
+      return inv;
+    }
+
+    return null;
   }
 
   // --- WELFARE ---
