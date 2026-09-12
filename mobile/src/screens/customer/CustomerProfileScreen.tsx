@@ -16,7 +16,8 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
-  Pressable
+  Pressable,
+  Linking
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -187,7 +188,15 @@ export const CustomerProfileScreen: React.FC = () => {
       t('customerProfile.sos_dial_msg', { phone: contactPhone }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        { text: 'Call Now', onPress: () => {} }
+        {
+          text: 'Call Now',
+          onPress: () => {
+            const clean = contactPhone.replace(/[^0-9+]/g, '');
+            Linking.openURL(`tel:${clean}`).catch(err => {
+              console.warn('Cannot open phone dialer:', err);
+            });
+          },
+        },
       ]
     );
   };
@@ -196,7 +205,17 @@ export const CustomerProfileScreen: React.FC = () => {
     Alert.alert(
       t('customerProfile.state_helpline'),
       'Connecting to Rajasthan Cooperative Shramik Helpline (1800-SAHAKAR / 1800-724-2527). Available 24 hours a day with bilingual grievance officers.',
-      [{ text: 'OK' }]
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: 'Call 1800-724-2527',
+          onPress: () => {
+            Linking.openURL('tel:18007242527').catch(err => {
+              console.warn('Cannot open helpline dialer:', err);
+            });
+          },
+        },
+      ]
     );
   };
 

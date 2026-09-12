@@ -115,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (!rootNavigationRef.isReady()) return;
     try {
       if (role === 'customer') {
-        rootNavigationRef.navigate('CustomerTabs', { screen: 'CustomerProfile' });
+        rootNavigationRef.navigate('CustomerProfile');
       } else if (role === 'worker') {
         rootNavigationRef.navigate('WorkerProfile');
       } else if (role === 'admin') {
@@ -209,7 +209,11 @@ export const Header: React.FC<HeaderProps> = ({
             onPress={e => e.stopPropagation()}
           >
             {/* User Identity Card in Menu */}
-            <View style={styles.dropdownProfileHeader}>
+            <TouchableOpacity
+              style={styles.dropdownProfileHeader}
+              onPress={handleOpenProfile}
+              activeOpacity={0.75}
+            >
               <View style={[styles.dropdownAvatarLarge, { backgroundColor: userMeta.avatarBg }]}>
                 {role === 'admin' ? (
                   <Shield size={18} color="#ffffff" />
@@ -228,7 +232,8 @@ export const Header: React.FC<HeaderProps> = ({
                   {userMeta.subTitle}
                 </Text>
               </View>
-            </View>
+              <ChevronRight size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
 
             {/* Profile Button */}
             <TouchableOpacity

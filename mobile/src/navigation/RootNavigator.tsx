@@ -202,16 +202,6 @@ function CustomerTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="CustomerProfile"
-        component={CustomerProfileScreen}
-        options={{
-          tabBarLabel: t('tabs.profile'),
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon icon={User} color={color} size={size} focused={focused} colors={colors} />
-          ),
-        }}
-      />
     </Tab.Navigator>
   );
 }
@@ -220,6 +210,7 @@ function CustomerStackNavigator() {
   return (
     <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="CustomerTabs" component={CustomerTabNavigator} />
+      <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
       <Stack.Screen name="WorkerDetail" component={WorkerDetailScreen} />
       <Stack.Screen name="BookingCreate" component={BookingCreateScreen} />
       <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />
@@ -279,16 +270,6 @@ function WorkerTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="WorkerProfile"
-        component={WorkerProfileScreen}
-        options={{
-          tabBarLabel: t('tabs.profile'),
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon icon={User} color={color} size={size} focused={focused} colors={colors} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="WorkerLocation"
         component={WorkerLocationScreen}
         options={{
@@ -307,6 +288,7 @@ function WorkerStackNavigator() {
     <Stack.Navigator screenOptions={stackScreenOptions}>
       <Stack.Screen name="WorkerTabs" component={WorkerTabNavigator} />
       <Stack.Screen name="WorkerJobDetail" component={WorkerJobDetailScreen} />
+      <Stack.Screen name="WorkerProfile" component={WorkerProfileScreen} />
     </Stack.Navigator>
   );
 }
@@ -371,17 +353,16 @@ function AdminTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
-        name="AdminProfile"
-        component={AdminProfileScreen}
-        options={{
-          tabBarLabel: t('tabs.profile'),
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon icon={Shield} color={color} size={size} focused={focused} colors={colors} />
-          ),
-        }}
-      />
     </Tab.Navigator>
+  );
+}
+
+function AdminStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={stackScreenOptions}>
+      <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
+      <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+    </Stack.Navigator>
   );
 }
 
@@ -472,7 +453,7 @@ export const RootNavigator: React.FC = () => {
         )}
         {session.role === 'admin' && (
           <ErrorBoundary fallbackTitle="Admin Section">
-            <AdminTabNavigator />
+            <AdminStackNavigator />
           </ErrorBoundary>
         )}
         </View>
