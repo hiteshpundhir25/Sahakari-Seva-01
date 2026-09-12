@@ -119,6 +119,9 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
   };
 
   useEffect(() => {
+    if (route?.params?.job) {
+      setJob(route.params.job);
+    }
     fetchJob();
     const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
       fetchJob();
@@ -126,7 +129,7 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
     return () => {
       sub.remove();
     };
-  }, [bookingId]);
+  }, [bookingId, route?.params?.job]);
 
   const isPrepaidViolation = ApiClient.isPrepaidViolation(job);
 

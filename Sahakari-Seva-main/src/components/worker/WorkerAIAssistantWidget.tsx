@@ -50,8 +50,10 @@ import {
   Search,
   Check,
   Plus,
+  ChevronRight,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
+import { rootNavigationRef } from '../../navigation/RootNavigator';
 import {
   AIAssistantService,
   WorkerAssistantContext,
@@ -59,7 +61,7 @@ import {
   AssistantMessage,
   AssistantActionCard,
 } from '../../services/aiAssistantService';
-import { ExtraTaskItem, ExtraTaskType } from '../../types';
+import { Booking, ExtraTaskItem, ExtraTaskType } from '../../types';
 import { TRADE_SUGGESTIONS } from './SupplementalBillModal';
 
 // ==============================================================================
@@ -448,6 +450,246 @@ const AssistantPartsPickerCard: React.FC<AssistantPartsPickerCardProps> = ({
   );
 };
 
+// ==============================================================================
+// IN-CHAT INTERACTIVE JOB & REQUEST LIST CARD
+// ==============================================================================
+interface AssistantJobListCardProps {
+  card: AssistantActionCard;
+  isDark: boolean;
+  onSelectJob: (job: Booking) => void;
+}
+
+const AssistantJobListCard: React.FC<AssistantJobListCardProps> = ({
+  card,
+  isDark,
+  onSelectJob,
+}) => {
+  const jobs = card.jobs || (card.booking ? [card.booking] : []);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'accepted' | 'in_progress'>('all');
+
+  const pendingCount = jobs.filter(j => j.status === 'pending').length;
+  const acceptedCount = jobs.filter(j => j.status === 'accepted').length;
+  const inProgressCount = jobs.filter(j => j.status === 'in_progress').length;
+
+  const filteredJobs = jobs.filter(j => {
+    if (activeFilter === 'all') return true;
+    return j.status === activeFilter;
+  });
+
+  if (jobs.length === 0) {
+    return (
+      <View style={[styles.jobListCardContainer, { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
+        <Text style={[styles.jobListEmptyText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+          No requests or jobs found.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.jobListCardContainer, { backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
+      {/* Card Header */}
+      <View style={[styles.jobListCardHeader, { borderBottomColor: isDark ? '#334155' : '#f1f5f9' }]}>
+        <View style={styles.jobListCardHeaderLeft}>
+          <Text style={[styles.jobListCardTitle, { color: isDark ? '#f8fafc' : '#0f172a' }]}>
+            Available Requests & Jobs
+          </Text>
+          <View style={styles.jobListCountBadge}>
+            <Text style={styles.jobListCountBadgeText}>{jobs.length}</Text>
+          </View>
+        </View>
+        <Text style={[styles.jobListCardSubtitle, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+          Tap any request to open page
+        </Text>
+      </View>
+
+      {/* Filter Chips if multiple statuses exist */}
+      {(pendingCount > 0 || acceptedCount > 0 || inProgressCount > 0) && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.jobListFilterScroll, { borderBottomColor: isDark ? '#334155' : '#f1f5f9' }]} contentContainerStyle={styles.jobListFilterContent}>
+          <TouchableOpacity
+            style={[
+              styles.jobListFilterPill,
+              { backgroundColor: isDark ? '#0f172a' : '#f1f5f9' },
+              activeFilter === 'all' && (isDark ? { backgroundColor: '#334155' } : styles.jobListFilterPillActive),
+            ]}
+            onPress={() => setActiveFilter('all')}
+          >
+            <Text style={[styles.jobListFilterText, activeFilter === 'all' && styles.jobListFilterTextActive]}>
+              All ({jobs.length})
+            </Text>
+          </TouchableOpacity>
+          {pendingCount > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.jobListFilterPill,
+                { backgroundColor: isDark ? '#0f172a' : '#fef3c7' },
+                activeFilter === 'pending' && styles.jobListFilterPillActiveAmber,
+              ]}
+              onPress={() => setActiveFilter('pending')}
+            >
+              <Text
+                style={[
+                  styles.jobListFilterText,
+                  { color: '#d97706' },
+                  activeFilter === 'pending' && styles.jobListFilterTextActiveAmber,
+                ]}
+              >
+                Pending ({pendingCount})
+              </Text>
+            </TouchableOpacity>
+          )}
+          {acceptedCount > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.jobListFilterPill,
+                { backgroundColor: isDark ? '#0f172a' : '#eff6ff' },
+                activeFilter === 'accepted' && styles.jobListFilterPillActiveBlue,
+              ]}
+              onPress={() => setActiveFilter('accepted')}
+            >
+              <Text
+                style={[
+                  styles.jobListFilterText,
+                  { color: '#2563eb' },
+                  activeFilter === 'accepted' && styles.jobListFilterTextActiveBlue,
+                ]}
+              >
+                Confirmed ({acceptedCount})
+              </Text>
+            </TouchableOpacity>
+          )}
+          {inProgressCount > 0 && (
+            <TouchableOpacity
+              style={[
+                styles.jobListFilterPill,
+                { backgroundColor: isDark ? '#0f172a' : '#ecfdf5' },
+                activeFilter === 'in_progress' && styles.jobListFilterPillActiveGreen,
+              ]}
+              onPress={() => setActiveFilter('in_progress')}
+            >
+              <Text
+                style={[
+                  styles.jobListFilterText,
+                  { color: '#059669' },
+                  activeFilter === 'in_progress' && styles.jobListFilterTextActiveGreen,
+                ]}
+              >
+                Active ({inProgressCount})
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      )}
+
+      {/* Job Items List */}
+      <View style={styles.jobListItems}>
+        {filteredJobs.map((job, idx) => {
+          const isPending = job.status === 'pending';
+          const isInProgress = job.status === 'in_progress';
+          const isAccepted = job.status === 'accepted';
+          const totalAmt = Number(job.final_amount || job.estimated_amount || 0);
+          const directWage = (totalAmt * 0.85).toFixed(0);
+
+          return (
+            <TouchableOpacity
+              key={job.id || idx}
+              style={[
+                styles.jobListItem,
+                idx < filteredJobs.length - 1 && { borderBottomColor: isDark ? '#334155' : '#f1f5f9', borderBottomWidth: 1 },
+                { backgroundColor: isDark ? '#1e293b' : '#ffffff' },
+              ]}
+              onPress={() => onSelectJob(job)}
+              activeOpacity={0.7}
+            >
+              {/* Top Row: Code & Status */}
+              <View style={styles.jobListItemTop}>
+                <View style={[styles.jobCodeBadge, { backgroundColor: isDark ? '#0f172a' : '#f8fafc', borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
+                  <Text style={[styles.jobCodeText, { color: isDark ? '#38bdf8' : '#0284c7' }]}>
+                    {job.booking_code}
+                  </Text>
+                </View>
+
+                <View style={styles.jobStatusContainer}>
+                  {job.is_emergency && (
+                    <View style={styles.emergencyPill}>
+                      <Text style={styles.emergencyPillText}>🚨 Emergency</Text>
+                    </View>
+                  )}
+                  {isInProgress && (
+                    <View style={[styles.statusPill, styles.statusPillProgress]}>
+                      <Text style={styles.statusTextProgress}>⚡ In Progress</Text>
+                    </View>
+                  )}
+                  {isAccepted && (
+                    <View style={[styles.statusPill, styles.statusPillAccepted]}>
+                      <Text style={styles.statusTextAccepted}>📋 Confirmed</Text>
+                    </View>
+                  )}
+                  {isPending && (
+                    <View style={[styles.statusPill, styles.statusPillPending]}>
+                      <Text style={styles.statusTextPending}>🔔 Pending Request</Text>
+                    </View>
+                  )}
+                  {!isPending && !isAccepted && !isInProgress && (
+                    <View style={[styles.statusPill, styles.statusPillDefault]}>
+                      <Text style={styles.statusTextDefault}>{job.status}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Service Description */}
+              <Text style={[styles.jobServiceDesc, { color: isDark ? '#f1f5f9' : '#1e293b' }]} numberOfLines={2}>
+                {job.service_description || 'General Service Work'}
+              </Text>
+
+              {/* Customer & Location Info */}
+              <View style={styles.jobMetaRow}>
+                <View style={styles.jobMetaItem}>
+                  <User size={12} color={isDark ? '#94a3b8' : '#64748b'} />
+                  <Text style={[styles.jobMetaText, { color: isDark ? '#cbd5e1' : '#475569' }]} numberOfLines={1}>
+                    {job.customer?.full_name || 'Customer'}
+                  </Text>
+                </View>
+                <View style={styles.jobMetaItem}>
+                  <MapPin size={12} color={isDark ? '#94a3b8' : '#64748b'} />
+                  <Text style={[styles.jobMetaText, { color: isDark ? '#cbd5e1' : '#475569' }]} numberOfLines={1}>
+                    {job.address?.split(',')[0] || job.city || 'Jaipur'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Timing & Wage & Action */}
+              <View style={styles.jobListItemBottom}>
+                <View style={styles.jobTimingBox}>
+                  <Clock size={11} color={isDark ? '#94a3b8' : '#64748b'} />
+                  <Text style={[styles.jobTimingText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                    {job.booking_date} • {job.booking_time}
+                  </Text>
+                </View>
+
+                <View style={styles.jobWageAndAction}>
+                  <View style={styles.jobWageBox}>
+                    <Text style={styles.jobWageText}>₹{directWage}</Text>
+                    <Text style={styles.jobWageSub}>wage</Text>
+                  </View>
+
+                  <View style={[styles.jobActionPill, { backgroundColor: isDark ? '#0f172a' : '#ecfdf5', borderColor: isDark ? '#059669' : '#10b981' }]}>
+                    <Text style={[styles.jobActionPillText, { color: isDark ? '#34d399' : '#059669' }]}>
+                      View Request
+                    </Text>
+                    <ChevronRight size={13} color={isDark ? '#34d399' : '#059669'} />
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 export const WorkerAIAssistantWidget: React.FC = () => {
   const { colors, isDark } = useTheme();
 
@@ -556,11 +798,11 @@ export const WorkerAIAssistantWidget: React.FC = () => {
         ],
       };
     } else if (pending.length > 0) {
-      greeting += `You have ${pending.length} new booking request waiting for your review.`;
+      greeting += `You have ${pending.length} new booking request${pending.length > 1 ? 's' : ''} waiting for your review. Tap any request below to view its page:`;
       card = {
         id: 'init-card-3',
-        type: 'action_buttons',
-        booking: pending[0],
+        type: 'job_list',
+        jobs: [...(inProg ? [inProg] : []), ...(accepted ? [accepted] : []), ...pending],
         actions: [
           { label: `Accept ${pending[0].booking_code} (₹${pending[0].estimated_amount})`, command: 'accept job', variant: 'primary' },
           { label: 'Decline Request', command: 'decline job', variant: 'danger' },
@@ -587,6 +829,21 @@ export const WorkerAIAssistantWidget: React.FC = () => {
         card,
       },
     ]);
+  };
+
+  const handleOpenJobDetail = (job: Booking) => {
+    AIAssistantService.stopSpeaking();
+    AIAssistantService.stopListening();
+    setIsOpen(false);
+    setTimeout(() => {
+      try {
+        if (rootNavigationRef.isReady()) {
+          rootNavigationRef.navigate('WorkerJobDetail', { bookingId: job.id, job });
+        }
+      } catch (err) {
+        console.warn('Could not navigate to job detail', err);
+      }
+    }, 60);
   };
 
   const handleSendDiagnosticEstimate = async (bookingId: string, items: ExtraTaskItem[], notes?: string) => {
@@ -928,6 +1185,15 @@ export const WorkerAIAssistantWidget: React.FC = () => {
                       />
                     )}
 
+                    {/* Interactive Job & Request List Card */}
+                    {msg.card && msg.card.type === 'job_list' && (
+                      <AssistantJobListCard
+                        card={msg.card}
+                        isDark={isDark}
+                        onSelectJob={handleOpenJobDetail}
+                      />
+                    )}
+
                     <Text
                       style={[
                         styles.bubbleTime,
@@ -953,6 +1219,15 @@ export const WorkerAIAssistantWidget: React.FC = () => {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
                 <TouchableOpacity
                   style={styles.chip}
+                  onPress={() => handleExecute('all requests')}
+                  disabled={actionInProgress}
+                >
+                  <Clock size={13} color="#2563eb" />
+                  <Text style={styles.chipText}>All Requests</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.chip}
                   onPress={() => handleExecute('start work')}
                   disabled={actionInProgress}
                 >
@@ -965,7 +1240,7 @@ export const WorkerAIAssistantWidget: React.FC = () => {
                   onPress={() => handleExecute('complete job')}
                   disabled={actionInProgress}
                 >
-                  <CheckCircle2 size={13} color="#2563eb" />
+                  <CheckCircle2 size={13} color="#059669" />
                   <Text style={styles.chipText}>Complete Job</Text>
                 </TouchableOpacity>
 
@@ -976,15 +1251,6 @@ export const WorkerAIAssistantWidget: React.FC = () => {
                 >
                   <Wrench size={13} color="#f59e0b" />
                   <Text style={styles.chipText}>Extra Parts</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.chip}
-                  onPress={() => handleExecute('my jobs')}
-                  disabled={actionInProgress}
-                >
-                  <Clock size={13} color="#64748b" />
-                  <Text style={styles.chipText}>Show My Jobs</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -1743,5 +2009,244 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
     color: '#ffffff',
+  },
+
+  // ---------------------------------------------------------------------------
+  // JOB & REQUEST LIST CARD STYLES
+  // ---------------------------------------------------------------------------
+  jobListCardContainer: {
+    marginVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  jobListCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+  },
+  jobListCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  jobListCardTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  jobListCountBadge: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  jobListCountBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  jobListCardSubtitle: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  jobListFilterScroll: {
+    borderBottomWidth: 1,
+  },
+  jobListFilterContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  jobListFilterPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  jobListFilterPillActive: {
+    backgroundColor: '#0f172a',
+  },
+  jobListFilterPillActiveAmber: {
+    backgroundColor: '#d97706',
+  },
+  jobListFilterPillActiveBlue: {
+    backgroundColor: '#2563eb',
+  },
+  jobListFilterPillActiveGreen: {
+    backgroundColor: '#059669',
+  },
+  jobListFilterText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  jobListFilterTextActive: {
+    color: '#ffffff',
+  },
+  jobListFilterTextActiveAmber: {
+    color: '#ffffff',
+  },
+  jobListFilterTextActiveBlue: {
+    color: '#ffffff',
+  },
+  jobListFilterTextActiveGreen: {
+    color: '#ffffff',
+  },
+  jobListItems: {
+    flexDirection: 'column',
+  },
+  jobListItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  jobListItemTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  jobCodeBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  jobCodeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  jobStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  emergencyPill: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  emergencyPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#dc2626',
+  },
+  statusPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusPillProgress: {
+    backgroundColor: '#ecfdf5',
+  },
+  statusTextProgress: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  statusPillAccepted: {
+    backgroundColor: '#eff6ff',
+  },
+  statusTextAccepted: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  statusPillPending: {
+    backgroundColor: '#fef3c7',
+  },
+  statusTextPending: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  statusPillDefault: {
+    backgroundColor: '#f1f5f9',
+  },
+  statusTextDefault: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#475569',
+    textTransform: 'capitalize',
+  },
+  jobServiceDesc: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  jobMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  jobMetaText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  jobListItemBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+    paddingTop: 4,
+  },
+  jobTimingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  jobTimingText: {
+    fontSize: 10.5,
+    fontWeight: '500',
+  },
+  jobWageAndAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  jobWageBox: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
+  },
+  jobWageText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#10b981',
+  },
+  jobWageSub: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  jobActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  jobActionPillText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  jobListEmptyText: {
+    padding: 16,
+    textAlign: 'center',
+    fontSize: 12,
   },
 });

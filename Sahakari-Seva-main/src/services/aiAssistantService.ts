@@ -30,8 +30,9 @@ export type AssistantIntentType =
 
 export interface AssistantActionCard {
   id: string;
-  type: 'action_buttons' | 'job_summary' | 'earnings_summary' | 'parts_picker';
+  type: 'action_buttons' | 'job_summary' | 'earnings_summary' | 'parts_picker' | 'job_list';
   booking?: Booking;
+  jobs?: Booking[];
   category?: string;
   availableTrades?: string[];
   tradeSuggestions?: Record<string, Array<{ title: string; cost: number; type: ExtraTaskType }>>;
@@ -320,16 +321,22 @@ export class AIAssistantService {
       return 'CUSTOMER_INFO';
     }
 
-    // List all jobs / schedule
+    // List all jobs / schedule / available requests
     if (
       s.includes('job') ||
       s.includes('jobs') ||
+      s.includes('request') ||
+      s.includes('requests') ||
+      s.includes('avail') ||
       s.includes('schedule') ||
       s.includes('booking') ||
       s.includes('bookings') ||
       s.includes('list') ||
       s.includes('kaam') ||
-      s.includes('what to do')
+      s.includes('what to do') ||
+      s.includes('order') ||
+      s.includes('orders') ||
+      s.includes('sabhi')
     ) {
       return 'LIST_JOBS';
     }
@@ -725,48 +732,49 @@ export class AIAssistantService {
       }
 
       case 'LIST_JOBS': {
-        const inProgress = context.activeOnSiteJob;
-        const accepted = context.nextCommittedJob;
-        const pending = context.pendingJobs;
+        const inProgress = context.allJobs.filter(b => b.status === 'in_progress');
+        const accepted = context.allJobs.filter(b => b.status === 'accepted');
+        const pending = context.allJobs.filter(b => b.status === 'pending');
 
-        let msg = `📋 Here is your current work schedule:\n`;
-        if (inProgress) {
-          msg += `• ⚡ IN PROGRESS: ${inProgress.booking_code} (${inProgress.customer?.full_name || 'Customer'} - ₹${(Number(inProgress.final_amount || inProgress.estimated_amount) * 0.85).toFixed(0)} wage)\n`;
-        }
-        if (accepted) {
-          msg += `• 📋 CONFIRMED: ${accepted.booking_code} (${accepted.booking_date} at ${accepted.booking_time} - ₹${(Number(accepted.final_amount || accepted.estimated_amount) * 0.85).toFixed(0)} wage)\n`;
-        }
-        if (pending.length > 0) {
-          msg += `• 🔔 PENDING: ${pending.length} new booking request(s)\n`;
-        }
-        if (!inProgress && !accepted && pending.length === 0) {
-          msg += `You have no pending or scheduled jobs right now. All caught up!`;
+        // Order available requests and jobs:
+        // 1. Pending requests awaiting response / review
+        // 2. Confirmed upcoming jobs
+        // 3. Active on-site jobs
+        const activeRequests = [...pending, ...accepted, ...inProgress];
+        const displayList = activeRequests.length > 0 ? activeRequests : context.allJobs.slice(0, 5);
+
+        let msg = '';
+        if (activeRequests.length > 0) {
+          msg = `📋 Here are the ${activeRequests.length} currently available job${activeRequests.length > 1 ? 's & requests' : ' request'}:\n` +
+            `• ${pending.length} pending request${pending.length !== 1 ? 's' : ''}\n` +
+            `• ${accepted.length} confirmed job${accepted.length !== 1 ? 's' : ''}\n` +
+            `• ${inProgress.length} in progress\n\n` +
+            `👉 Tap on any request below to open its details page:`;
+        } else {
+          msg = `You currently have 0 pending or active requests. All caught up! Showing your recent job history:`;
         }
 
-        const speech = inProgress
-          ? `You have job ${inProgress.booking_code} actively in progress.`
-          : accepted
-          ? `You have job ${accepted.booking_code} confirmed and ready to start.`
-          : `You have ${pending.length} pending requests.`;
-
-        const primaryTarget = inProgress || accepted || pending[0];
+        const speech = activeRequests.length > 0
+          ? `Listing ${activeRequests.length} available requests and jobs. Tap any request to open its details.`
+          : `You have no pending requests right now. All caught up!`;
 
         return {
           success: true,
           intent,
-          message: msg.trim(),
+          message: msg,
           speechText: speech,
-          card: primaryTarget ? {
-            id: 'card-list-' + Date.now(),
-            type: 'action_buttons',
-            booking: primaryTarget,
+          actionTaken: 'info',
+          card: {
+            id: 'card-jobs-list-' + Date.now(),
+            type: 'job_list',
+            jobs: displayList,
             actions: [
-              ...(inProgress ? [{ label: `✓ Complete ${inProgress.booking_code}`, command: 'complete job', variant: 'success' as const }] : []),
-              ...(accepted && !inProgress ? [{ label: `⚡ Start ${accepted.booking_code}`, command: 'start work', variant: 'success' as const }] : []),
-              ...(pending.length > 0 && !inProgress ? [{ label: `Accept ${pending[0].booking_code}`, command: 'accept job', variant: 'primary' as const }] : []),
+              ...(inProgress.length > 0 ? [{ label: `✓ Complete ${inProgress[0].booking_code}`, command: 'complete job', variant: 'success' as const }] : []),
+              ...(accepted.length > 0 && inProgress.length === 0 ? [{ label: `⚡ Start ${accepted[0].booking_code}`, command: 'start work', variant: 'success' as const }] : []),
+              ...(pending.length > 0 && inProgress.length === 0 ? [{ label: `Accept ${pending[0].booking_code}`, command: 'accept job', variant: 'primary' as const }] : []),
               { label: '💰 Check Earnings', command: 'earnings summary', variant: 'neutral' as const },
             ],
-          } : undefined,
+          },
         };
       }
 
