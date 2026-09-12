@@ -28,7 +28,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import {
   ShieldCheck,
   User,
@@ -46,10 +46,14 @@ import {
   CircleAlert,
   Zap,
   RotateCcw,
+  FileText,
+  Accessibility,
 } from 'lucide-react-native';
 import { LanguageModal } from '../../components/common/LanguageModal';
 import ThemeToggle from '../../components/common/ThemeToggle';
 import { IndiaMapOverlay } from '../../components/auth/IndiaMapOverlay';
+import { IndianMonumentsSkyline } from '../../components/auth/IndianMonumentsSkyline';
+import { LoginBackgroundFlourish } from '../../components/auth/LoginBackgroundFlourish';
 import { useTheme } from '../../theme';
 
 interface LoginScreenProps {
@@ -139,35 +143,12 @@ const AppleIcon = ({ isDark }: { isDark: boolean }) => (
   </Svg>
 );
 
-// Silhouette of Indian landmark monuments (adapts to light/dark)
-const SkylineSilhouette = ({ isDark }: { isDark: boolean }) => (
-  <Svg viewBox="0 0 400 50" width="100%" height={46} preserveAspectRatio="none">
-    <Path
-      d="M 0 50 L 0 38 L 12 38 L 12 32 L 18 32 L 18 24 L 22 24 L 22 32 L 28 32 L 28 38 L 40 38 L 40 30 L 46 30 L 46 22 L 48 18 L 50 22 L 50 30 L 56 30 L 56 38 L 75 38 L 75 33 L 80 33 L 80 26 L 85 22 L 90 26 L 90 33 L 95 33 L 95 38 L 120 38 L 120 28 L 125 28 L 125 18 L 128 13 L 131 18 L 131 28 L 135 28 L 135 38 L 155 38 L 155 32 L 160 32 L 160 22 L 165 22 L 165 14 L 170 10 L 175 14 L 175 22 L 180 22 L 180 32 L 185 32 L 185 38 L 215 38 L 215 32 L 220 32 L 220 22 L 225 22 L 225 14 L 230 10 L 235 14 L 235 22 L 240 22 L 240 32 L 245 32 L 245 38 L 265 38 L 265 28 L 270 28 L 270 18 L 273 13 L 276 18 L 276 28 L 280 28 L 280 38 L 305 38 L 305 33 L 310 33 L 310 26 L 315 22 L 320 26 L 320 33 L 325 33 L 325 38 L 344 38 L 344 30 L 350 30 L 350 22 L 352 18 L 354 22 L 354 30 L 360 30 L 360 38 L 372 38 L 372 32 L 378 32 L 378 24 L 382 24 L 382 32 L 388 32 L 388 38 L 400 38 L 400 50 Z"
-      fill={isDark ? '#0c172e' : '#cbd5e1'}
-      opacity={isDark ? 0.75 : 0.65}
-    />
-  </Svg>
-);
-
-// Gentle Indian tricolor ribbon wave at base
-const TricolorWave = () => (
-  <Svg viewBox="0 0 400 20" width="100%" height={20} preserveAspectRatio="none">
-    <Path
-      d="M 0 0 C 110 12 210 -4 400 8 L 400 13 C 210 1 110 17 0 5 Z"
-      fill="#FF9933"
-      opacity="0.95"
-    />
-    <Path
-      d="M 0 5 C 110 17 210 1 400 13 L 400 17 C 210 5 110 21 0 9 Z"
-      fill="#FFFFFF"
-      opacity="0.8"
-    />
-    <Path
-      d="M 0 9 C 110 21 210 5 400 17 L 400 20 L 0 20 Z"
-      fill="#138808"
-      opacity="0.95"
-    />
+// Question / Help icon for footer grievance link
+const QuestionCircleIcon = ({ color }: { color: string }) => (
+  <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+    <Circle cx={12} cy={12} r={10} stroke={color} strokeWidth={2} />
+    <Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    <Line x1={12} y1={17} x2={12.01} y2={17} stroke={color} strokeWidth={2} strokeLinecap="round" />
   </Svg>
 );
 
@@ -468,6 +449,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         style={StyleSheet.absoluteFill}
       />
 
+      {/* Background Patriotic Flourishes (Ashoka Chakra watermark & Side Tricolor ribbons) */}
+      <LoginBackgroundFlourish isDark={isDark} />
+
       {/* Reduced footprint India Map with fading bottom and live activity dots */}
       <IndiaMapOverlay style={[styles.mapOverlay, { top: insets.top + 44 }]} isDark={isDark} />
 
@@ -548,9 +532,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           <Text style={styles.brandHeading}>Sahakari Seva</Text>
           <Text style={styles.brandHindiHeading}>सहकारी सेवा</Text>
 
-          {/* Reduced tagline size by ~17% */}
+          {/* Subtitle matching the reference screenshot */}
+          <View style={styles.brandFederationRow}>
+            <View style={styles.brandTricolorBar}>
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#FF9933' }]} />
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#FFFFFF' }, !isDark && { borderWidth: 0.5, borderColor: '#cbd5e1' }]} />
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#138808' }]} />
+            </View>
+            <Text style={styles.brandFederationText}>Sahakari Seva Federation</Text>
+            <View style={styles.brandTricolorBar}>
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#FF9933' }]} />
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#FFFFFF' }, !isDark && { borderWidth: 0.5, borderColor: '#cbd5e1' }]} />
+              <View style={[styles.brandTricolorSegment, { backgroundColor: '#138808' }]} />
+            </View>
+          </View>
+
           <Text style={styles.brandTagline}>
-            India's First Worker-Owned Cooperative{'\n'}Platform for Urban & Household Gig Services
+            A digital platform for verified cooperative-based services
           </Text>
         </View>
 
@@ -916,67 +914,95 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
           </View>
         </View>
 
-        {/* Bouncing Scroll Indicator */}
-        <View style={styles.scrollIndicatorWrap}>
-          <Text style={styles.scrollIndicatorText}>Scroll to explore</Text>
-          <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-            <ChevronDown size={16} color={isDark ? '#2dd4bf' : '#0d9488'} />
-          </Animated.View>
+        {/* ================================================================= */}
+        {/* INDIAN MONUMENTS SKYLINE & TRICOLOR GROUND WAVE AT BASE           */}
+        {/* ================================================================= */}
+        <View style={styles.monumentsSkylineWrap}>
+          <IndianMonumentsSkyline isDark={isDark} height={125} />
         </View>
 
-        {/* Features Showcase Section */}
-        <View style={styles.featureShowcase}>
-          {/* Feature 1: Fair Wages */}
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(16, 185, 129, 0.14)' }]}>
-              <CheckCircle2 size={20} color="#10b981" />
+        {/* ================================================================= */}
+        {/* BOTTOM INSTITUTIONAL FOOTER & PRESERVED COOPERATIVE SLOGANS       */}
+        {/* ================================================================= */}
+        <View style={styles.bottomFooterWrap}>
+          {/* Institutional Compliance & Assistance Row */}
+          <View style={styles.footerInstitutionalRow}>
+            {/* Help & Grievance */}
+            <View style={styles.footerCol}>
+              <View style={styles.footerColTitleRow}>
+                <QuestionCircleIcon color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle}>Help & Grievance</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Help & Grievance', '24/7 Cooperative Ombudsman Portal.\nToll-Free Helpline: 1800-724-2527\nAverage resolution time: under 4 hours.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerLinkText}>Raise Complaint →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Dispute Resolution', 'Cooperative dispute resolution is governed by the Multi-State Cooperative Societies Act.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerSubLinkText}>Resolution</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.featureTextWrap}>
-              <Text style={styles.featureTitle}>Fair Wages, Dignified Work</Text>
-              <Text style={styles.featureTagline}>Only 5% Federation Fee vs 25% Corporate.</Text>
-              <Text style={styles.featureDesc}>
-                Gig workers keep 95% of every rupee earned. Democratic voting rights for every verified cooperative member.
-              </Text>
+
+            {/* Terms & Privacy */}
+            <View style={styles.footerCol}>
+              <View style={styles.footerColTitleRow}>
+                <FileText size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle}>Terms</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Privacy Policy', 'Your personal and payment data is secured under cooperative sovereign data privacy principles.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerLinkText}>Privacy</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Safety Guidelines */}
+            <View style={styles.footerCol}>
+              <View style={styles.footerColTitleRow}>
+                <ShieldCheck size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle}>Safety</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Safety Guidelines', '100% ITI-verified workers with police verification, live GPS radar tracking, and ₹5,00,000 accidental insurance coverage.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerSubLinkText}>Guidelines</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Accessibility */}
+            <View style={styles.footerCol}>
+              <View style={styles.footerColTitleRow}>
+                <Accessibility size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle}>Accessibility</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Accessibility', 'Full WCAG 2.1 compliance with screen reader support, high-contrast themes, and 13 Indian regional languages.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerSubLinkText}>Standards</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Platform Metadata */}
+            <View style={[styles.footerCol, { alignItems: 'flex-end' }]}>
+              <Text style={styles.footerMetaLabel}>Last Updated:</Text>
+              <Text style={styles.footerMetaValue}>11 September 2026</Text>
+              <Text style={styles.footerMetaVersion}>Version 1.0.0</Text>
             </View>
           </View>
 
-          {/* Feature 2: AI Dispatch */}
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.14)' }]}>
-              <Sparkles size={20} color="#f59e0b" />
-            </View>
-            <View style={styles.featureTextWrap}>
-              <Text style={styles.featureTitle}>Intelligent Dispatch</Text>
-              <Text style={styles.featureTagline}>Predictive Demand & Zero Middlemen.</Text>
-              <Text style={styles.featureDesc}>
-                Proprietary AI matches local technicians in under 60 seconds with live GPS radar tracking and emergency dispatch.
-              </Text>
-            </View>
-          </View>
-
-          {/* Feature 3: Stronger Communities */}
-          <View style={styles.featureCard}>
-            <View style={[styles.featureIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.14)' }]}>
-              <Users size={20} color="#38bdf8" />
-            </View>
-            <View style={styles.featureTextWrap}>
-              <Text style={styles.featureTitle}>Stronger Communities</Text>
-              <Text style={styles.featureTagline}>Building a Better India.</Text>
-              <Text style={styles.featureDesc}>
-                Worker-owned multi-state cooperative fostering dignity, healthcare, and pensions.
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Indian Landmark Skyline Silhouette */}
-        <View style={styles.skylineWrap}>
-          <SkylineSilhouette isDark={isDark} />
-        </View>
-
-        {/* Tricolor Bottom Wave & Slogan Footer */}
-        <View style={styles.footerWrap}>
-          <TricolorWave />
+          {/* Preserved Original Bottom Slogans */}
           <View style={styles.footerContent}>
             <Text style={styles.footerSlogan}>
               Seva  •  Samman  •  Samriddhi
@@ -1176,14 +1202,37 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginBottom: 5,
     textAlign: 'center',
   },
-  // Reduced tagline size by ~17% (10.8px / 15.5px line-height)
+  brandFederationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 3,
+    marginBottom: 4,
+  },
+  brandTricolorBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  brandTricolorSegment: {
+    width: 10,
+    height: 2.5,
+    borderRadius: 1,
+  },
+  brandFederationText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: isDark ? '#e2e8f0' : '#1e293b',
+    letterSpacing: 0.2,
+  },
+  // Subtitle tagline
   brandTagline: {
     fontSize: 10.8,
     fontWeight: '400',
     color: isDark ? '#94a3b8' : '#64748b',
     textAlign: 'center',
     lineHeight: 15.5,
-    maxWidth: 290,
+    maxWidth: 320,
   },
   // --- Role Picker Card ---
   rolePickerCard: {
@@ -1649,97 +1698,93 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  // --- Scroll Indicator ---
-  scrollIndicatorWrap: {
-    alignItems: 'center',
-    gap: 3,
-    marginVertical: 10,
+  // --- Monuments Skyline & Base Tricolor Wave ---
+  monumentsSkylineWrap: {
+    alignSelf: 'stretch',
+    marginHorizontal: -20,
+    marginTop: 6,
+    marginBottom: 0,
+    overflow: 'hidden',
   },
-  scrollIndicatorText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: isDark ? '#94a3b8' : '#64748b',
-    letterSpacing: 0.2,
-  },
-  // --- Features Section ---
-  featureShowcase: {
+  // --- Institutional Footer & Preserved Bottom Slogans ---
+  bottomFooterWrap: {
     width: '100%',
-    maxWidth: 360,
-    gap: 10,
-    marginTop: 8,
-    marginBottom: 18,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
-  featureCard: {
+  footerInstitutionalRow: {
     flexDirection: 'row',
-    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.78)' : '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(255, 255, 255, 0.09)' : '#e2e8f0',
+    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0 : 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    width: '100%',
+    paddingHorizontal: 4,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
   },
-  featureIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  footerCol: {
+    alignItems: 'flex-start',
+  },
+  footerColTitleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 3.5,
+    marginBottom: 2,
   },
-  featureTextWrap: {
-    flex: 1,
+  footerColTitle: {
+    fontSize: 10.2,
+    fontWeight: '700',
+    color: isDark ? '#f1f5f9' : '#0f172a',
   },
-  featureTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: isDark ? '#ffffff' : '#0f172a',
-  },
-  featureTagline: {
-    fontSize: 11.5,
+  footerLinkText: {
+    fontSize: 9.5,
     fontWeight: '600',
     color: isDark ? '#2dd4bf' : '#0d9488',
-    marginVertical: 1.5,
+    marginTop: 1,
   },
-  featureDesc: {
-    fontSize: 11,
-    color: isDark ? '#94a3b8' : '#475569',
-    lineHeight: 15,
+  footerSubLinkText: {
+    fontSize: 9.2,
+    fontWeight: '500',
+    color: isDark ? '#94a3b8' : '#64748b',
+    marginTop: 1.5,
   },
-  // --- Skyline & Footer ---
-  skylineWrap: {
-    width: '100%',
-    marginTop: 8,
-    marginBottom: -6,
+  footerMetaLabel: {
+    fontSize: 8.8,
+    color: isDark ? '#64748b' : '#94a3b8',
+    fontWeight: '500',
   },
-  footerWrap: {
-    width: '100%',
-    alignItems: 'center',
+  footerMetaValue: {
+    fontSize: 9.2,
+    fontWeight: '600',
+    color: isDark ? '#cbd5e1' : '#334155',
+    marginTop: 0.5,
+  },
+  footerMetaVersion: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: isDark ? '#2dd4bf' : '#0d9488',
+    marginTop: 1,
   },
   footerContent: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   footerSlogan: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
-    color: isDark ? '#f8fafc' : '#334155',
+    color: isDark ? '#f8fafc' : '#1e293b',
     letterSpacing: 0.8,
   },
   footerHindi: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
     color: isDark ? '#cbd5e1' : '#64748b',
     marginTop: 2,
   },
   footerMinistry: {
-    fontSize: 10,
-    color: '#64748b',
-    marginTop: 5,
+    fontSize: 9.5,
+    color: isDark ? '#64748b' : '#94a3b8',
+    marginTop: 4,
     textAlign: 'center',
   },
 });
