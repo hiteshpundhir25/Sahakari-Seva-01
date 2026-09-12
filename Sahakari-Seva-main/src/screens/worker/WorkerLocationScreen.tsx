@@ -1,11 +1,9 @@
 // ==============================================================================
 // WORKER LOCATION & LIVE JOB RADAR SCREEN
-// Interactive map showing:
-// 1. Worker GPS location & adjustable service radius (5, 10, 15, 20 km)
-// 2. Currently going in-progress job with route line & ETA
-// 3. Currently committed scheduled jobs
-// 4. Blinking live job requests & emergency alerts (delivery app radar style)
-// 5. Live demand hotspot zones with 1-tap Google Maps turn-by-turn navigation
+// Expanded interactive map canvas showing:
+// - Simple clean dots: Red (Emergency), Green (Committed), Yellow (Live), Blue (Active)
+// - Operating radius selector pills (5km, 10km, 15km, 20km)
+// - Decluttered, spacious, compact bottom navigation sheet to maximize map visibility
 // ==============================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -31,18 +29,10 @@ import {
 import { WorkerJobsMapView } from '../../components/map/WorkerJobsMapView';
 import { Booking } from '../../types';
 import {
-  MapPin,
   Navigation,
-  Compass,
   Crosshair,
-  Clock,
-  ExternalLink,
-  Zap,
-  Calendar,
   Layers,
   X,
-  AlertCircle,
-  Flame,
   ArrowRight,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
@@ -62,7 +52,6 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [currentLng, setCurrentLng] = useState(75.7925);
   const [serviceRadius, setServiceRadius] = useState(15);
   const [syncing, setSyncing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState('Today at 10:00 AM');
 
   // Jobs data
   const [jobs, setJobs] = useState<Booking[]>([]);
@@ -81,11 +70,12 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
       const data = await ApiClient.getBookings(undefined, 'w0000000-0000-0000-0000-000000000001');
       setJobs(data);
 
-      // Default select the in-progress or first accepted job for immediate navigation CTA
+      // Default select the in-progress or first accepted/emergency job
       const inProg = data.find((b) => b.status === 'in_progress');
+      const emergency = data.find((b) => b.is_emergency);
       const accepted = data.find((b) => b.status === 'accepted');
       const pending = data.find((b) => b.status === 'pending');
-      setSelectedJob(inProg || accepted || pending || null);
+      setSelectedJob(inProg || emergency || accepted || pending || null);
     } catch (err) {
       console.warn('Failed to load jobs for worker map:', err);
     } finally {
@@ -116,11 +106,6 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
         loc.coords.latitude,
         loc.coords.longitude,
         serviceRadius
-      );
-
-      const now = new Date();
-      setLastSyncTime(
-        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       );
     } catch (err: any) {
       console.warn('GPS sync error:', err.message);
@@ -170,14 +155,11 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
       coords.latitude,
       coords.longitude
     );
-    const workerWage = (selectedJob.final_amount * 0.85).toFixed(2);
-
     return {
       coords,
       distanceKm: nav.distanceKm,
       etaMinutes: nav.etaMinutes,
       formattedText: nav.formattedText,
-      workerWage,
     };
   }, [selectedJob, currentLat, currentLng]);
 
@@ -264,7 +246,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 setSelectedHotspot(null);
               }}
             >
-              <View style={styles.pulseDotBlue} />
+              <View style={[styles.dotIndicator, { backgroundColor: '#2563eb' }]} />
               <Text
                 style={[
                   styles.filterChipText,
@@ -284,7 +266,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ]}
             onPress={() => setActiveFilter('accepted')}
           >
-            <Calendar size={12} color={activeFilter === 'accepted' ? '#fff' : '#059669'} />
+            <View style={[styles.dotIndicator, { backgroundColor: '#10b981' }]} />
             <Text
               style={[
                 styles.filterChipText,
@@ -303,7 +285,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ]}
             onPress={() => setActiveFilter('pending')}
           >
-            <View style={styles.pulseDotAmber} />
+            <View style={[styles.dotIndicator, { backgroundColor: '#f59e0b' }]} />
             <Text
               style={[
                 styles.filterChipText,
@@ -322,20 +304,20 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ]}
             onPress={() => setActiveFilter('hotspots')}
           >
-            <Flame size={12} color={activeFilter === 'hotspots' ? '#fff' : '#7c3aed'} />
+            <View style={[styles.dotIndicator, { backgroundColor: '#8b5cf6' }]} />
             <Text
               style={[
                 styles.filterChipText,
                 activeFilter === 'hotspots' && styles.filterChipTextActive,
               ]}
             >
-              Demand Hotspots ({JAIPUR_DEMAND_HOTSPOTS.length})
+              Hotspots ({JAIPUR_DEMAND_HOTSPOTS.length})
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
-      {/* Map Tile Canvas Container */}
+      {/* Expanded Map Canvas Container */}
       <View style={styles.mapContainer}>
         <WorkerJobsMapView
           workerLocation={{ latitude: currentLat, longitude: currentLng }}
@@ -349,7 +331,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onSelectHotspot={handleHotspotSelect}
         />
 
-        {/* Floating Radius Quick Selector Pills */}
+        {/* Floating Radius Quick Selector Pills (Kept on map as requested) */}
         <View style={styles.floatingRadiusBar}>
           <Text style={styles.radiusLabel}>Radius:</Text>
           {[5, 10, 15, 20].map((km) => (
@@ -367,7 +349,7 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
           ))}
         </View>
 
-        {/* Floating Action Buttons: GPS Recenter & Map Legend */}
+        {/* Floating Actions: GPS Recenter & Legend */}
         <View style={styles.floatingActions}>
           <TouchableOpacity
             style={styles.floatingBtn}
@@ -395,181 +377,134 @@ export const WorkerLocationScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {showLegend && (
           <View style={styles.legendOverlay}>
             <View style={styles.legendHeader}>
-              <Text style={styles.legendTitle}>Map Legend & Visual Indicators</Text>
+              <Text style={styles.legendTitle}>Map Legend (Dots)</Text>
               <TouchableOpacity onPress={() => setShowLegend(false)}>
                 <X size={16} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#0284c7' }]} />
-              <Text style={styles.legendText}>You (Worker Dispatch Origin)</Text>
-            </View>
-            <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
-              <Text style={styles.legendText}>In-Progress Job (Route Guide Line)</Text>
+              <Text style={styles.legendText}>Blue: Active Job (Route line)</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
-              <Text style={styles.legendText}>Committed Scheduled Appointment</Text>
+              <View style={[styles.legendDot, { backgroundColor: '#10b981' }]} />
+              <Text style={styles.legendText}>Green: Committed Job</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
-              <Text style={styles.legendText}>Live Request (Blinking Radar Ring)</Text>
+              <Text style={styles.legendText}>Yellow: Live Pending Request</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#dc2626' }]} />
-              <Text style={styles.legendText}>Emergency Request (Rapid Flashing)</Text>
+              <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+              <Text style={styles.legendText}>Red: Emergency Request</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#7c3aed' }]} />
-              <Text style={styles.legendText}>High-Demand Hotspot Area</Text>
+              <View style={[styles.legendDot, { backgroundColor: '#8b5cf6' }]} />
+              <Text style={styles.legendText}>Purple: Demand Hotspot Area</Text>
             </View>
           </View>
         )}
       </View>
 
-      {/* Interactive Bottom Callout Sheet (Navigation & Action) */}
+      {/* ========================================================================= */}
+      {/* DECLUTTERED, SPACIOUS, COMPACT BOTTOM CARD (MAXIMIZES MAP VISIBILITY) */}
+      {/* ========================================================================= */}
       {selectedJob && selectedJobDetails && (
-        <View style={styles.calloutCard}>
-          {/* Top Status & Price Row */}
-          <View style={styles.calloutTopRow}>
-            <View style={styles.statusBadgeRow}>
-              {selectedJob.status === 'in_progress' && (
-                <View style={[styles.statusBadge, styles.statusBadgeInProgress]}>
-                  <Zap size={12} color="#1e40af" />
-                  <Text style={styles.statusBadgeTextInProgress}>ACTIVE WORK NOW</Text>
-                </View>
-              )}
-              {selectedJob.status === 'accepted' && (
-                <View style={[styles.statusBadge, styles.statusBadgeAccepted]}>
-                  <Calendar size={12} color="#065f46" />
-                  <Text style={styles.statusBadgeTextAccepted}>
-                    COMMITTED • {selectedJob.booking_time}
-                  </Text>
-                </View>
-              )}
-              {selectedJob.status === 'pending' && !selectedJob.is_emergency && (
-                <View style={[styles.statusBadge, styles.statusBadgePending]}>
-                  <View style={styles.pulseDotAmberSmall} />
-                  <Text style={styles.statusBadgeTextPending}>LIVE REQUEST</Text>
-                </View>
-              )}
-              {selectedJob.is_emergency && (
-                <View style={[styles.statusBadge, styles.statusBadgeEmergency]}>
-                  <AlertCircle size={12} color="#991b1b" />
-                  <Text style={styles.statusBadgeTextEmergency}>EMERGENCY ⚡</Text>
-                </View>
-              )}
-              <Text style={styles.bookingCodeText}>{selectedJob.booking_code}</Text>
+        <View style={styles.compactCalloutCard}>
+          {/* Top Line: Dot + Status + Code + Fare */}
+          <View style={styles.compactRowTop}>
+            <View style={styles.compactLeft}>
+              <View
+                style={[
+                  styles.statusDot,
+                  selectedJob.is_emergency
+                    ? { backgroundColor: '#ef4444' }
+                    : selectedJob.status === 'in_progress'
+                    ? { backgroundColor: '#2563eb' }
+                    : selectedJob.status === 'accepted'
+                    ? { backgroundColor: '#10b981' }
+                    : { backgroundColor: '#f59e0b' },
+                ]}
+              />
+              <Text style={styles.compactStatusText}>
+                {selectedJob.is_emergency
+                  ? 'Emergency'
+                  : selectedJob.status === 'in_progress'
+                  ? 'Active Job'
+                  : selectedJob.status === 'accepted'
+                  ? `Committed (${selectedJob.booking_time})`
+                  : 'Live Request'}
+              </Text>
+              <Text style={styles.compactCode}>{selectedJob.booking_code}</Text>
             </View>
 
-            <View style={styles.fareContainer}>
-              <Text style={styles.fareAmount}>₹{selectedJob.final_amount}</Text>
-              <Text style={styles.fareSubText}>₹{selectedJobDetails.workerWage} net (85%)</Text>
-            </View>
+            <Text style={styles.compactPrice}>₹{selectedJob.final_amount}</Text>
           </View>
 
-          {/* Job Description & Customer Info */}
-          <View style={styles.jobInfoSection}>
-            <Text style={styles.jobTitle} numberOfLines={1}>
-              {selectedJob.service_category?.name || 'Home Service'} —{' '}
-              {selectedJob.customer?.full_name || 'Customer'}
+          {/* Middle Line: Customer, Address & Distance */}
+          <View style={styles.compactRowMiddle}>
+            <Text style={styles.compactAddress} numberOfLines={1}>
+              {selectedJob.customer?.full_name || 'Customer'} • {selectedJob.address}
             </Text>
-            <Text style={styles.jobAddress} numberOfLines={1}>
-              📍 {selectedJob.address}, {selectedJob.city}
-            </Text>
-            <Text style={styles.jobDescription} numberOfLines={2}>
-              {selectedJob.service_description}
+            <Text style={styles.compactDistance}>
+              {selectedJobDetails.distanceKm} km • ~{selectedJobDetails.etaMinutes}m
             </Text>
           </View>
 
-          {/* Metrics Pill Row: Distance & Driving ETA */}
-          <View style={styles.navMetricsRow}>
-            <View style={styles.navMetricItem}>
-              <Navigation size={13} color={colors.primary} />
-              <Text style={styles.navMetricValue}>{selectedJobDetails.distanceKm} km</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.navMetricItem}>
-              <Clock size={13} color="#059669" />
-              <Text style={styles.navMetricValue}>~{selectedJobDetails.etaMinutes} mins drive</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.navMetricItem}>
-              <MapPin size={13} color="#d97706" />
-              <Text style={styles.navMetricValue}>{selectedJob.city} (302001)</Text>
-            </View>
-          </View>
-
-          {/* Action CTAs */}
-          <View style={styles.actionRow}>
+          {/* Action Line: Compact Navigation CTA & Details */}
+          <View style={styles.compactRowActions}>
             <TouchableOpacity
-              style={styles.navigateBtn}
+              style={styles.compactNavBtn}
               onPress={handleStartNavigation}
               activeOpacity={0.82}
             >
-              <Navigation size={16} color="#ffffff" />
-              <Text style={styles.navigateBtnText}>Start Navigation (Google Maps)</Text>
+              <Navigation size={13} color="#ffffff" />
+              <Text style={styles.compactNavBtnText}>Navigate in Maps</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.detailsBtn}
+              style={styles.compactDetailsBtn}
               onPress={handleOpenJobTicket}
               activeOpacity={0.78}
             >
-              <Text style={styles.detailsBtnText}>View Ticket</Text>
-              <ArrowRight size={15} color={colors.primary} />
+              <Text style={styles.compactDetailsBtnText}>Details</Text>
+              <ArrowRight size={13} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Bottom Sheet for Demand Hotspot Selection */}
+      {/* Compact Hotspot Card */}
       {selectedHotspot && selectedHotspotDetails && (
-        <View style={styles.calloutCard}>
-          <View style={styles.calloutTopRow}>
-            <View style={[styles.statusBadge, styles.statusBadgeHotspot]}>
-              <Flame size={13} color="#6d28d9" />
-              <Text style={styles.statusBadgeTextHotspot}>HIGH-DEMAND SERVICE CLUSTER</Text>
+        <View style={styles.compactCalloutCard}>
+          <View style={styles.compactRowTop}>
+            <View style={styles.compactLeft}>
+              <View style={[styles.statusDot, { backgroundColor: '#8b5cf6' }]} />
+              <Text style={styles.compactStatusText}>Demand Hotspot</Text>
+              <Text style={styles.compactCode}>{selectedHotspot.name}</Text>
             </View>
             <TouchableOpacity onPress={() => setSelectedHotspot(null)}>
-              <X size={18} color={colors.textSecondary} />
+              <X size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.jobInfoSection}>
-            <Text style={styles.jobTitle}>{selectedHotspot.name}</Text>
-            <Text style={styles.jobAddress}>📍 {selectedHotspot.area}</Text>
-            <Text style={styles.jobDescription}>{selectedHotspot.description}</Text>
+          <View style={styles.compactRowMiddle}>
+            <Text style={styles.compactAddress} numberOfLines={1}>
+              📍 {selectedHotspot.area} • {selectedHotspot.activeRequestsCount} live inquiries
+            </Text>
+            <Text style={styles.compactDistance}>
+              {selectedHotspotDetails.distanceKm} km • ~{selectedHotspotDetails.etaMinutes}m
+            </Text>
           </View>
 
-          <View style={styles.navMetricsRow}>
-            <View style={styles.navMetricItem}>
-              <Navigation size={13} color={colors.primary} />
-              <Text style={styles.navMetricValue}>{selectedHotspotDetails.distanceKm} km</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.navMetricItem}>
-              <Clock size={13} color="#059669" />
-              <Text style={styles.navMetricValue}>~{selectedHotspotDetails.etaMinutes} mins</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.navMetricItem}>
-              <Flame size={13} color="#d97706" />
-              <Text style={styles.navMetricValue}>
-                {selectedHotspot.activeRequestsCount} Live Inquiries
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.actionRow}>
+          <View style={styles.compactRowActions}>
             <TouchableOpacity
-              style={[styles.navigateBtn, { backgroundColor: '#7c3aed' }]}
+              style={[styles.compactNavBtn, { backgroundColor: '#7c3aed' }]}
               onPress={handleStartNavigation}
               activeOpacity={0.82}
             >
-              <Navigation size={16} color="#ffffff" />
-              <Text style={styles.navigateBtnText}>Navigate to Service Area</Text>
+              <Navigation size={13} color="#ffffff" />
+              <Text style={styles.compactNavBtnText}>Navigate to Area</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -588,20 +523,20 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      paddingVertical: 8,
+      paddingVertical: 7,
     },
     filterScroll: {
       paddingHorizontal: 12,
-      gap: 8,
+      gap: 7,
       alignItems: 'center',
     },
     filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 20,
+      gap: 5,
+      paddingHorizontal: 11,
+      paddingVertical: 5,
+      borderRadius: 16,
       backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
       borderWidth: 1,
       borderColor: colors.border,
@@ -611,7 +546,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderColor: colors.primary,
     },
     filterChipText: {
-      fontSize: 12,
+      fontSize: 11.5,
       fontWeight: '600',
       color: colors.textSecondary,
     },
@@ -625,12 +560,6 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     filterChipInProgressActive: {
       backgroundColor: '#2563eb',
       borderColor: '#2563eb',
-    },
-    pulseDotBlue: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
-      backgroundColor: '#2563eb',
     },
     filterChipCommitted: {
       backgroundColor: isDark ? '#064e3b' : '#ecfdf5',
@@ -648,12 +577,6 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: '#d97706',
       borderColor: '#d97706',
     },
-    pulseDotAmber: {
-      width: 7,
-      height: 7,
-      borderRadius: 4,
-      backgroundColor: '#f59e0b',
-    },
     filterChipHotspots: {
       backgroundColor: isDark ? '#2e1065' : '#f5f3ff',
       borderColor: isDark ? '#6d28d9' : '#ddd6fe',
@@ -662,46 +585,51 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: '#7c3aed',
       borderColor: '#7c3aed',
     },
+    dotIndicator: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
     mapContainer: {
       flex: 1,
       position: 'relative',
     },
     floatingRadiusBar: {
       position: 'absolute',
-      top: 12,
-      left: 12,
+      top: 10,
+      left: 10,
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 24,
-      gap: 6,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 20,
+      gap: 5,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 4,
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 3,
     },
     radiusLabel: {
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: '700',
       color: colors.textMuted,
       marginRight: 2,
     },
     radiusPill: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 14,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 12,
       backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
     },
     radiusPillActive: {
       backgroundColor: colors.primary,
     },
     radiusPillText: {
-      fontSize: 11,
+      fontSize: 10.5,
       fontWeight: '700',
       color: colors.textSecondary,
     },
@@ -710,15 +638,15 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     floatingActions: {
       position: 'absolute',
-      top: 12,
-      right: 12,
+      top: 10,
+      right: 10,
       flexDirection: 'column',
-      gap: 8,
+      gap: 6,
     },
     floatingBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
@@ -726,254 +654,160 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderColor: colors.border,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 5,
-      elevation: 4,
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
     },
     floatingBtnActive: {
       backgroundColor: colors.primary,
     },
     legendOverlay: {
       position: 'absolute',
-      top: 60,
-      right: 12,
+      top: 52,
+      right: 10,
       backgroundColor: colors.surface,
-      padding: 12,
-      borderRadius: 12,
+      padding: 10,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: colors.border,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.18,
-      shadowRadius: 8,
-      elevation: 6,
-      width: 250,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 5,
+      width: 220,
       zIndex: 20,
     },
     legendHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
-      paddingBottom: 6,
+      paddingBottom: 4,
     },
     legendTitle: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.textPrimary,
     },
     legendItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginVertical: 4,
+      gap: 7,
+      marginVertical: 3,
     },
     legendDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
     },
     legendText: {
-      fontSize: 11,
+      fontSize: 10.5,
       color: colors.textSecondary,
       fontWeight: '500',
     },
-    calloutCard: {
+
+    // Compact Decluttered Bottom Card
+    compactCalloutCard: {
       backgroundColor: colors.surface,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: 16,
-      paddingTop: 14,
-      paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 10,
       borderTopWidth: 1,
       borderColor: colors.border,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
-      elevation: 8,
+      shadowOffset: { width: 0, height: -3 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      elevation: 6,
     },
-    calloutTopRow: {
+    compactRowTop: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 10,
-    },
-    statusBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    statusBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    statusBadgeInProgress: {
-      backgroundColor: '#dbeafe',
-      borderWidth: 1,
-      borderColor: '#93c5fd',
-    },
-    statusBadgeTextInProgress: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: '#1e40af',
-    },
-    statusBadgeAccepted: {
-      backgroundColor: '#d1fae5',
-      borderWidth: 1,
-      borderColor: '#6ee7b7',
-    },
-    statusBadgeTextAccepted: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: '#065f46',
-    },
-    statusBadgePending: {
-      backgroundColor: '#fef3c7',
-      borderWidth: 1,
-      borderColor: '#fde68a',
-    },
-    statusBadgeTextPending: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: '#92400e',
-    },
-    statusBadgeEmergency: {
-      backgroundColor: '#fee2e2',
-      borderWidth: 1,
-      borderColor: '#fca5a5',
-    },
-    statusBadgeTextEmergency: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: '#991b1b',
-    },
-    statusBadgeHotspot: {
-      backgroundColor: '#ede9fe',
-      borderWidth: 1,
-      borderColor: '#c4b5fd',
-    },
-    statusBadgeTextHotspot: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: '#5b21b6',
-    },
-    pulseDotAmberSmall: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: '#f59e0b',
-    },
-    bookingCodeText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.textMuted,
-    },
-    fareContainer: {
-      alignItems: 'flex-end',
-    },
-    fareAmount: {
-      fontSize: 16,
-      fontWeight: '800',
-      color: colors.textPrimary,
-    },
-    fareSubText: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: colors.success,
-    },
-    jobInfoSection: {
-      marginBottom: 10,
-    },
-    jobTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.textPrimary,
-      marginBottom: 2,
-    },
-    jobAddress: {
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.textSecondary,
       marginBottom: 3,
     },
-    jobDescription: {
-      fontSize: 11,
-      color: colors.textMuted,
-      lineHeight: 15,
-    },
-    navMetricsRow: {
+    compactLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: isDark ? '#1e293b' : '#f8fafc',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: 12,
+      gap: 6,
+      flex: 1,
     },
-    navMetricItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
     },
-    navMetricValue: {
-      fontSize: 12,
+    compactStatusText: {
+      fontSize: 11.5,
       fontWeight: '700',
       color: colors.textPrimary,
     },
-    metricDivider: {
-      width: 1,
-      height: 16,
-      backgroundColor: colors.border,
+    compactCode: {
+      fontSize: 11,
+      color: colors.textMuted,
+      fontWeight: '600',
     },
-    actionRow: {
+    compactPrice: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: colors.textPrimary,
+    },
+    compactRowMiddle: {
       flexDirection: 'row',
-      gap: 10,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
     },
-    navigateBtn: {
+    compactAddress: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      flex: 1,
+      marginRight: 8,
+    },
+    compactDistance: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.primary,
+    },
+    compactRowActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    compactNavBtn: {
       flex: 1.6,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: 6,
       backgroundColor: '#2563eb',
-      paddingVertical: 12,
-      borderRadius: 12,
-      shadowColor: '#2563eb',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.25,
-      shadowRadius: 5,
-      elevation: 4,
+      paddingVertical: 8,
+      borderRadius: 9,
     },
-    navigateBtnText: {
-      fontSize: 13,
+    compactNavBtnText: {
+      fontSize: 12,
       fontWeight: '700',
       color: '#ffffff',
     },
-    detailsBtn: {
+    compactDetailsBtn: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
+      gap: 4,
       backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
-      paddingVertical: 12,
-      borderRadius: 12,
+      paddingVertical: 8,
+      borderRadius: 9,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    detailsBtnText: {
-      fontSize: 13,
-      fontWeight: '700',
+    compactDetailsBtnText: {
+      fontSize: 12,
+      fontWeight: '600',
       color: colors.textPrimary,
     },
   });

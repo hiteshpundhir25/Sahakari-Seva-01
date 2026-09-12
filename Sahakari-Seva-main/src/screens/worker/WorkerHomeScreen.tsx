@@ -23,6 +23,7 @@ import {
   Lock,
   Briefcase,
   Navigation,
+  Compass,
 } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
@@ -72,11 +73,15 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<AvailabilityStatus>('available');
   const [activeJob, setActiveJob] = useState<Booking | null>(null);
+  const [serviceRadius, setServiceRadius] = useState(15);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
       const data = await ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001'); // Demo Rahul Sharma
+      if (data?.service_radius_km) {
+        setServiceRadius(data.service_radius_km);
+      }
       const workerBookings = await ApiClient.getBookings(undefined, 'w0000000-0000-0000-0000-000000000001');
       const currentActive =
         workerBookings.find((b: Booking) => b.status === 'in_progress') ||
@@ -99,6 +104,20 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
       console.warn('Worker profile load failed:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRadiusSelect = async (km: number) => {
+    setServiceRadius(km);
+    try {
+      await ApiClient.updateWorkerLocation(
+        'w0000000-0000-0000-0000-000000000001',
+        worker?.latitude || 26.9017,
+        worker?.longitude || 75.7925,
+        km
+      );
+    } catch (err) {
+      console.warn('Radius update error:', err);
     }
   };
 
@@ -287,6 +306,57 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                   </ScalePressable>
                 );
               })}
+            </View>
+          </View>
+        </FadeInView>
+
+        {/* Operating Service Radius Criteria (Below Availability Status) */}
+        <FadeInView delay={80} distance={12} duration={320}>
+          <View style={styles.radiusCard}>
+            <View style={styles.radiusHeaderRow}>
+              <View style={styles.radiusHeaderLeft}>
+                <View style={styles.radiusIconWrap}>
+                  <Compass size={15} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.radiusTitle}>Operating Service Radius</Text>
+                  <Text style={styles.radiusSub}>
+                    Receive job assignments within {serviceRadius} km of Jaipur base
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.radiusMapBtn}
+                onPress={() => navigation?.navigate('WorkerLocation')}
+                activeOpacity={0.78}
+              >
+                <Navigation size={11} color={colors.primary} />
+                <Text style={styles.radiusMapBtnText}>View Map</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.radiusPillsRow}>
+              {[5, 10, 15, 20].map((km) => (
+                <TouchableOpacity
+                  key={km}
+                  style={[
+                    styles.radiusPill,
+                    serviceRadius === km && styles.radiusPillActive,
+                  ]}
+                  onPress={() => handleRadiusSelect(km)}
+                  activeOpacity={0.78}
+                >
+                  <Text
+                    style={[
+                      styles.radiusPillText,
+                      serviceRadius === km && styles.radiusPillTextActive,
+                    ]}
+                  >
+                    {km} km
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </FadeInView>
@@ -490,6 +560,90 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.1,
+  },
+  radiusCard: {
+    backgroundColor: colors.surface,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  radiusHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  radiusHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  radiusIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radiusTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  radiusSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  radiusMapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe',
+  },
+  radiusMapBtnText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  radiusPillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  radiusPill: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    alignItems: 'center',
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc',
+  },
+  radiusPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  radiusPillText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  radiusPillTextActive: {
+    color: '#ffffff',
   },
   insuranceCard: {
     backgroundColor: colors.successLight,

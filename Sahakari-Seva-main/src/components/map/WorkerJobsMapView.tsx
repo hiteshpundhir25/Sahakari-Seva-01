@@ -1,7 +1,11 @@
 // ==============================================================================
-// WORKER JOBS MAP VIEW — LEAFLET + OPENSTREETMAP LIVE RADAR & DISPATCH
-// Displays worker GPS origin, service radius, in-progress jobs with route lines,
-// committed scheduled jobs, blinking live requests, and demand hotspot zones.
+// WORKER JOBS MAP VIEW — MINIMALIST DOT MARKERS & EXPANDED MAP CANVAS
+// Displays worker GPS origin, service radius, and clean simple dots:
+// - Red dot: Emergency request
+// - Green dot: Committed scheduled job
+// - Yellow dot: Live pending request
+// - Blue dot: In-progress active job with subtle route polyline
+// - Purple dot: Demand hotspot cluster
 // ==============================================================================
 
 import React, { useEffect, useRef } from 'react';
@@ -75,74 +79,44 @@ export const WorkerJobsMapView: React.FC<WorkerJobsMapViewProps> = ({
     };
   }, [jobs, demandHotspots, onSelectJob, onSelectHotspot]);
 
-  // Generate self-contained Leaflet HTML
+  // Generate self-contained Leaflet HTML with simple, clean, minimalist dots
   const generateLeafletHtml = () => {
     // In-progress job for connecting route polyline
     const inProgressJob = jobs.find((j) => j.status === 'in_progress');
     const inProgressCoords = inProgressJob ? WorkerMapService.resolveBookingCoordinates(inProgressJob) : null;
 
-    // Build job markers JS
+    // Build simple dot markers JS
     const jobMarkersJs = filteredJobs
       .map((job) => {
         const coords = WorkerMapService.resolveBookingCoordinates(job);
         const isInProgress = job.status === 'in_progress';
         const isAccepted = job.status === 'accepted';
-        const isPending = job.status === 'pending';
         const isEmergency = job.is_emergency;
         const isSelected = job.id === selectedJobId;
 
-        // Custom HTML marker for Leaflet
-        let markerHtml = '';
+        // Simple color class: Red (emergency), Green (committed), Yellow (pending), Blue (in_progress)
+        let dotClass = 'dot-yellow';
         if (isInProgress) {
-          markerHtml = `
-            <div class="beacon-container ${isSelected ? 'selected' : ''}">
-              <div class="active-pulse-ring"></div>
-              <div class="active-pulse-core">
-                <span class="beacon-icon">⚡</span>
-              </div>
-              <div class="beacon-tag active-tag">ACTIVE JOB</div>
-            </div>
-          `;
+          dotClass = 'dot-blue';
         } else if (isEmergency) {
-          markerHtml = `
-            <div class="beacon-container ${isSelected ? 'selected' : ''}">
-              <div class="emergency-pulse-ring"></div>
-              <div class="emergency-pulse-core">
-                <span class="beacon-icon">🚨</span>
-              </div>
-              <div class="beacon-tag emergency-tag">EMERGENCY</div>
-            </div>
-          `;
+          dotClass = 'dot-red';
         } else if (isAccepted) {
-          markerHtml = `
-            <div class="beacon-container ${isSelected ? 'selected' : ''}">
-              <div class="accepted-pin">
-                <span class="pin-icon">✓</span>
-              </div>
-              <div class="beacon-tag accepted-tag">${job.booking_time} Committed</div>
-            </div>
-          `;
-        } else {
-          // Pending Live Request — Blinking radar rings like on-demand delivery apps
-          markerHtml = `
-            <div class="beacon-container ${isSelected ? 'selected' : ''}">
-              <div class="radar-ripple-ring"></div>
-              <div class="radar-ripple-ring delay"></div>
-              <div class="pending-pin">
-                <span class="pin-icon">●</span>
-              </div>
-              <div class="beacon-tag pending-tag">Live Request</div>
-            </div>
-          `;
+          dotClass = 'dot-green';
         }
+
+        const markerHtml = `
+          <div class="simple-dot-wrap ${isSelected ? 'selected' : ''}">
+            <div class="simple-dot ${dotClass}"></div>
+          </div>
+        `;
 
         return `
           (function() {
             var icon = L.divIcon({
-              className: 'custom-job-div-icon',
+              className: 'custom-dot-icon',
               html: '${markerHtml.replace(/\n/g, '').trim()}',
-              iconSize: [60, 60],
-              iconAnchor: [30, 30]
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
             });
             var marker = L.marker([${coords.latitude}, ${coords.longitude}], { icon: icon })
               .addTo(map)
@@ -159,29 +133,33 @@ export const WorkerJobsMapView: React.FC<WorkerJobsMapViewProps> = ({
       })
       .join('\n');
 
-    // Build Hotspots JS
+    // Build Hotspots JS as simple clean purple dots with subtle area circles
     const hotspotsJs = showHotspots
       ? demandHotspots
           .map((hotspot) => {
             const isSelected = hotspot.id === selectedHotspotId;
+            const hHtml = `
+              <div class="simple-dot-wrap ${isSelected ? 'selected' : ''}">
+                <div class="simple-dot dot-purple"></div>
+              </div>
+            `;
             return `
             (function() {
-              // Hotspot zone circle
+              // Subtle demand area circle
               L.circle([${hotspot.latitude}, ${hotspot.longitude}], {
                 color: '#8b5cf6',
                 fillColor: '#8b5cf6',
-                fillOpacity: 0.14,
-                weight: 1.5,
-                dashArray: '4, 6',
-                radius: 1600
+                fillOpacity: 0.08,
+                weight: 1,
+                dashArray: '3, 5',
+                radius: 1400
               }).addTo(map);
 
-              var hotspotHtml = '<div class="hotspot-pin ${isSelected ? 'selected' : ''}"><div class="hotspot-pulse"></div><div class="hotspot-core">🔥</div><div class="hotspot-tag">${hotspot.activeRequestsCount} Live Inquiries</div></div>';
               var hIcon = L.divIcon({
-                className: 'custom-hotspot-icon',
-                html: hotspotHtml,
-                iconSize: [80, 40],
-                iconAnchor: [40, 20]
+                className: 'custom-dot-icon',
+                html: '${hHtml.replace(/\n/g, '').trim()}',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
               });
               L.marker([${hotspot.latitude}, ${hotspot.longitude}], { icon: hIcon })
                 .addTo(map)
@@ -203,15 +181,14 @@ export const WorkerJobsMapView: React.FC<WorkerJobsMapViewProps> = ({
     const routePolylineJs =
       inProgressCoords && filter !== 'hotspots'
         ? `
-        // Turn-by-turn guidance polyline connecting worker GPS to currently going job
         var routeLine = L.polyline([
           [${workerLocation.latitude}, ${workerLocation.longitude}],
           [${inProgressCoords.latitude}, ${inProgressCoords.longitude}]
         ], {
           color: '#2563eb',
-          weight: 4,
-          opacity: 0.85,
-          dashArray: '8, 8'
+          weight: 3.5,
+          opacity: 0.8,
+          dashArray: '6, 6'
         }).addTo(map);
       `
         : '';
@@ -232,270 +209,123 @@ export const WorkerJobsMapView: React.FC<WorkerJobsMapViewProps> = ({
               background-color: #f8fafc;
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }
-            .leaflet-control-attribution { font-size: 9px !important; opacity: 0.7; }
+            .leaflet-control-attribution { font-size: 8px !important; opacity: 0.6; }
 
             /* Custom Div Icons Reset */
-            .custom-job-div-icon, .custom-hotspot-icon, .custom-worker-icon {
+            .custom-dot-icon, .custom-worker-icon {
               background: transparent !important;
               border: none !important;
             }
 
-            /* Beacon Container */
-            .beacon-container {
-              position: relative;
-              width: 60px;
-              height: 60px;
+            /* Simple Dot Wrap */
+            .simple-dot-wrap {
+              width: 26px;
+              height: 26px;
               display: flex;
               align-items: center;
               justify-content: center;
               cursor: pointer;
-            }
-
-            /* Tag under marker */
-            .beacon-tag {
-              position: absolute;
-              bottom: 2px;
-              white-space: nowrap;
-              font-size: 10px;
-              font-weight: 800;
-              padding: 2px 7px;
-              border-radius: 999px;
-              box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-              pointer-events: none;
-              letter-spacing: 0.2px;
-            }
-
-            /* 1. Worker Live GPS Origin Marker */
-            .worker-origin-pin {
               position: relative;
-              width: 46px;
-              height: 46px;
+            }
+
+            /* Clean Simple Dots: Red, Green, Yellow, Blue, Purple */
+            .simple-dot {
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              border: 2px solid #ffffff;
+              box-shadow: 0 1.5px 4px rgba(0, 0, 0, 0.3);
+              position: relative;
+              transition: transform 0.15s ease;
+            }
+
+            .dot-red {
+              background-color: #ef4444;
+            }
+            .dot-green {
+              background-color: #10b981;
+            }
+            .dot-yellow {
+              background-color: #f59e0b;
+            }
+            .dot-blue {
+              background-color: #2563eb;
+            }
+            .dot-purple {
+              background-color: #8b5cf6;
+              width: 12px;
+              height: 12px;
+            }
+
+            /* Subtle, soft blinking ring for emergency red dot */
+            .dot-red::after {
+              content: '';
+              position: absolute;
+              top: -4px;
+              left: -4px;
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              border: 2px solid #ef4444;
+              animation: dot-ping 1.3s infinite;
+              pointer-events: none;
+            }
+
+            /* Subtle soft pulse for yellow pending dot */
+            .dot-yellow::after {
+              content: '';
+              position: absolute;
+              top: -4px;
+              left: -4px;
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              border: 1.5px solid #f59e0b;
+              animation: dot-ping 2s infinite;
+              pointer-events: none;
+            }
+
+            /* Subtle soft pulse for blue in-progress dot */
+            .dot-blue::after {
+              content: '';
+              position: absolute;
+              top: -4px;
+              left: -4px;
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              border: 1.5px solid #2563eb;
+              animation: dot-ping 2s infinite;
+              pointer-events: none;
+            }
+
+            @keyframes dot-ping {
+              0% { transform: scale(0.8); opacity: 0.8; }
+              100% { transform: scale(1.9); opacity: 0; }
+            }
+
+            /* Selected Dot Highlight */
+            .simple-dot-wrap.selected .simple-dot {
+              transform: scale(1.4);
+              box-shadow: 0 0 0 3px #3b82f6, 0 3px 8px rgba(0,0,0,0.35);
+              z-index: 10;
+            }
+
+            /* Worker GPS Base Dot */
+            .worker-gps-wrap {
+              width: 26px;
+              height: 26px;
               display: flex;
               align-items: center;
               justify-content: center;
             }
-            .worker-gps-core {
-              width: 22px;
-              height: 22px;
+            .worker-gps-dot {
+              width: 13px;
+              height: 13px;
               border-radius: 50%;
               background: #0284c7;
-              border: 3px solid #ffffff;
-              box-shadow: 0 0 12px rgba(2, 132, 199, 0.7);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 11px;
-              font-weight: bold;
-              z-index: 2;
-            }
-            .worker-gps-halo {
-              position: absolute;
-              width: 38px;
-              height: 38px;
-              border-radius: 50%;
-              background: rgba(2, 132, 199, 0.22);
-              animation: worker-gps-pulse 2.2s infinite ease-out;
-              z-index: 1;
-            }
-            @keyframes worker-gps-pulse {
-              0% { transform: scale(0.6); opacity: 0.9; }
-              70% { transform: scale(1.6); opacity: 0.15; }
-              100% { transform: scale(2.0); opacity: 0; }
-            }
-
-            /* 2. In-Progress Currently Going Job Marker */
-            .active-pulse-core {
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              background: #2563eb;
-              border: 3px solid #ffffff;
-              box-shadow: 0 0 14px rgba(37, 99, 235, 0.8);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 14px;
-              z-index: 3;
-            }
-            .active-pulse-ring {
-              position: absolute;
-              width: 44px;
-              height: 44px;
-              border-radius: 50%;
-              border: 2px solid #2563eb;
-              background: rgba(37, 99, 235, 0.25);
-              animation: active-beacon-pulse 1.8s infinite cubic-bezier(0.25, 1, 0.5, 1);
-              z-index: 2;
-            }
-            @keyframes active-beacon-pulse {
-              0% { transform: scale(0.7); opacity: 0.9; }
-              60% { transform: scale(1.7); opacity: 0.3; }
-              100% { transform: scale(2.2); opacity: 0; }
-            }
-            .active-tag {
-              background: #1e40af;
-              color: #ffffff;
-              border: 1px solid #60a5fa;
-            }
-
-            /* 3. Committed Scheduled Job Marker */
-            .accepted-pin {
-              width: 26px;
-              height: 26px;
-              border-radius: 50%;
-              background: #059669;
               border: 2.5px solid #ffffff;
-              box-shadow: 0 2px 8px rgba(5, 150, 105, 0.5);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 13px;
-              font-weight: 800;
-              z-index: 3;
-            }
-            .accepted-tag {
-              background: #065f46;
-              color: #ecfdf5;
-              border: 1px solid #34d399;
-            }
-
-            /* 4. Live Job Requests — Pulsing / Blinking Radar (Delivery App Style) */
-            .pending-pin {
-              width: 22px;
-              height: 22px;
-              border-radius: 50%;
-              background: #f59e0b;
-              border: 2.5px solid #ffffff;
-              box-shadow: 0 2px 8px rgba(245, 158, 11, 0.6);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 10px;
-              z-index: 3;
-            }
-            .radar-ripple-ring {
-              position: absolute;
-              width: 40px;
-              height: 40px;
-              border-radius: 50%;
-              border: 2px solid #f59e0b;
-              background: rgba(245, 158, 11, 0.2);
-              animation: radar-pulse 1.8s infinite linear;
-              z-index: 2;
-            }
-            .radar-ripple-ring.delay {
-              animation-delay: 0.9s;
-            }
-            @keyframes radar-pulse {
-              0% { transform: scale(0.6); opacity: 0.9; }
-              70% { transform: scale(1.6); opacity: 0.25; }
-              100% { transform: scale(2.2); opacity: 0; }
-            }
-            .pending-tag {
-              background: #b45309;
-              color: #fffbeb;
-              border: 1px solid #fbbf24;
-            }
-
-            /* 5. Emergency Requests — Rapid Flash Beacon */
-            .emergency-pulse-core {
-              width: 26px;
-              height: 26px;
-              border-radius: 50%;
-              background: #dc2626;
-              border: 2.5px solid #ffffff;
-              box-shadow: 0 0 12px rgba(220, 38, 38, 0.8);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 13px;
-              z-index: 3;
-              animation: emergency-blink 0.9s infinite alternate;
-            }
-            .emergency-pulse-ring {
-              position: absolute;
-              width: 44px;
-              height: 44px;
-              border-radius: 50%;
-              border: 2px solid #dc2626;
-              background: rgba(220, 38, 38, 0.25);
-              animation: radar-pulse 1.1s infinite linear;
-              z-index: 2;
-            }
-            @keyframes emergency-blink {
-              from { transform: scale(1); filter: drop-shadow(0 0 4px #ef4444); }
-              to { transform: scale(1.15); filter: drop-shadow(0 0 14px #dc2626); }
-            }
-            .emergency-tag {
-              background: #991b1b;
-              color: #fef2f2;
-              border: 1px solid #f87171;
-            }
-
-            /* 6. Live Demand Hotspots */
-            .hotspot-pin {
-              position: relative;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              cursor: pointer;
-            }
-            .hotspot-core {
-              width: 28px;
-              height: 28px;
-              border-radius: 50%;
-              background: #7c3aed;
-              border: 2.5px solid #ffffff;
-              box-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              color: white;
-              font-size: 13px;
-              z-index: 2;
-            }
-            .hotspot-pulse {
-              position: absolute;
-              width: 48px;
-              height: 48px;
-              top: -10px;
-              border-radius: 50%;
-              background: rgba(124, 58, 237, 0.2);
-              animation: hotspot-wave 2.2s infinite ease-out;
-              z-index: 1;
-            }
-            @keyframes hotspot-wave {
-              0% { transform: scale(0.6); opacity: 0.8; }
-              100% { transform: scale(1.8); opacity: 0; }
-            }
-            .hotspot-tag {
-              margin-top: 3px;
-              background: #5b21b6;
-              color: #f5f3ff;
-              font-size: 9px;
-              font-weight: 800;
-              padding: 2px 6px;
-              border-radius: 999px;
-              white-space: nowrap;
-              border: 1px solid #c4b5fd;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.18);
-            }
-
-            /* Selected Pin Focus Highlight */
-            .beacon-container.selected .active-pulse-core,
-            .beacon-container.selected .accepted-pin,
-            .beacon-container.selected .pending-pin,
-            .beacon-container.selected .emergency-pulse-core,
-            .hotspot-pin.selected .hotspot-core {
-              outline: 3px solid #facc15;
-              outline-offset: 2px;
-              transform: scale(1.22);
-              transition: transform 0.2s ease;
+              box-shadow: 0 0 6px rgba(2, 132, 199, 0.7);
             }
           </style>
         </head>
@@ -503,43 +333,46 @@ export const WorkerJobsMapView: React.FC<WorkerJobsMapViewProps> = ({
           <div id="osm-worker-map"></div>
           <script>
             var map = L.map('osm-worker-map', {
-              zoomControl: true,
+              zoomControl: false,
               attributionControl: true
             }).setView([${workerLocation.latitude}, ${workerLocation.longitude}], 12);
 
-            // OpenStreetMap Standard Free Vector/Raster Tiles
+            // OpenStreetMap Standard Tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
               maxZoom: 19,
-              attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              attribution: '© OpenStreetMap'
             }).addTo(map);
 
-            // Worker Dispatch GPS Origin Marker
+            // Add zoom control at bottom right to keep top spacious
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Worker Dispatch GPS Origin Dot
             var workerIcon = L.divIcon({
               className: 'custom-worker-icon',
-              html: '<div class="worker-origin-pin"><div class="worker-gps-halo"></div><div class="worker-gps-core">📍</div></div>',
-              iconSize: [46, 46],
-              iconAnchor: [23, 23]
+              html: '<div class="worker-gps-wrap"><div class="worker-gps-dot"></div></div>',
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
             });
             L.marker([${workerLocation.latitude}, ${workerLocation.longitude}], { icon: workerIcon })
               .addTo(map)
-              .bindPopup('<b>Worker Dispatch Base (You)</b><br/>Current GPS fix active');
+              .bindPopup('<b>Worker Base (You)</b>');
 
-            // Operating Service Radius Circle (Configurable km)
+            // Operating Service Radius Circle
             L.circle([${workerLocation.latitude}, ${workerLocation.longitude}], {
               color: '#0284c7',
               fillColor: '#38bdf8',
-              fillOpacity: 0.08,
-              weight: 1.8,
+              fillOpacity: 0.05,
+              weight: 1.5,
               radius: ${serviceRadiusKm * 1000}
             }).addTo(map);
 
-            // Draw route polyline for active job
+            // Route polyline for active job
             ${routePolylineJs}
 
-            // Draw all jobs markers
+            // Draw clean simple dot markers
             ${jobMarkersJs}
 
-            // Draw live demand hotspot clusters
+            // Draw subtle demand hotspot clusters
             ${hotspotsJs}
           </script>
         </body>
