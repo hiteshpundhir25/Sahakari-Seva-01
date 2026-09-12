@@ -181,6 +181,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
   const smsSlideAnim = useRef(new Animated.Value(-16)).current;
   const smsOpacityAnim = useRef(new Animated.Value(0)).current;
 
+  // Prevent any horizontal viewport spillover on web browsers
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.style.overflowX = 'hidden';
+      document.body.style.overflowX = 'hidden';
+      const root = document.getElementById('root');
+      if (root) {
+        root.style.overflowX = 'hidden';
+        root.style.maxWidth = '100vw';
+        root.style.width = '100%';
+      }
+    }
+  }, []);
+
   // Resend Countdown Timer
   useEffect(() => {
     let interval: any;
@@ -435,6 +449,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
       });
     }
   };
+
+  // Enforce zero horizontal overflow on mobile web browsers
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const origHtmlOverflowX = document.documentElement.style.overflowX;
+      const origBodyOverflowX = document.body.style.overflowX;
+      document.documentElement.style.overflowX = 'hidden';
+      document.body.style.overflowX = 'hidden';
+      return () => {
+        document.documentElement.style.overflowX = origHtmlOverflowX;
+        document.body.style.overflowX = origBodyOverflowX;
+      };
+    }
+  }, []);
 
   return (
     <View style={styles.screenContainer}>
@@ -918,7 +946,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
         {/* INDIAN MONUMENTS SKYLINE & TRICOLOR GROUND WAVE AT BASE           */}
         {/* ================================================================= */}
         <View style={styles.monumentsSkylineWrap}>
-          <IndianMonumentsSkyline isDark={isDark} height={125} />
+          <IndianMonumentsSkyline isDark={isDark} />
         </View>
 
         {/* ================================================================= */}
@@ -931,74 +959,81 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSelectRole }) => {
             <View style={styles.footerCol}>
               <View style={styles.footerColTitleRow}>
                 <QuestionCircleIcon color={isDark ? '#2dd4bf' : '#0d9488'} />
-                <Text style={styles.footerColTitle}>Help & Grievance</Text>
+                <Text style={styles.footerColTitle} numberOfLines={1}>Help</Text>
               </View>
               <TouchableOpacity
                 onPress={() => Alert.alert('Help & Grievance', '24/7 Cooperative Ombudsman Portal.\nToll-Free Helpline: 1800-724-2527\nAverage resolution time: under 4 hours.')}
                 activeOpacity={0.7}
                 hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               >
-                <Text style={styles.footerLinkText}>Raise Complaint →</Text>
+                <Text style={styles.footerLinkText} numberOfLines={1}>Grievance</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => Alert.alert('Dispute Resolution', 'Cooperative dispute resolution is governed by the Multi-State Cooperative Societies Act.')}
                 activeOpacity={0.7}
                 hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               >
-                <Text style={styles.footerSubLinkText}>Resolution</Text>
+                <Text style={styles.footerSubLinkText} numberOfLines={1}>Resolution</Text>
               </TouchableOpacity>
             </View>
 
             {/* Terms & Privacy */}
             <View style={styles.footerCol}>
               <View style={styles.footerColTitleRow}>
-                <FileText size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
-                <Text style={styles.footerColTitle}>Terms</Text>
+                <FileText size={10} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle} numberOfLines={1}>Legal</Text>
               </View>
               <TouchableOpacity
                 onPress={() => Alert.alert('Privacy Policy', 'Your personal and payment data is secured under cooperative sovereign data privacy principles.')}
                 activeOpacity={0.7}
                 hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               >
-                <Text style={styles.footerLinkText}>Privacy</Text>
+                <Text style={styles.footerLinkText} numberOfLines={1}>Privacy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Terms of Service', 'Sahakari Seva is a registered multi-state cooperative federation.')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+              >
+                <Text style={styles.footerSubLinkText} numberOfLines={1}>Terms</Text>
               </TouchableOpacity>
             </View>
 
             {/* Safety Guidelines */}
             <View style={styles.footerCol}>
               <View style={styles.footerColTitleRow}>
-                <ShieldCheck size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
-                <Text style={styles.footerColTitle}>Safety</Text>
+                <ShieldCheck size={10} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle} numberOfLines={1}>Safety</Text>
               </View>
               <TouchableOpacity
                 onPress={() => Alert.alert('Safety Guidelines', '100% ITI-verified workers with police verification, live GPS radar tracking, and ₹5,00,000 accidental insurance coverage.')}
                 activeOpacity={0.7}
                 hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               >
-                <Text style={styles.footerSubLinkText}>Guidelines</Text>
+                <Text style={styles.footerSubLinkText} numberOfLines={1}>Verified</Text>
               </TouchableOpacity>
             </View>
 
             {/* Accessibility */}
             <View style={styles.footerCol}>
               <View style={styles.footerColTitleRow}>
-                <Accessibility size={11} color={isDark ? '#2dd4bf' : '#0d9488'} />
-                <Text style={styles.footerColTitle}>Accessibility</Text>
+                <Accessibility size={10} color={isDark ? '#2dd4bf' : '#0d9488'} />
+                <Text style={styles.footerColTitle} numberOfLines={1}>A11y</Text>
               </View>
               <TouchableOpacity
                 onPress={() => Alert.alert('Accessibility', 'Full WCAG 2.1 compliance with screen reader support, high-contrast themes, and 13 Indian regional languages.')}
                 activeOpacity={0.7}
                 hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
               >
-                <Text style={styles.footerSubLinkText}>Standards</Text>
+                <Text style={styles.footerSubLinkText} numberOfLines={1}>WCAG 2.1</Text>
               </TouchableOpacity>
             </View>
 
             {/* Platform Metadata */}
             <View style={[styles.footerCol, { alignItems: 'flex-end' }]}>
-              <Text style={styles.footerMetaLabel}>Last Updated:</Text>
-              <Text style={styles.footerMetaValue}>11 September 2026</Text>
-              <Text style={styles.footerMetaVersion}>Version 1.0.0</Text>
+              <Text style={styles.footerMetaLabel} numberOfLines={1}>Updated:</Text>
+              <Text style={styles.footerMetaValue} numberOfLines={1}>Sep 2026</Text>
+              <Text style={styles.footerMetaVersion} numberOfLines={1}>v1.0.0</Text>
             </View>
           </View>
 
@@ -1030,6 +1065,9 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: isDark ? '#040712' : '#f8fafc',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
   },
   // 1. Reduced vertical footprint by ~28% (height 390 vs 540)
   mapOverlay: {
@@ -1040,10 +1078,14 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     height: 390,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   scrollContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   // --- Top Header ---
   topHeader: {
@@ -1700,30 +1742,40 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   // --- Monuments Skyline & Base Tricolor Wave ---
   monumentsSkylineWrap: {
-    alignSelf: 'stretch',
-    marginHorizontal: -20,
-    marginTop: 6,
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center',
+    marginTop: 8,
     marginBottom: 0,
     overflow: 'hidden',
   },
   // --- Institutional Footer & Preserved Bottom Slogans ---
   bottomFooterWrap: {
     width: '100%',
-    paddingTop: 10,
+    maxWidth: 360,
+    alignSelf: 'center',
+    paddingTop: 8,
     paddingBottom: 6,
+    overflow: 'hidden',
   },
   footerInstitutionalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     width: '100%',
-    paddingHorizontal: 4,
-    paddingBottom: 10,
+    maxWidth: 360,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    overflow: 'hidden',
   },
   footerCol: {
+    flex: 1,
+    minWidth: 0,
     alignItems: 'flex-start',
+    paddingHorizontal: 1,
+    overflow: 'hidden',
   },
   footerColTitleRow: {
     flexDirection: 'row',
