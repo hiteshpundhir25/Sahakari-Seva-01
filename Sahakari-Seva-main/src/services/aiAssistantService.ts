@@ -22,6 +22,7 @@ export type AssistantIntentType =
   | 'DECLINE_JOB'
   | 'DIAGNOSE_PARTS'
   | 'LIST_JOBS'
+  | 'EMERGENCY_REQUEST'
   | 'CUSTOMER_INFO'
   | 'EARNINGS_WELFARE'
   | 'READ_ALOUD'
@@ -229,6 +230,20 @@ export class AIAssistantService {
   // ---------------------------------------------------------------------------
   public static classifyIntent(input: string): AssistantIntentType {
     const s = input.toLowerCase().trim();
+
+    // Emergency SOS request / Urgent job
+    if (
+      s.includes('emergency') ||
+      s.includes('urgent') ||
+      s.includes('sos') ||
+      s.includes('turant') ||
+      s.includes('aapatkalin') ||
+      s.includes('jaldi') ||
+      s.includes('danger') ||
+      s.includes('immediate')
+    ) {
+      return 'EMERGENCY_REQUEST';
+    }
 
     // Start work
     if (
@@ -544,11 +559,22 @@ export class AIAssistantService {
       }
 
       case 'ACCEPT_JOB': {
-        // Find safe pending job (non-colliding)
-        const safeJob = context.pendingJobs.find(pj => {
-          const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
-          return !conflict.hasConflict;
+        // Prioritize pending emergency jobs first (with cooperative priority override)
+        let safeJob = context.pendingJobs.find(pj => {
+          if (pj.is_emergency) {
+            const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
+            return !conflict.isExactCollision;
+          }
+          return false;
         });
+
+        if (!safeJob) {
+          // Find standard non-colliding pending job
+          safeJob = context.pendingJobs.find(pj => {
+            const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
+            return !conflict.hasConflict;
+          });
+        }
 
         if (!safeJob) {
           if (context.pendingJobs.length > 0) {
@@ -573,8 +599,13 @@ export class AIAssistantService {
           await ApiClient.updateBookingStatus(safeJob.id, 'accepted');
           DeviceEventEmitter.emit('app_booking_updated');
 
-          const msg = `✅ Accepted job ${safeJob.booking_code} scheduled for ${safeJob.booking_date} at ${safeJob.booking_time}! Value: ₹${safeJob.estimated_amount}.`;
-          const speech = `Job ${safeJob.booking_code} accepted for ${safeJob.booking_date} at ${safeJob.booking_time}.`;
+          const isEmerg = safeJob.is_emergency;
+          const msg = isEmerg
+            ? `🚨 Accepted EMERGENCY SOS job ${safeJob.booking_code}! Immediate dispatch active (< 15-30 min arrival). Estimated Value: ₹${safeJob.estimated_amount} (+25% bonus included).`
+            : `✅ Accepted job ${safeJob.booking_code} scheduled for ${safeJob.booking_date} at ${safeJob.booking_time}! Value: ₹${safeJob.estimated_amount}.`;
+          const speech = isEmerg
+            ? `Emergency dispatch accepted for job ${safeJob.booking_code}. Arrival expected within 15 to 30 minutes.`
+            : `Job ${safeJob.booking_code} accepted for ${safeJob.booking_date} at ${safeJob.booking_time}.`;
 
           return {
             success: true,
@@ -601,6 +632,86 @@ export class AIAssistantService {
             speechText: `Could not accept job: ${err.message}`,
           };
         }
+      }
+
+      case 'EMERGENCY_REQUEST': {
+        const emergencyPending = context.pendingJobs.filter(b => b.is_emergency);
+        const emergencyCommitted = context.allJobs.filter(b => b.is_emergency && (b.status === 'accepted' || b.status === 'in_progress'));
+
+        if (emergencyPending.length > 0) {
+          const topEmergency = emergencyPending[0];
+          const totalAmt = Number(topEmergency.final_amount || topEmergency.estimated_amount || 0);
+          const wage = (totalAmt * 0.85).toFixed(0);
+          const custName = topEmergency.customer?.full_name || 'Customer';
+          const addr = topEmergency.address || topEmergency.city || 'Jaipur';
+
+          const msg = `🚨 EMERGENCY SOS REQUEST DETECTED! (${topEmergency.booking_code})\n` +
+            `• Customer: ${custName}\n` +
+            `• Service: ${topEmergency.service_description}\n` +
+            `• Location: ${addr}\n` +
+            `• Expected Response: < 15–30 min immediate arrival\n` +
+            `• Emergency Take-Home Wage: ₹${wage} (+25% bonus included)\n\n` +
+            `Cooperative Priority Override is active. Tap below to immediately accept emergency dispatch!`;
+
+          const speech = `Urgent emergency SOS job ${topEmergency.booking_code} from ${custName} requires immediate dispatch within 15 to 30 minutes! Direct wage of ₹${wage} with 25% bonus. Tap to accept dispatch now.`;
+
+          return {
+            success: true,
+            intent,
+            message: msg,
+            speechText: speech,
+            affectedBookingId: topEmergency.id,
+            card: {
+              id: 'card-emergency-' + Date.now(),
+              type: 'action_buttons',
+              booking: topEmergency,
+              actions: [
+                { label: `🚨 Accept Emergency Dispatch`, command: `accept emergency job ${topEmergency.booking_code}`, variant: 'danger' },
+                { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'neutral' },
+                { label: '📋 View All Requests', command: 'list available requests', variant: 'primary' },
+              ],
+            },
+          };
+        }
+
+        if (emergencyCommitted.length > 0) {
+          const activeEmergency = emergencyCommitted[0];
+          const msg = `⚡ You have an active Emergency SOS assignment ${activeEmergency.booking_code} (${activeEmergency.status === 'in_progress' ? 'Work underway on-site' : 'Confirmed, on route'}).`;
+          const speech = `You have an active emergency assignment ${activeEmergency.booking_code}. Complete service as per cooperative protocol.`;
+
+          return {
+            success: true,
+            intent,
+            message: msg,
+            speechText: speech,
+            affectedBookingId: activeEmergency.id,
+            card: {
+              id: 'card-emergency-active-' + Date.now(),
+              type: 'action_buttons',
+              booking: activeEmergency,
+              actions: [
+                { label: activeEmergency.status === 'in_progress' ? '✓ Complete Emergency Job' : `⚡ Start On-Site Work`, command: activeEmergency.status === 'in_progress' ? 'complete job' : 'start work', variant: 'success' },
+                { label: '📞 Call Customer', command: 'customer contact', variant: 'neutral' },
+              ],
+            },
+          };
+        }
+
+        const speech = `No pending emergency SOS jobs for you right now. You are in ready standby. Your standard requests are operating normally.`;
+        return {
+          success: true,
+          intent,
+          message: `✅ No pending emergency SOS requests right now. You are in ready standby for 24/7 emergency dispatch.`,
+          speechText: speech,
+          card: {
+            id: 'card-emergency-standby-' + Date.now(),
+            type: 'action_buttons',
+            actions: [
+              { label: '📋 Check Available Requests', command: 'list available requests', variant: 'primary' },
+              { label: '💰 Check Earnings & Welfare', command: 'earnings summary', variant: 'neutral' },
+            ],
+          },
+        };
       }
 
       case 'DECLINE_JOB': {
@@ -737,15 +848,18 @@ export class AIAssistantService {
         const pending = context.allJobs.filter(b => b.status === 'pending');
 
         // Order available requests and jobs:
-        // 1. Pending requests awaiting response / review
+        // 1. Pending requests (emergency requests prioritized at the very top)
         // 2. Confirmed upcoming jobs
         // 3. Active on-site jobs
-        const activeRequests = [...pending, ...accepted, ...inProgress];
+        const sortedPending = [...pending].sort((a, b) => (b.is_emergency ? 1 : 0) - (a.is_emergency ? 1 : 0));
+        const emergencyCount = pending.filter(b => b.is_emergency).length;
+        const activeRequests = [...sortedPending, ...accepted, ...inProgress];
         const displayList = activeRequests.length > 0 ? activeRequests : context.allJobs.slice(0, 5);
 
         let msg = '';
         if (activeRequests.length > 0) {
           msg = `📋 Here are the ${activeRequests.length} currently available job${activeRequests.length > 1 ? 's & requests' : ' request'}:\n` +
+            (emergencyCount > 0 ? `🚨 ${emergencyCount} EMERGENCY SOS request${emergencyCount > 1 ? 's' : ''} awaiting immediate response!\n` : '') +
             `• ${pending.length} pending request${pending.length !== 1 ? 's' : ''}\n` +
             `• ${accepted.length} confirmed job${accepted.length !== 1 ? 's' : ''}\n` +
             `• ${inProgress.length} in progress\n\n` +
@@ -754,7 +868,9 @@ export class AIAssistantService {
           msg = `You currently have 0 pending or active requests. All caught up! Showing your recent job history:`;
         }
 
-        const speech = activeRequests.length > 0
+        const speech = emergencyCount > 0
+          ? `Attention! You have ${emergencyCount} urgent emergency request awaiting dispatch! Listing ${activeRequests.length} available requests.`
+          : activeRequests.length > 0
           ? `Listing ${activeRequests.length} available requests and jobs. Tap any request to open its details.`
           : `You have no pending requests right now. All caught up!`;
 

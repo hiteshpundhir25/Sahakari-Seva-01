@@ -67,6 +67,8 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
     );
   }
 
+  const isEmergency = Boolean(route?.params?.isEmergency || route?.params?.emergencyOnly || worker.availability_status === 'emergency_only');
+
   return (
     <View style={styles.container}>
       <Header
@@ -77,6 +79,23 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
       />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Emergency Dispatch Banner */}
+        {isEmergency && (
+          <FadeInView distance={10} duration={300}>
+            <View style={styles.emergencyDetailBanner}>
+              <Zap size={18} color="#e11d48" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.emergencyDetailTitle}>
+                  24/7 Emergency Dispatch Available
+                </Text>
+                <Text style={styles.emergencyDetailDesc}>
+                  Direct priority SOS mobilization with arrival expected in &lt; 15-30 minutes.
+                </Text>
+              </View>
+            </View>
+          </FadeInView>
+        )}
+
         {/* On Active Job Notice Banner */}
         {worker.availability_status === 'busy' && (
           <FadeInView distance={10} duration={300}>
@@ -108,35 +127,37 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
         </FadeInView>
 
         {/* Rating and Stats Row */}
-        <FadeInView delay={90} distance={12} duration={320}>
+        <FadeInView delay={80} distance={12} duration={320}>
           <View style={styles.statsCard}>
             <View style={styles.statItem}>
-              <View style={styles.ratingRow}>
-                <Star size={16} color={colors.star} fill={colors.star} />
-                <Text style={styles.statLarge}>{worker.average_rating}</Text>
+              <View style={styles.statIconRow}>
+                <Star size={16} color="#f59e0b" fill="#f59e0b" />
+                <Text style={styles.statValue}>{worker.average_rating}</Text>
               </View>
-              <Text style={styles.statLabel}>{t('workerDetail.rating')}</Text>
+              <Text style={styles.statLabel}>{t('workerDetail.stat_rating')}</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statLarge}>{worker.total_jobs}</Text>
-              <Text style={styles.statLabel}>{t('workerDetail.jobs_done')}</Text>
+              <Text style={styles.statValue}>{worker.total_jobs}</Text>
+              <Text style={styles.statLabel}>{t('workerDetail.stat_jobs')}</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statLarge}>{worker.experience_years} {t('workerDetail.yrs')}</Text>
-              <Text style={styles.statLabel}>{t('workerDetail.experience')}</Text>
+              <Text style={styles.statValue}>{worker.experience_years}y</Text>
+              <Text style={styles.statLabel}>{t('workerDetail.stat_experience')}</Text>
             </View>
           </View>
         </FadeInView>
 
-        {/* Bio */}
-        <FadeInView delay={170} distance={12} duration={320}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('workerDetail.about')}</Text>
-            <Text style={styles.bioText}>{worker.bio || t('workerDetail.bio_fallback')}</Text>
-          </View>
-        </FadeInView>
+        {/* Bio Section */}
+        {worker.bio && (
+          <FadeInView delay={160} distance={12} duration={320}>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('workerDetail.about_professional')}</Text>
+              <Text style={styles.bioText}>{worker.bio}</Text>
+            </View>
+          </FadeInView>
+        )}
 
         {/* Verified Skills */}
         <FadeInView delay={250} distance={12} duration={320}>
@@ -168,13 +189,17 @@ export const WorkerDetailScreen: React.FC<{ route: any; navigation: any }> = ({ 
       {/* Floating Bottom CTA */}
       <View style={styles.bottomBar}>
         <View>
-          <Text style={styles.priceLabel}>{t('workerDetail.base_rate')}</Text>
-          <Text style={styles.priceValue}>₹{worker.hourly_or_base_rate} {t('workerDetail.per_hr')}</Text>
+          <Text style={styles.priceLabel}>{isEmergency ? 'Emergency Rate' : t('workerDetail.base_rate')}</Text>
+          <Text style={styles.priceValue}>
+            ₹{isEmergency ? Math.round(worker.hourly_or_base_rate * 1.25) : worker.hourly_or_base_rate} {t('workerDetail.per_hr')}
+          </Text>
         </View>
-        <ScalePressable onPress={() => navigation.navigate('BookingCreate', { worker })}>
-          <View style={styles.bookNowBtn}>
+        <ScalePressable onPress={() => navigation.navigate('BookingCreate', { worker, isEmergency })}>
+          <View style={[styles.bookNowBtn, isEmergency && styles.bookNowBtnEmergency]}>
             <Zap size={16} color={colors.textInverse} />
-            <Text style={styles.bookNowBtnText}>{t('workerDetail.book_service')}</Text>
+            <Text style={styles.bookNowBtnText}>
+              {isEmergency ? 'Book Emergency' : t('workerDetail.book_service')}
+            </Text>
           </View>
         </ScalePressable>
       </View>
@@ -278,7 +303,17 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     alignItems: 'center',
     gap: 4
   },
+  statIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
   statLarge: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.textPrimary
+  },
+  statValue: {
     fontSize: 17,
     fontWeight: '800',
     color: colors.textPrimary
@@ -289,6 +324,11 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     marginTop: 2
   },
   divider: {
+    width: 1,
+    height: 30,
+    backgroundColor: colors.border
+  },
+  statDivider: {
     width: 1,
     height: 30,
     backgroundColor: colors.border
@@ -373,9 +413,35 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12
   },
+  bookNowBtnEmergency: {
+    backgroundColor: '#e11d48',
+  },
   bookNowBtnText: {
     fontSize: 14,
     fontWeight: '700',
     color: colors.textInverse
-  }
+  },
+  emergencyDetailBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1.2,
+    borderColor: colors.danger,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+  emergencyDetailTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.danger,
+  },
+  emergencyDetailDesc: {
+    fontSize: 11,
+    color: colors.danger,
+    marginTop: 2,
+    lineHeight: 15,
+    opacity: 0.9,
+  },
 });

@@ -177,7 +177,8 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
                     isViolation && styles.jobCardViolation,
                     isThisActive && styles.jobCardActive,
                     job.status === 'pending' && scheduleConflict.isExactCollision && styles.jobCardCollisionExact,
-                    job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && styles.jobCardCollisionBuffer,
+                    job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && !job.is_emergency && styles.jobCardCollisionBuffer,
+                    job.is_emergency && styles.jobCardEmergency,
                   ]}
                   activeOpacity={0.78}
                   onPress={() => handleOpenJobDetail(job)}
@@ -425,6 +426,21 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderWidth: 1.5,
       backgroundColor: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2',
     },
+    jobCardEmergency: {
+      borderColor: '#f43f5e',
+      borderWidth: 1.5,
+      backgroundColor: isDark ? 'rgba(244, 63, 94, 0.05)' : '#fff1f2',
+    },
+    jobCardCollisionExact: {
+      borderColor: '#ef4444',
+      borderWidth: 1.5,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2',
+    },
+    jobCardCollisionBuffer: {
+      borderColor: '#f59e0b',
+      borderWidth: 1.3,
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : '#fffbeb',
+    },
     cardHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -606,14 +622,6 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     activeBannerInProgress: {
       backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
       borderColor: isDark ? 'rgba(59, 130, 246, 0.35)' : '#bfdbfe',
-    },
-    jobCardCollisionExact: {
-      borderColor: '#ef4444',
-      borderWidth: 1.3,
-    },
-    jobCardCollisionBuffer: {
-      borderColor: '#f59e0b',
-      borderWidth: 1.3,
     },
     exactCollisionPill: {
       flexDirection: 'row',

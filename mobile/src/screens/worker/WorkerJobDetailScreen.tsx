@@ -162,13 +162,17 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
     // Guard: Prevent accepting a job that collides with an existing committed job
     if (newStatus === 'accepted') {
       if (scheduleConflict.hasConflict) {
-        Alert.alert(
-          'Schedule Collision ⚠️',
-          scheduleConflict.reason ||
-            `This job collides with committed job ${scheduleConflict.conflictingBooking?.booking_code}. You cannot accept overlapping bookings.`,
-          [{ text: 'Understand' }]
-        );
-        return;
+        // Cooperative Emergency Priority Override:
+        // Emergency jobs can bypass non-exact 60-minute buffer collisions for immediate dispatch
+        if (!job.is_emergency || scheduleConflict.isExactCollision) {
+          Alert.alert(
+            'Schedule Collision ⚠️',
+            scheduleConflict.reason ||
+              `This job collides with committed job ${scheduleConflict.conflictingBooking?.booking_code}. You cannot accept overlapping bookings.`,
+            [{ text: 'Understand' }]
+          );
+          return;
+        }
       }
     }
 
@@ -188,10 +192,17 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
       setUpdating(true);
       await ApiClient.updateBookingStatus(job.id, newStatus);
       if (newStatus === 'accepted') {
-        Alert.alert(
-          t('worker.job_accepted_title', 'Job Accepted! 🎉'),
-          'Your operational duty status has shifted to "On Active Job". You are now officially assigned to this booking.'
-        );
+        if (job.is_emergency) {
+          Alert.alert(
+            '🚨 Emergency Dispatch Accepted! ⚡',
+            'Cooperative Priority Override activated. You are dispatched to customer with < 15-30 min arrival SLA. +25% Emergency Rate Bonus will be credited upon completion.'
+          );
+        } else {
+          Alert.alert(
+            t('worker.job_accepted_title', 'Job Accepted! 🎉'),
+            'Your operational duty status has shifted to "On Active Job". You are now officially assigned to this booking.'
+          );
+        }
       } else if (newStatus === 'in_progress') {
         Alert.alert('Service Started 🚀', 'You have begun on-site work. Perform all tasks to cooperative standards.');
       } else if (newStatus === 'completed') {
@@ -367,6 +378,33 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                     <Text style={styles.conflictBannerDesc}>
                       You are actively on-site for {ongoingServiceConflict.booking_code}. Mark that job completed before beginning service on this booking.
                     </Text>
+                  </View>
+                </View>
+              </FadeInView>
+            )}
+
+            {/* EMERGENCY MOBILIZATION PRIORITY BANNER */}
+            {job.is_emergency && (
+              <FadeInView distance={10} duration={260}>
+                <View style={styles.emergencyMobilizationBanner}>
+                  <View style={styles.emergencyMobilizationHeader}>
+                    <Zap size={18} color="#ffffff" />
+                    <Text style={styles.emergencyMobilizationTitle}>
+                      🚨 24/7 EMERGENCY SOS DISPATCH
+                    </Text>
+                  </View>
+                  <Text style={styles.emergencyMobilizationDesc}>
+                    Immediate priority mobilization required. Customer expects rapid arrival (&lt; 15-30 min SLA). +25% Emergency Wage Bonus credited directly to you upon completion.
+                  </Text>
+                  <View style={styles.emergencyMobilizationBadges}>
+                    <View style={styles.emergencyMobilizationPill}>
+                      <Clock size={11} color="#ffe4e6" />
+                      <Text style={styles.emergencyMobilizationPillText}>Arrival SLA: &lt; 15–30 min</Text>
+                    </View>
+                    <View style={styles.emergencyMobilizationPill}>
+                      <ShieldCheck size={11} color="#ffe4e6" />
+                      <Text style={styles.emergencyMobilizationPillText}>Emergency Rate: +25% Bonus</Text>
+                    </View>
                   </View>
                 </View>
               </FadeInView>
@@ -561,8 +599,8 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                         <Text style={styles.declineBtnText}>{t('worker.decline_btn', 'Decline Request')}</Text>
                       </TouchableOpacity>
                     </View>
-                  ) : scheduleConflict.isBufferCollision ? (
-                    // Buffer overlap: Worker cannot accept it
+                  ) : scheduleConflict.isBufferCollision && !job.is_emergency ? (
+                    // Buffer overlap: Worker cannot accept routine non-emergency jobs
                     <View style={styles.pendingActionGrid}>
                       <TouchableOpacity
                         style={styles.declineBtn}
@@ -590,7 +628,7 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    // No collision: Normal active buttons
+                    // No exact collision: Normal active buttons or Emergency Priority Override
                     <View style={styles.pendingActionGrid}>
                       <TouchableOpacity
                         style={styles.declineBtn}
@@ -603,7 +641,7 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.acceptBtn}
+                        style={[styles.acceptBtn, job.is_emergency && styles.acceptEmergencyBtn]}
                         onPress={() => handleUpdateStatus('accepted')}
                         disabled={updating}
                         activeOpacity={0.85}
@@ -612,9 +650,13 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
                           <ActivityIndicator size="small" color="#ffffff" />
                         ) : (
                           <>
-                            <Check size={16} color="#ffffff" strokeWidth={2.5} />
+                            {job.is_emergency ? (
+                              <Zap size={16} color="#ffffff" strokeWidth={2.5} />
+                            ) : (
+                              <Check size={16} color="#ffffff" strokeWidth={2.5} />
+                            )}
                             <Text style={styles.acceptBtnText}>
-                              {t('worker.accept_btn', 'Accept Request')}
+                              {job.is_emergency ? '🚨 Accept Emergency' : t('worker.accept_btn', 'Accept Request')}
                             </Text>
                           </>
                         )}
@@ -1314,5 +1356,50 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontSize: 13.5,
       fontWeight: '700',
       color: '#ffffff',
+    },
+    emergencyMobilizationBanner: {
+      backgroundColor: '#be123c',
+      padding: 14,
+      borderRadius: 14,
+      marginBottom: 16,
+    },
+    emergencyMobilizationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 6,
+    },
+    emergencyMobilizationTitle: {
+      fontSize: 13,
+      fontWeight: '900',
+      color: '#ffffff',
+      letterSpacing: 0.4,
+    },
+    emergencyMobilizationDesc: {
+      fontSize: 11.5,
+      color: '#ffe4e6',
+      lineHeight: 16,
+      marginBottom: 10,
+    },
+    emergencyMobilizationBadges: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    emergencyMobilizationPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
+    emergencyMobilizationPillText: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: '#ffffff',
+    },
+    acceptEmergencyBtn: {
+      backgroundColor: '#e11d48',
     },
   });

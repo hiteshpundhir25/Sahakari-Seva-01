@@ -20,18 +20,22 @@ interface WorkerCardProps {
   onBook: () => void;
   /** Index in a list — drives the staggered entrance delay. */
   index?: number;
+  /** Whether the customer is in 24/7 Emergency SOS mode */
+  emergencyOnly?: boolean;
 }
 
-export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook, index = 0 }) => {
+export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook, index = 0, emergencyOnly = false }) => {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);
   const tradeTheme = getTradeTheme(worker.service, isDark);
+  const isEmergencyActive = emergencyOnly || worker.availability === 'emergency_only';
+  const emergencyRate = Math.round(worker.hourly_rate * 1.25);
 
   return (
     <FadeInView delay={index * 60} distance={14} duration={320}>
       <ScalePressable onPress={onPress} scaleTo={0.98}>
-        <View style={styles.card}>
+        <View style={[styles.card, isEmergencyActive && styles.cardEmergency]}>
           <View style={styles.headerRow}>
             <View style={styles.leftMeta}>
               <View style={styles.nameRow}>
@@ -45,6 +49,16 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook,
                   <View style={styles.activeJobPulseDot} />
                   <Text style={styles.activeJobText}>
                     {t('workerProfile.status_busy', 'On Active Job')}
+                  </Text>
+                </View>
+              )}
+
+              {/* Emergency On-Call Badge */}
+              {isEmergencyActive && (
+                <View style={styles.emergencyOnCallBadge}>
+                  <Zap size={11} color="#e11d48" />
+                  <Text style={styles.emergencyOnCallText}>
+                    24/7 Emergency Dispatch (&lt; 15-30 min)
                   </Text>
                 </View>
               )}
@@ -90,14 +104,14 @@ export const WorkerCard: React.FC<WorkerCardProps> = ({ worker, onPress, onBook,
 
             <ScalePressable onPress={onBook} scaleTo={0.93} style={styles.bookBtnWrap}>
               <LinearGradient
-                colors={['#4f46e5', '#4338ca']}
+                colors={isEmergencyActive ? ['#e11d48', '#be123c'] : ['#4f46e5', '#4338ca']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.bookBtn}
+                style={[styles.bookBtn, isEmergencyActive && styles.bookBtnEmergency]}
               >
                 <Zap size={11} color="#ffffff" />
                 <Text style={styles.bookBtnText} numberOfLines={1}>
-                  {t('common.book', { rate: worker.hourly_rate })}
+                  {isEmergencyActive ? `Emergency ₹${emergencyRate}` : t('common.book', { rate: worker.hourly_rate })}
                 </Text>
               </LinearGradient>
             </ScalePressable>
@@ -283,6 +297,32 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontSize: 11.5,
     fontWeight: '800',
     color: '#ffffff',
+  },
+  cardEmergency: {
+    borderColor: '#f43f5e',
+    borderWidth: 1.4,
+  },
+  emergencyOnCallBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: isDark ? 'rgba(225, 29, 72, 0.15)' : '#ffe4e6',
+    borderWidth: 1,
+    borderColor: isDark ? '#be123c' : '#fecdd3',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 3,
+    marginBottom: 4,
+  },
+  emergencyOnCallText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#e11d48',
+  },
+  bookBtnEmergency: {
+    shadowColor: '#e11d48',
   },
 });
 

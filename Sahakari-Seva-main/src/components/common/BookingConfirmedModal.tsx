@@ -32,6 +32,8 @@ import {
   Sparkles,
   CheckCircle2,
   Send,
+  AlertTriangle,
+  Zap,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -92,6 +94,7 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
 
   const stepperPulse = useRef(new Animated.Value(1)).current;
 
+  const isEmergency = !!booking?.is_emergency;
   const isConfirmed = booking?.status === 'accepted' || booking?.status === 'in_progress' || booking?.status === 'completed';
   const bookingCode = booking?.booking_code || (isConfirmed ? 'BK-2026-CONFIRMED' : 'BK-2026-REQUESTED');
   const workerName = worker?.name || booking?.worker?.profile?.full_name || (booking?.worker as any)?.name || 'Assigned Professional';
@@ -365,7 +368,9 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
               <Animated.View
                 style={[
                   styles.rippleRing,
-                  !isConfirmed && styles.rippleRingRequested,
+                  isEmergency
+                    ? styles.rippleRingEmergency
+                    : !isConfirmed && styles.rippleRingRequested,
                   {
                     transform: [{ scale: ripple1Scale }],
                     opacity: ripple1Opacity,
@@ -378,7 +383,9 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                 style={[
                   styles.rippleRing,
                   styles.rippleRingSecondary,
-                  !isConfirmed && styles.rippleRingRequestedSecondary,
+                  isEmergency
+                    ? styles.rippleRingEmergencySecondary
+                    : !isConfirmed && styles.rippleRingRequestedSecondary,
                   {
                     transform: [{ scale: ripple2Scale }],
                     opacity: ripple2Opacity,
@@ -429,11 +436,13 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                   );
                 })}
 
-              {/* Main Badge: Green Checkmark (Confirmed) or Warm Amber Clock (Requested) */}
+              {/* Main Badge: Green Checkmark (Confirmed), Red SOS (Emergency), or Warm Amber Clock (Requested) */}
               <Animated.View
                 style={[
                   styles.checkCircleBadge,
-                  !isConfirmed && styles.checkCircleBadgeRequested,
+                  isEmergency
+                    ? styles.checkCircleBadgeEmergency
+                    : !isConfirmed && styles.checkCircleBadgeRequested,
                   {
                     transform: [
                       { scale: checkScale },
@@ -442,7 +451,13 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                   },
                 ]}
               >
-                {isConfirmed ? (
+                {isEmergency ? (
+                  isConfirmed ? (
+                    <Zap size={38} color="#ffffff" strokeWidth={3} />
+                  ) : (
+                    <AlertTriangle size={36} color="#ffffff" strokeWidth={2.8} />
+                  )
+                ) : isConfirmed ? (
                   <Check size={40} color="#ffffff" strokeWidth={3.8} />
                 ) : (
                   <Clock size={36} color="#ffffff" strokeWidth={2.8} />
@@ -462,20 +477,53 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
             >
               {/* Title & Dynamic Status Badge */}
               <Text style={styles.titleText}>
-                {isConfirmed
+                {isEmergency
+                  ? (isConfirmed ? '🚨 Emergency Dispatch Confirmed! ⚡' : '🚨 Emergency SOS Sent!')
+                  : isConfirmed
                   ? (t('booking.confirmed_title') || 'Booking Confirmed! 🎉')
                   : (t('booking.requested_title') || 'Booking Requested! 📋')}
               </Text>
 
-              <View style={[styles.orderCodeBadge, !isConfirmed && styles.orderCodeBadgeRequested]}>
-                <View style={isConfirmed ? styles.liveGreenDot : styles.liveAmberDot} />
-                <Text style={[styles.orderCodeText, !isConfirmed && styles.orderCodeTextRequested]}>
-                  ORDER #{bookingCode} • {isConfirmed ? 'CONFIRMED' : 'AWAITING WORKER'}
+              <View
+                style={[
+                  styles.orderCodeBadge,
+                  isEmergency
+                    ? styles.orderCodeBadgeEmergency
+                    : !isConfirmed && styles.orderCodeBadgeRequested,
+                ]}
+              >
+                <View
+                  style={
+                    isEmergency
+                      ? styles.liveRedDot
+                      : isConfirmed
+                      ? styles.liveGreenDot
+                      : styles.liveAmberDot
+                  }
+                />
+                <Text
+                  style={[
+                    styles.orderCodeText,
+                    isEmergency
+                      ? styles.orderCodeTextEmergency
+                      : !isConfirmed && styles.orderCodeTextRequested,
+                  ]}
+                >
+                  ORDER #{bookingCode} •{' '}
+                  {isEmergency
+                    ? (isConfirmed ? 'EMERGENCY ACTIVE • ON ROUTE' : '🚨 24/7 RAPID SOS')
+                    : isConfirmed
+                    ? 'CONFIRMED'
+                    : 'AWAITING WORKER'}
                 </Text>
               </View>
 
               <Text style={styles.subtitleText}>
-                {isConfirmed
+                {isEmergency
+                  ? isConfirmed
+                    ? `Technician ${workerName} has accepted your emergency request and is en route! Estimated arrival in 15–30 minutes.`
+                    : `Immediate SOS alert sent to ${workerName}. Fast-track mobilization SLA: within 15–30 minutes.`
+                  : isConfirmed
                   ? `Your booking has been confirmed by ${workerName}. Technician is scheduled on active duty!`
                   : `Your service request has been sent to ${workerName}. Awaiting worker confirmation.`}
               </Text>
@@ -558,27 +606,37 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
 
               {/* Awaiting Worker Confirmation Notice Card */}
               {!isConfirmed && (
-                <View style={styles.awaitingNoticeCard}>
+                <View style={[styles.awaitingNoticeCard, isEmergency && styles.awaitingNoticeCardEmergency]}>
                   <View style={styles.awaitingTopRow}>
-                    <View style={styles.awaitingClockIconCircle}>
-                      <Clock size={16} color="#d97706" strokeWidth={2.5} />
+                    <View style={[styles.awaitingClockIconCircle, isEmergency && styles.awaitingEmergencyIconCircle]}>
+                      {isEmergency ? (
+                        <AlertTriangle size={16} color="#dc2626" strokeWidth={2.5} />
+                      ) : (
+                        <Clock size={16} color="#d97706" strokeWidth={2.5} />
+                      )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.awaitingNoticeTitle}>
-                        {t('booking.awaiting_worker') || 'Awaiting Worker Confirmation'}
+                      <Text style={[styles.awaitingNoticeTitle, isEmergency && styles.awaitingNoticeTitleEmergency]}>
+                        {isEmergency
+                          ? '🚨 Emergency Priority Mobilization'
+                          : (t('booking.awaiting_worker') || 'Awaiting Worker Confirmation')}
                       </Text>
-                      <Text style={styles.awaitingNoticeDesc}>
-                        {workerName} has received your job alert. You will be notified as soon as they confirm your booking.
+                      <Text style={[styles.awaitingNoticeDesc, isEmergency && styles.awaitingNoticeDescEmergency]}>
+                        {isEmergency
+                          ? `${workerName} has received your SOS alert. Emergency +25% bonus wage applied. Rapid response SLA: arrival within 15–30 mins.`
+                          : `${workerName} has received your job alert. You will be notified as soon as they confirm your booking.`}
                       </Text>
                     </View>
                   </View>
 
-                  <View style={styles.awaitingNoticeDivider} />
+                  <View style={[styles.awaitingNoticeDivider, isEmergency && styles.awaitingNoticeDividerEmergency]} />
 
                   <View style={styles.dispatchPillRow}>
-                    <View style={styles.pulseLiveDot} />
-                    <Text style={styles.dispatchPillText}>
-                      Direct Cooperative Dispatch • Avg response 2–5 min
+                    <View style={[styles.pulseLiveDot, isEmergency && { backgroundColor: '#ef4444' }]} />
+                    <Text style={[styles.dispatchPillText, isEmergency && { color: '#dc2626', fontWeight: '800' }]}>
+                      {isEmergency
+                        ? '⚡ Rapid Response Priority Unit • 15–30 min arrival SLA'
+                        : 'Direct Cooperative Dispatch • Avg response 2–5 min'}
                     </Text>
                   </View>
                 </View>
@@ -618,10 +676,10 @@ export const BookingConfirmedModal: React.FC<BookingConfirmedModalProps> = ({
                 </View>
 
                 {/* Fair Wage Guarantee */}
-                <View style={styles.fairWageBanner}>
-                  <ShieldCheck size={14} color={colors.successDark} />
-                  <Text style={styles.fairWageText}>
-                    Cooperative Fair Share: ₹{workerCut} (85%) directly to {workerName.split(' ')[0]}
+                <View style={[styles.fairWageBanner, isEmergency && styles.fairWageBannerEmergency]}>
+                  <ShieldCheck size={14} color={isEmergency ? '#dc2626' : colors.successDark} />
+                  <Text style={[styles.fairWageText, isEmergency && styles.fairWageTextEmergency]}>
+                    Cooperative Fair Share: ₹{workerCut} (85% + Emergency Wage Bonus) directly to {workerName.split(' ')[0]}
                   </Text>
                 </View>
 
@@ -742,6 +800,14 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderColor: '#FBBF24',
       backgroundColor: 'transparent',
     },
+    rippleRingEmergency: {
+      borderColor: '#EF4444',
+      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    },
+    rippleRingEmergencySecondary: {
+      borderColor: '#F87171',
+      backgroundColor: 'transparent',
+    },
     confettiParticle: {
       position: 'absolute',
       justifyContent: 'center',
@@ -765,6 +831,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     checkCircleBadgeRequested: {
       backgroundColor: '#D97706',
       shadowColor: '#D97706',
+    },
+    checkCircleBadgeEmergency: {
+      backgroundColor: '#DC2626',
+      shadowColor: '#DC2626',
     },
     contentSection: {
       width: '100%',
@@ -792,6 +862,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: isDark ? 'rgba(245,158,11,0.18)' : '#FEF3C7',
       borderColor: isDark ? 'rgba(245,158,11,0.4)' : '#FDE68A',
     },
+    orderCodeBadgeEmergency: {
+      backgroundColor: isDark ? 'rgba(220,38,38,0.2)' : '#FEF2F2',
+      borderColor: isDark ? 'rgba(239,68,68,0.5)' : '#FECACA',
+    },
     liveGreenDot: {
       width: 7,
       height: 7,
@@ -806,6 +880,13 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: '#F59E0B',
       marginRight: 6,
     },
+    liveRedDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#EF4444',
+      marginRight: 6,
+    },
     orderCodeText: {
       fontSize: 11.5,
       fontWeight: '700',
@@ -814,6 +895,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     orderCodeTextRequested: {
       color: isDark ? '#FBBF24' : '#B45309',
+    },
+    orderCodeTextEmergency: {
+      color: isDark ? '#F87171' : '#DC2626',
+      fontWeight: '800',
     },
     subtitleText: {
       fontSize: 12.5,
@@ -939,6 +1024,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       marginBottom: 12,
       width: '100%',
     },
+    awaitingNoticeCardEmergency: {
+      backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2',
+      borderColor: isDark ? 'rgba(239,68,68,0.45)' : '#FECACA',
+    },
     awaitingTopRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -952,21 +1041,33 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
+    awaitingEmergencyIconCircle: {
+      backgroundColor: isDark ? 'rgba(220,38,38,0.25)' : '#FEE2E2',
+    },
     awaitingNoticeTitle: {
       fontSize: 12.5,
       fontWeight: '700',
       color: isDark ? '#FBBF24' : '#92400E',
       marginBottom: 2,
     },
+    awaitingNoticeTitleEmergency: {
+      color: isDark ? '#F87171' : '#B91C1C',
+    },
     awaitingNoticeDesc: {
       fontSize: 11.5,
       color: isDark ? '#FDE68A' : '#78350F',
       lineHeight: 16,
     },
+    awaitingNoticeDescEmergency: {
+      color: isDark ? '#FECACA' : '#991B1B',
+    },
     awaitingNoticeDivider: {
       height: 1,
       backgroundColor: isDark ? 'rgba(245,158,11,0.2)' : '#FEF3C7',
       marginVertical: 8,
+    },
+    awaitingNoticeDividerEmergency: {
+      backgroundColor: isDark ? 'rgba(220,38,38,0.3)' : '#FCA5A5',
     },
     dispatchPillRow: {
       flexDirection: 'row',
@@ -1077,11 +1178,20 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       gap: 6,
       marginBottom: 5,
     },
+    fairWageBannerEmergency: {
+      backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2',
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(239,68,68,0.35)' : '#FECACA',
+    },
     fairWageText: {
       fontSize: 10.5,
       fontWeight: '600',
       color: colors.successDark,
       flex: 1,
+    },
+    fairWageTextEmergency: {
+      color: isDark ? '#FCA5A5' : '#B91C1C',
+      fontWeight: '700',
     },
     payOnCompletionRow: {
       paddingTop: 2,

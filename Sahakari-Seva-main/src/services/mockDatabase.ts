@@ -636,16 +636,27 @@ export function buildNearbyWorkers(
   return MOCK_WORKERS
     .filter(w => w.verification_status === 'verified')
     .filter(w => w.availability_status !== 'offline')
+    .filter(w => {
+      if (emergency) {
+        // Must belong to category supporting emergency service
+        const cat = MOCK_CATEGORIES.find(c => c.name.toLowerCase() === w.skill_category.toLowerCase());
+        return cat?.emergency_available ?? true;
+      }
+      // When not an emergency search, keep emergency_only workers reserved
+      return w.availability_status !== 'emergency_only';
+    })
     .filter(w => (service && service !== 'all' ? w.skill_category.toLowerCase() === service.toLowerCase() : true))
-    .filter(w => (emergency ? (MOCK_CATEGORIES.find(c => c.name === w.skill_category)?.emergency_available ?? false) : true))
     .map(w => {
       const dist = haversineKm(lat, lng, w.latitude ?? 28.6315, w.longitude ?? 77.2167);
       const distanceScore = Math.max(5, Math.round(40 - dist * 3));
-      const availabilityScore = w.availability_status === 'available' ? 20 : 18;
+      const availabilityScore = emergency
+        ? (w.availability_status === 'emergency_only' ? 30 : w.availability_status === 'available' ? 25 : 12)
+        : (w.availability_status === 'available' ? 20 : 18);
       const ratingScore = Math.round(w.average_rating * 4);
       const reliabilityScore = Math.min(10, Math.max(4, Math.round(w.total_jobs / 20)));
+      const emergencyBonusScore = emergency && (w.availability_status === 'emergency_only' || w.availability_status === 'available') ? 10 : 0;
       const serviceMatchScore = 10;
-      const totalScore = Math.min(100, distanceScore + availabilityScore + ratingScore + reliabilityScore + serviceMatchScore);
+      const totalScore = Math.min(100, distanceScore + availabilityScore + ratingScore + reliabilityScore + serviceMatchScore + emergencyBonusScore);
       return {
         workerId: w.id,
         name: w.profile?.full_name || w.worker_code,
@@ -680,7 +691,15 @@ export function buildNearbyWorkers(
       };
     })
     .filter(w => w.within_radius)
-    .sort((a, b) => a.distance_km - b.distance_km);
+    .sort((a, b) => {
+      if (emergency) {
+        const aReady = a.availability === 'emergency_only' || a.availability === 'available';
+        const bReady = b.availability === 'emergency_only' || b.availability === 'available';
+        if (aReady && !bReady) return -1;
+        if (!aReady && bReady) return 1;
+      }
+      return a.distance_km - b.distance_km;
+    });
 }
 
 export const MOCK_ADMIN_STATS = {

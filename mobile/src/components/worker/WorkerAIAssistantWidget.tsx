@@ -771,7 +771,22 @@ export const WorkerAIAssistantWidget: React.FC = () => {
     let greeting = 'Namaste! I am your Sahakari Assistant ⚡.\n';
     let card: AssistantActionCard | undefined;
 
-    if (inProg) {
+    const emergencyPending = pending.find(j => j.is_emergency);
+
+    if (emergencyPending) {
+      const wage = (Number(emergencyPending.final_amount || emergencyPending.estimated_amount || 0) * 0.85).toFixed(0);
+      greeting += `🚨 URGENT SOS DISPATCH ALERT! You have an emergency booking request (${emergencyPending.booking_code}) waiting for immediate response (< 15-30 min arrival SLA)! Expected direct wage: ₹${wage} (includes +25% emergency wage bonus).`;
+      card = {
+        id: 'init-card-emergency',
+        type: 'action_buttons',
+        booking: emergencyPending,
+        actions: [
+          { label: `🚨 Accept Emergency (${emergencyPending.booking_code})`, command: 'accept job', variant: 'danger' },
+          { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'primary' },
+          { label: '📋 View All Requests', command: 'all requests', variant: 'neutral' },
+        ],
+      };
+    } else if (inProg) {
       const wage = (Number(inProg.final_amount || inProg.estimated_amount || 0) * 0.85).toFixed(0);
       greeting += `You are currently on-site for job ${inProg.booking_code} (${inProg.customer?.full_name || 'Customer'}). Expected wage: ₹${wage}. What would you like to do?`;
       card = {
@@ -979,6 +994,7 @@ export const WorkerAIAssistantWidget: React.FC = () => {
   };
 
   const activeJob = context?.activeOnSiteJob || context?.nextCommittedJob;
+  const hasEmergencyPending = context?.pendingJobs?.some(j => j.is_emergency);
 
   return (
     <>
@@ -988,24 +1004,37 @@ export const WorkerAIAssistantWidget: React.FC = () => {
       <View style={styles.fabContainer} pointerEvents="box-none">
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <TouchableOpacity
-            style={styles.fabButton}
+            style={[styles.fabButton, hasEmergencyPending && styles.fabButtonEmergency]}
             onPress={() => setIsOpen(true)}
             activeOpacity={0.85}
             accessibilityLabel="Open Sahakari Assistant"
           >
             <View style={styles.fabInner}>
               <Sparkles size={22} color="#ffffff" strokeWidth={2.5} />
-              {context?.activeOnSiteJob && <View style={styles.fabActiveDot} />}
+              {hasEmergencyPending ? (
+                <View style={[styles.fabActiveDot, { backgroundColor: '#ef4444' }]} />
+              ) : context?.activeOnSiteJob ? (
+                <View style={styles.fabActiveDot} />
+              ) : null}
             </View>
           </TouchableOpacity>
         </Animated.View>
         <TouchableOpacity
-          style={styles.fabLabelPill}
+          style={[styles.fabLabelPill, hasEmergencyPending && styles.fabLabelPillEmergency]}
           onPress={() => setIsOpen(true)}
           activeOpacity={0.85}
         >
-          <Zap size={11} color="#10b981" />
-          <Text style={styles.fabLabelText}>Assistant</Text>
+          {hasEmergencyPending ? (
+            <>
+              <AlertTriangle size={11} color="#fca5a5" />
+              <Text style={[styles.fabLabelText, { color: '#fca5a5' }]}>SOS Alert</Text>
+            </>
+          ) : (
+            <>
+              <Zap size={11} color="#10b981" />
+              <Text style={styles.fabLabelText}>Assistant</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -1218,6 +1247,15 @@ export const WorkerAIAssistantWidget: React.FC = () => {
             <View style={styles.chipRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
                 <TouchableOpacity
+                  style={[styles.chip, styles.chipEmergency]}
+                  onPress={() => handleExecute('check emergency requests')}
+                  disabled={actionInProgress}
+                >
+                  <AlertTriangle size={13} color="#ef4444" />
+                  <Text style={[styles.chipText, styles.chipTextEmergency]}>🚨 Emergency Jobs</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={styles.chip}
                   onPress={() => handleExecute('all requests')}
                   disabled={actionInProgress}
@@ -1377,6 +1415,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#ffffff',
   },
+  fabButtonEmergency: {
+    backgroundColor: '#dc2626',
+    borderColor: '#f87171',
+    shadowColor: '#dc2626',
+  },
   fabLabelPill: {
     marginTop: 4,
     flexDirection: 'row',
@@ -1391,6 +1434,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 4,
+  },
+  fabLabelPillEmergency: {
+    backgroundColor: '#7f1d1d',
+    borderColor: '#ef4444',
+    borderWidth: 1,
   },
   fabLabelText: {
     color: '#ffffff',
@@ -1630,10 +1678,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  chipEmergency: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fca5a5',
+  },
   chipText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#334155',
+  },
+  chipTextEmergency: {
+    color: '#dc2626',
+    fontWeight: '800',
   },
 
   // Footer Input Bar

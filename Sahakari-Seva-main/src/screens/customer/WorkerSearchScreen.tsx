@@ -70,6 +70,16 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
     }
   };
 
+  // Synchronize route params dynamically when navigated from HomeScreen emergency banner
+  useEffect(() => {
+    if (route.params?.emergencyOnly !== undefined) {
+      setEmergencyOnly(Boolean(route.params.emergencyOnly));
+    }
+    if (route.params?.selectedCategory !== undefined) {
+      setSelectedCat(route.params.selectedCategory);
+    }
+  }, [route.params?.emergencyOnly, route.params?.selectedCategory]);
+
   useEffect(() => {
     fetchResults();
   }, [selectedCat, emergencyOnly, minRating]);
@@ -134,6 +144,21 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
         </TouchableOpacity>
       </View>
 
+      {/* Emergency Active Notice Banner */}
+      {emergencyOnly && (
+        <View style={styles.emergencyActiveBanner}>
+          <View style={styles.emergencyActiveDot} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.emergencyActiveTitle}>
+              🚨 24/7 Emergency Dispatch Priority
+            </Text>
+            <Text style={styles.emergencyActiveDesc}>
+              Showing verified workers available for immediate &lt; 15–30 min response.
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Results List */}
       <ScrollView contentContainerStyle={styles.listContent}>
         {loading ? (
@@ -149,8 +174,9 @@ export const WorkerSearchScreen: React.FC<{ route: any; navigation: any }> = ({ 
               key={worker.workerId}
               worker={worker}
               index={idx}
-              onPress={() => navigation.navigate('WorkerDetail', { workerId: worker.workerId })}
-              onBook={() => navigation.navigate('BookingCreate', { worker })}
+              emergencyOnly={emergencyOnly}
+              onPress={() => navigation.navigate('WorkerDetail', { workerId: worker.workerId, isEmergency: emergencyOnly })}
+              onBook={() => navigation.navigate('BookingCreate', { worker, isEmergency: emergencyOnly })}
             />
           ))
         )}
@@ -257,5 +283,36 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
     textAlign: 'center'
+  },
+  emergencyActiveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  emergencyActiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.danger,
+  },
+  emergencyActiveTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.danger,
+  },
+  emergencyActiveDesc: {
+    fontSize: 11,
+    color: colors.danger,
+    opacity: 0.88,
+    marginTop: 1,
   }
 });

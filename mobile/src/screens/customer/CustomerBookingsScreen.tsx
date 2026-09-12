@@ -17,34 +17,35 @@ import { useNavigation } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
-import { Clock, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react-native';
+import { Clock, MapPin, AlertTriangle, CheckCircle2, Zap } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
-const makeStatusColors = (colors: Palette): Record<string, { bg: string; text: string }> => ({
-  pending: { bg: colors.warningLight, text: colors.warningDark },
-  accepted: { bg: colors.successLight, text: colors.successDark },
-  in_progress: { bg: colors.infoLight, text: colors.infoDark },
-  completed: { bg: colors.successLight, text: colors.successDark },
-  cancelled: { bg: colors.surfaceSubtle, text: colors.textSecondary }
-});
-
 export const CustomerBookingsScreen: React.FC = () => {
-  const { handleBack } = useAppBackHandler({ homeRouteName: 'Home', isHome: false });
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const styles = createStyles(colors);
-  const statusColors = makeStatusColors(colors);
+  const { handleBack } = useAppBackHandler({ homeRouteName: 'Home', isHome: true });
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors);
+
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    pending: { bg: isDark ? '#3d2e05' : '#fef3c7', text: isDark ? '#fbbf24' : '#d97706' },
+    accepted: { bg: isDark ? '#0c2d48' : '#e0f2fe', text: isDark ? '#38bdf8' : '#0284c7' },
+    in_progress: { bg: isDark ? '#1a2e05' : '#ecfdf5', text: isDark ? '#4ade80' : '#16a34a' },
+    completed: { bg: isDark ? '#1e1b4b' : '#ede9fe', text: isDark ? '#a78bfa' : '#7c3aed' },
+    cancelled: { bg: isDark ? '#3f1212' : '#fee2e2', text: isDark ? '#f87171' : '#dc2626' }
+  };
+
   const loadBookings = async () => {
     try {
       setLoading(true);
+      // Demo Customer Priya Singh
       const data = await ApiClient.getBookings('p0000000-0000-0000-0000-000000000002');
       setBookings(data);
     } catch (err) {
@@ -89,7 +90,15 @@ export const CustomerBookingsScreen: React.FC = () => {
                 <ScalePressable onPress={() => navigation.navigate('BookingDetail', { bookingId: booking.id })}>
                   <View style={styles.bookingCard}>
                     <View style={styles.cardHeader}>
-                      <Text style={styles.bookingCode}>{booking.booking_code}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.bookingCode}>{booking.booking_code}</Text>
+                        {booking.is_emergency && (
+                          <View style={styles.emergencyPill}>
+                            <Zap size={10} color="#e11d48" />
+                            <Text style={styles.emergencyPillText}>EMERGENCY (&lt; 30m)</Text>
+                          </View>
+                        )}
+                      </View>
                       <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
                         <Text style={[styles.statusText, { color: statusStyle.text }]}>
                           {booking.status === 'pending'
@@ -282,5 +291,21 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#10b981',
+  },
+  emergencyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ffe4e6',
+    borderWidth: 1,
+    borderColor: '#fecdd3',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  emergencyPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#e11d48',
   },
 });

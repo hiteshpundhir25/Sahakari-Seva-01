@@ -426,9 +426,13 @@ export class ApiClient {
       MOCK_NOTIFICATIONS.customer.unshift({
         id: 'notif-c-' + Date.now(),
         user_id: bookingPayload.customer_id || 'p0000000-0000-0000-0000-000000000002',
-        type: 'booking',
-        title: `Booking Requested! 📋 (${booking.booking_code})`,
-        message: `Your booking request for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} on ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'} has been sent. Awaiting worker confirmation.`,
+        type: (booking.is_emergency ? 'emergency' : 'booking') as any,
+        title: booking.is_emergency
+          ? `🚨 EMERGENCY DISPATCH REQUESTED! ⚡ (${booking.booking_code})`
+          : `Booking Requested! 📋 (${booking.booking_code})`,
+        message: booking.is_emergency
+          ? `Urgent 24/7 emergency dispatch requested for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} (< 15-30 min arrival). Worker alerted with SOS priority.`
+          : `Your booking request for ${workerInfo?.profile?.full_name || (workerInfo as any)?.name || 'Worker'} on ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'} has been sent. Awaiting worker confirmation.`,
         read: false,
         action_url: '/bookings',
         created_at: new Date().toISOString(),
@@ -436,9 +440,13 @@ export class ApiClient {
       MOCK_NOTIFICATIONS.worker.unshift({
         id: 'notif-w-' + Date.now(),
         user_id: bookingPayload.worker_id || 'w0000000-0000-0000-0000-000000000001',
-        type: 'booking',
-        title: `New Job Request! 📋 (${booking.booking_code})`,
-        message: `New booking requested by ${customerInfo?.full_name || 'Customer'} for ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'}. Tap to accept or review.`,
+        type: (booking.is_emergency ? 'emergency' : 'booking') as any,
+        title: booking.is_emergency
+          ? `🚨 EMERGENCY SOS JOB REQUEST! ⚡ (${booking.booking_code})`
+          : `New Job Request! 📋 (${booking.booking_code})`,
+        message: booking.is_emergency
+          ? `URGENT: 24/7 Emergency SOS requested by ${customerInfo?.full_name || 'Customer'}. Dispatch SLA: < 15-30 mins! +25% Emergency Rate Bonus applied.`
+          : `New booking requested by ${customerInfo?.full_name || 'Customer'} for ${booking.booking_date || 'scheduled date'} at ${booking.booking_time || '10:00 AM'}. Tap to accept or review.`,
         read: false,
         action_url: '/jobs',
         created_at: new Date().toISOString(),
@@ -453,11 +461,15 @@ export class ApiClient {
   }
 
   /**
-   * Parses time string like "14:30", "10:00", "10:00 AM", "2:30 PM" into minutes from midnight (0 - 1439).
+   * Parses time string like "14:30", "10:00", "10:00 AM", "2:30 PM", or "Immediate (< 15-30 min dispatch)" into minutes from midnight (0 - 1439).
    */
   public static parseTimeToMinutes(timeStr?: string): number | null {
     if (!timeStr) return null;
     const clean = timeStr.trim();
+    if (/immediate/i.test(clean)) {
+      const now = new Date();
+      return now.getHours() * 60 + now.getMinutes();
+    }
     const ampmMatch = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
     if (ampmMatch) {
       let hours = parseInt(ampmMatch[1], 10);
@@ -546,7 +558,9 @@ export class ApiClient {
               isBufferCollision: true,
               conflictingBooking: existing,
               timeDifferenceMinutes: diff,
-              reason: `Schedule buffer conflict: Scheduled within ${diff} mins of committed job ${existing.booking_code} (${existing.booking_time}). Minimum ${bufferMinutes}-minute buffer required.`,
+              reason: candidateBooking.is_emergency
+                ? `Emergency Mobilization Priority: Within ${diff} mins of committed job ${existing.booking_code} (${existing.booking_time}). Priority dispatch override active.`
+                : `Schedule buffer conflict: Scheduled within ${diff} mins of committed job ${existing.booking_code} (${existing.booking_time}). Minimum ${bufferMinutes}-minute buffer required.`,
             };
           }
         }
@@ -575,14 +589,18 @@ export class ApiClient {
       (targetBooking?.worker as any)?.id ||
       'w0000000-0000-0000-0000-000000000001';
 
-    // 1. If accepting a job, verify that it does not collide with existing committed jobs (1-hour buffer)
+    // 1. If accepting a job, verify schedule collision
     if (status === 'accepted' && targetBooking) {
       const conflict = this.checkScheduleConflict(targetBooking, MOCK_BOOKINGS, 60);
       if (conflict.hasConflict) {
-        throw new Error(
-          conflict.reason ||
-            `Schedule collision: This job collides with committed job ${conflict.conflictingBooking?.booking_code} (1-hour buffer required).`
-        );
+        // Cooperative Emergency Priority Override:
+        // Emergency SOS bookings can bypass non-exact 60-minute buffers so workers can immediately mobilize
+        if (!targetBooking.is_emergency || conflict.isExactCollision) {
+          throw new Error(
+            conflict.reason ||
+              `Schedule collision: This job collides with committed job ${conflict.conflictingBooking?.booking_code} (1-hour buffer required).`
+          );
+        }
       }
     }
 

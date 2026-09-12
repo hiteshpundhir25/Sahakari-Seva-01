@@ -296,9 +296,11 @@ export const BookingDetailScreen: React.FC = () => {
         <View style={styles.emergencyBanner}>
           <Text style={styles.emergencyIcon}>⚡</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.emergencyTitle}>{t('bookingDetail.emergency_title')}</Text>
+            <Text style={styles.emergencyTitle}>
+              {t('bookingDetail.emergency_title', '24/7 Priority Emergency Service')}
+            </Text>
             <Text style={styles.emergencyDesc}>
-              {t('bookingDetail.emergency_desc')}
+              {t('bookingDetail.emergency_desc', 'Worker dispatched immediately for rapid on-site arrival (< 15-30 mins). +25% emergency mobilization wage applied.')}
             </Text>
           </View>
         </View>

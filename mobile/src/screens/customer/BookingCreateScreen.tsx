@@ -24,6 +24,7 @@ import { BookingConfirmedModal } from '../../components/common/BookingConfirmedM
 import { useRole } from '../../context/RoleContext';
 import type { Booking } from '../../types';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
+import { MOCK_CATEGORIES } from '../../services/mockDatabase';
 
 const localToday = () => {
   const now = new Date();
@@ -44,16 +45,38 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
+  const initialEmergency = Boolean(
+    route?.params?.isEmergency ||
+    route?.params?.emergencyOnly ||
+    route?.params?.emergency ||
+    worker?.availability_status === 'emergency_only'
+  );
+
   const { refresh: refreshNotifications } = useRole();
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
   const [date, setDate] = useState(localToday);
-  const [time, setTime] = useState('10:00 AM');
+  const [time, setTime] = useState(initialEmergency ? 'Immediate (< 15-30 min dispatch)' : '10:00 AM');
   const [address, setAddress] = useState('Flat 402, Royal Residency, Connaught Place');
   const [pincode, setPincode] = useState('110001');
-  const [description, setDescription] = useState('');
-  const [isEmergency, setIsEmergency] = useState(false);
+  const [description, setDescription] = useState(
+    initialEmergency ? 'Urgent 24/7 emergency dispatch requested for immediate on-site assistance.' : ''
+  );
+  const [isEmergency, setIsEmergency] = useState(initialEmergency);
   const [submitting, setSubmitting] = useState(false);
+
+  const handleToggleEmergency = (val: boolean) => {
+    setIsEmergency(val);
+    if (val) {
+      setDate(localToday());
+      setTime('Immediate (< 15-30 min dispatch)');
+      if (!description.trim()) {
+        setDescription('Urgent 24/7 emergency dispatch requested for immediate on-site assistance.');
+      }
+    } else {
+      setTime('10:00 AM');
+    }
+  };
 
   const basePrice = worker.hourly_rate || worker.hourly_or_base_rate || 350;
   const finalAmount = isEmergency ? Math.round(basePrice * 1.25) : basePrice;
@@ -71,10 +94,14 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
 
     setSubmitting(true);
     try {
+      const workerTrade = (worker.service || worker.skill_category || '').toLowerCase();
+      const matchedCategory = MOCK_CATEGORIES.find(c => c.name.toLowerCase() === workerTrade);
+      const service_category_id = matchedCategory?.id || 's0000000-0000-0000-0000-000000000001';
+
       const payload = {
         customer_id: 'p0000000-0000-0000-0000-000000000002', // Demo Customer Priya Singh
         worker_id: worker.workerId || worker.id,
-        service_category_id: 's0000000-0000-0000-0000-000000000001',
+        service_category_id,
         booking_date: date,
         booking_time: time,
         address,
@@ -157,6 +184,21 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
           />
         </View>
 
+        {/* Emergency Notice Banner */}
+        {isEmergency && (
+          <View style={styles.emergencyNoticeBanner}>
+            <Zap size={16} color="#ffffff" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.emergencyNoticeTitle}>
+                🚨 24/7 Priority Emergency Booking Active
+              </Text>
+              <Text style={styles.emergencyNoticeDesc}>
+                Worker dispatched immediately for arrival within &lt; 15-30 minutes. +25% emergency mobilization surcharge applied.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Emergency Toggle */}
         <View style={styles.emergencyRow}>
           <View style={{ flex: 1 }}>
@@ -168,7 +210,7 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
           </View>
           <Switch
             value={isEmergency}
-            onValueChange={setIsEmergency}
+            onValueChange={handleToggleEmergency}
             trackColor={{ false: colors.border, true: colors.dangerLight }}
             thumbColor={isEmergency ? colors.danger : colors.surface}
           />
@@ -206,6 +248,16 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
             <Text style={styles.breakdownLabel}>{t('booking.platform_cut')}</Text>
             <Text style={styles.breakdownValue}>₹{platformCut}</Text>
           </View>
+          {isEmergency && (
+            <View style={styles.breakdownRow}>
+              <Text style={[styles.breakdownLabel, { color: colors.danger, fontWeight: '700' }]}>
+                Emergency Surcharge (+25%)
+              </Text>
+              <Text style={[styles.breakdownValue, { color: colors.danger, fontWeight: '700' }]}>
+                +₹{finalAmount - basePrice}
+              </Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>{t('booking.total_est')}</Text>
@@ -215,14 +267,16 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
 
         {/* Submit Button */}
         <TouchableOpacity
-          style={styles.submitBtn}
+          style={[styles.submitBtn, isEmergency && styles.submitBtnEmergency]}
           onPress={handleSubmit}
           disabled={submitting}
         >
           {submitting ? (
             <ActivityIndicator size="small" color={colors.textInverse} />
           ) : (
-            <Text style={styles.submitBtnText}>{t('booking.confirm_btn')}</Text>
+            <Text style={styles.submitBtnText}>
+              {isEmergency ? `🚨 Request Emergency Dispatch (₹${finalAmount})` : t('booking.confirm_btn')}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -396,9 +450,32 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  submitBtnEmergency: {
+    backgroundColor: '#e11d48',
+  },
   submitBtnText: {
     fontSize: 15,
     fontWeight: '800',
     color: colors.textInverse
+  },
+  emergencyNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#be123c',
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+  emergencyNoticeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  emergencyNoticeDesc: {
+    fontSize: 11,
+    color: '#ffe4e6',
+    marginTop: 2,
+    lineHeight: 15,
   }
 });
