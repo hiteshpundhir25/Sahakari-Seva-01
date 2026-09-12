@@ -149,8 +149,16 @@ export const SupplementalBillModal: React.FC<SupplementalBillModalProps> = ({
   ]);
   const [submitting, setSubmitting] = useState(false);
 
-  const tradeName = booking?.service_category?.name || 'General';
-  const suggestions = TRADE_SUGGESTIONS[tradeName] || DEFAULT_SUGGESTIONS;
+  const initialTrade = booking?.service_category?.name || 'Electrical';
+  const [selectedTrade, setSelectedTrade] = useState<string>(initialTrade);
+
+  useEffect(() => {
+    if (booking?.service_category?.name) {
+      setSelectedTrade(booking.service_category.name);
+    }
+  }, [booking]);
+
+  const suggestions = TRADE_SUGGESTIONS[selectedTrade] || DEFAULT_SUGGESTIONS;
 
   useEffect(() => {
     if (visible) {
@@ -302,8 +310,33 @@ export const SupplementalBillModal: React.FC<SupplementalBillModalProps> = ({
             <View style={styles.section}>
               <View style={styles.chipHeaderRow}>
                 <Sparkles size={12} color="#10b981" />
-                <Text style={styles.chipSectionLabel}>COMMON {tradeName.toUpperCase()} REPAIRS</Text>
+                <Text style={styles.chipSectionLabel}>BROWSE CATALOG BY TRADE ({selectedTrade.toUpperCase()})</Text>
               </View>
+
+              {/* Trade switcher pills */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tradeCategoryScroll}>
+                {Object.keys(TRADE_SUGGESTIONS).map((tr) => (
+                  <TouchableOpacity
+                    key={tr}
+                    style={[
+                      styles.tradeTabPill,
+                      selectedTrade === tr && styles.tradeTabPillActive,
+                    ]}
+                    onPress={() => setSelectedTrade(tr)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.tradeTabPillText,
+                        selectedTrade === tr && styles.tradeTabPillTextActive,
+                      ]}
+                    >
+                      {tr}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                 {suggestions.map((sug, i) => (
                   <TouchableOpacity
@@ -553,6 +586,31 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontWeight: '800',
       color: isDark ? '#2dd4bf' : '#0d9488',
       letterSpacing: 0.5,
+    },
+    tradeCategoryScroll: {
+      flexDirection: 'row',
+      marginBottom: 8,
+    },
+    tradeTabPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 16,
+      backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+      borderWidth: 1,
+      borderColor: isDark ? '#334155' : '#e2e8f0',
+      marginRight: 6,
+    },
+    tradeTabPillActive: {
+      backgroundColor: '#059669',
+      borderColor: '#059669',
+    },
+    tradeTabPillText: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: isDark ? '#94a3b8' : '#475569',
+    },
+    tradeTabPillTextActive: {
+      color: '#ffffff',
     },
     chipScroll: {
       flexDirection: 'row',
