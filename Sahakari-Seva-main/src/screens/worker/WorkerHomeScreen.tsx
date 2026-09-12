@@ -280,8 +280,16 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
           </View>
         </FadeInView>
 
-        {/* Insurance Coverage Card */}
+        {/* Accepted & Scheduled Work Calendar */}
         <FadeInView delay={140} distance={12} duration={320}>
+          <WorkerScheduleCalendar
+            workerId={worker?.id || 'w0000000-0000-0000-0000-000000000001'}
+            navigation={navigation}
+          />
+        </FadeInView>
+
+        {/* Insurance Coverage Card (At the bottom of the page) */}
+        <FadeInView delay={200} distance={12} duration={320}>
           <View style={styles.insuranceCard}>
             <View style={styles.insuranceHeader}>
               <ShieldCheck size={20} color={colors.success} />
@@ -292,14 +300,6 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             </Text>
             <Text style={styles.insurancePolicy}>{t('worker.insurance_policy')}</Text>
           </View>
-        </FadeInView>
-
-        {/* Accepted & Scheduled Work Calendar */}
-        <FadeInView delay={220} distance={12} duration={320}>
-          <WorkerScheduleCalendar
-            workerId={worker?.id || 'w0000000-0000-0000-0000-000000000001'}
-            navigation={navigation}
-          />
         </FadeInView>
       </ScrollView>
     </View>
@@ -471,7 +471,8 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.success
+    borderColor: colors.success,
+    marginBottom: 16,
   },
   insuranceHeader: {
     flexDirection: 'row',
