@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sahakari Seva",
     "slug": "sahakari-seva",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -10,16 +10,20 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.coop.sahakariseva",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Sahakari Seva needs your location to match you with nearby verified cooperative skilled professionals."
+        "NSLocationWhenInUseUsageDescription": "Sahakari Seva needs your location to match you with nearby verified cooperative skilled professionals.",
+        "NSCameraUsageDescription": "Sahakari Seva needs camera access to scan customer QR codes for job completion sign-off."
       }
     },
     "android": {
       "package": "com.coop.sahakariseva",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
