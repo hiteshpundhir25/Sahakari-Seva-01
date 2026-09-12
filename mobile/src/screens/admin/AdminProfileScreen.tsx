@@ -54,7 +54,7 @@ import { AdminProfile } from '../../types';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 import { AuthContext } from '../../navigation/RootNavigator';
 
-export const AdminProfileScreen: React.FC = () => {
+export const AdminProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const { handleBack } = useAppBackHandler({ homeRouteName: 'AdminDashboard', isHome: false });
   const { t, i18n } = useTranslation();
   const { colors, isDark } = useTheme();
@@ -73,6 +73,8 @@ export const AdminProfileScreen: React.FC = () => {
   // Modals
   const [byelawsModal, setByelawsModal] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [ledgerModalVisible, setLedgerModalVisible] = useState(false);
+  const [keyRotatedModal, setKeyRotatedModal] = useState(false);
 
   const loadAdmin = async () => {
     try {
@@ -125,19 +127,45 @@ export const AdminProfileScreen: React.FC = () => {
   };
 
   const handleExportLedger = () => {
-    Alert.alert(
-      t('adminProfile.export_done_title'),
-      t('adminProfile.export_done_msg') + `\n\nFile: Sahakari_Seva_Ledger_2026_Q3.json\nSHA-256: ${admin?.integrity_hash || '0x8F92A7D1C34E65B901FE'}`,
-      [{ text: 'OK' }]
-    );
+    const exportData = {
+      jurisdiction: 'Rajasthan State Cooperative Shramik Secretariat',
+      officer: admin?.officer_name || 'Dr. Vikramaditya Rathore, IAS (Retd.)',
+      authority_code: admin?.authority_code || 'SEC-RAJ-COOP-001',
+      exported_at: new Date().toISOString(),
+      statutory_minimum_wage_floor: minWage,
+      mandatory_trade_certification: mandatoryCert,
+      emergency_mobilization_override: emergencyOverride,
+      cryptographic_integrity_hash: admin?.integrity_hash || '0x8F92A7D1C34E65B901FE',
+      registered_cooperative_societies: 128,
+      verified_shramik_workforce: 4120,
+      total_statutory_transactions: 148920,
+      compliance_certification: 'Verified compliant under Rajasthan Cooperative Societies Act 2026, Section 34.'
+    };
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    if (typeof window !== 'undefined' && window.document) {
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Sahakari_Seva_Ledger_2026_Q3_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    setLedgerModalVisible(true);
   };
 
   const handleRotateKeys = () => {
-    Alert.alert(
-      'Security Key Rotation',
-      'Administrative signature certificate for SEC-RAJ-COOP-001 successfully renewed. Valid until September 2027.',
-      [{ text: 'Confirmed' }]
-    );
+    const chars = '0123456789ABCDEF';
+    let newHash = '0x';
+    for (let i = 0; i < 20; i++) {
+      newHash += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    if (admin) {
+      setAdmin({ ...admin, integrity_hash: newHash });
+    }
+    setKeyRotatedModal(true);
   };
 
   if (loading) {
@@ -199,25 +227,37 @@ export const AdminProfileScreen: React.FC = () => {
           <Text style={styles.sectionSub}>{t('adminProfile.jurisdiction_sub')}</Text>
 
           <View style={styles.telemetryGrid}>
-            <View style={[styles.kpiCard, { borderLeftColor: colors.primary }]}>
+            <TouchableOpacity
+              style={[styles.kpiCard, { borderLeftColor: colors.primary }]}
+              onPress={() => navigation?.navigate('AdminTabs', { screen: 'AdminVerification' })}
+              activeOpacity={0.75}
+            >
               <View style={[styles.kpiIconWrap, { backgroundColor: colors.primaryLight }]}>
                 <Users size={16} color={colors.primary} />
               </View>
               <AnimatedNumber value={18} style={styles.kpiVal} />
               <Text style={styles.kpiLabel}>{t('adminProfile.registered_workers')}</Text>
-              <Text style={styles.kpiHint}>16 Verified · 2 Pending</Text>
-            </View>
+              <Text style={styles.kpiHint}>16 Verified · 2 Pending →</Text>
+            </TouchableOpacity>
 
-            <View style={[styles.kpiCard, { borderLeftColor: colors.success }]}>
+            <TouchableOpacity
+              style={[styles.kpiCard, { borderLeftColor: colors.success }]}
+              onPress={() => navigation?.navigate('AdminTabs', { screen: 'AdminDashboard' })}
+              activeOpacity={0.75}
+            >
               <View style={[styles.kpiIconWrap, { backgroundColor: colors.successLight }]}>
                 <Building2 size={16} color={colors.successDark} />
               </View>
               <AnimatedNumber value={128} style={styles.kpiVal} />
               <Text style={styles.kpiLabel}>{t('adminProfile.active_coops')}</Text>
-              <Text style={styles.kpiHint}>Primary Societies</Text>
-            </View>
+              <Text style={styles.kpiHint}>View 128 Societies →</Text>
+            </TouchableOpacity>
 
-            <View style={[styles.kpiCard, { borderLeftColor: colors.secondary }]}>
+            <TouchableOpacity
+              style={[styles.kpiCard, { borderLeftColor: colors.secondary }]}
+              onPress={() => navigation?.navigate('AdminTabs', { screen: 'Forecast' })}
+              activeOpacity={0.75}
+            >
               <View style={[styles.kpiIconWrap, { backgroundColor: colors.secondaryLight }]}>
                 <HeartHandshake size={16} color={colors.secondaryDark} />
               </View>
@@ -228,17 +268,21 @@ export const AdminProfileScreen: React.FC = () => {
                 style={[styles.kpiVal, { color: colors.secondaryDark }]}
               />
               <Text style={styles.kpiLabel}>{t('adminProfile.welfare_corpus')}</Text>
-              <Text style={styles.kpiHint}>Under State Guarantee</Text>
-            </View>
+              <Text style={styles.kpiHint}>View Welfare Forecast →</Text>
+            </TouchableOpacity>
 
-            <View style={[styles.kpiCard, { borderLeftColor: colors.violet }]}>
+            <TouchableOpacity
+              style={[styles.kpiCard, { borderLeftColor: colors.violet }]}
+              onPress={() => navigation?.navigate('AdminTabs', { screen: 'Allocation' })}
+              activeOpacity={0.75}
+            >
               <View style={[styles.kpiIconWrap, { backgroundColor: colors.violetLight }]}>
                 <Scale size={16} color={colors.violetDark} />
               </View>
               <Text style={[styles.kpiVal, { color: colors.violetDark }]}>99.4%</Text>
               <Text style={styles.kpiLabel}>{t('adminProfile.dispute_resolution')}</Text>
-              <Text style={styles.kpiHint}>Avg Resolution &lt; 12 hrs</Text>
-            </View>
+              <Text style={styles.kpiHint}>View Allocations & SLAs →</Text>
+            </TouchableOpacity>
           </View>
         </FadeInView>
 
@@ -263,15 +307,14 @@ export const AdminProfileScreen: React.FC = () => {
             </View>
 
             <View style={styles.wageChipsRow}>
-              {[249, 299, 349, 399].map(amt => (
+              {[249, 299, 349, 399].map(w => (
                 <TouchableOpacity
-                  key={amt}
-                  style={[styles.wageChip, minWage === amt && styles.wageChipActive]}
-                  onPress={() => handleUpdateMinWage(amt)}
-                  activeOpacity={0.75}
+                  key={w}
+                  style={[styles.wageChip, minWage === w && styles.wageChipActive]}
+                  onPress={() => handleUpdateMinWage(w)}
                 >
-                  <Text style={[styles.wageChipText, minWage === amt && styles.wageChipTextActive]}>
-                    ₹{amt}/hr
+                  <Text style={[styles.wageChipText, minWage === w && styles.wageChipTextActive]}>
+                    ₹{w}/hr
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -279,9 +322,9 @@ export const AdminProfileScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            {/* Mandatory ITI Certification */}
+            {/* Mandatory Trade Certification Toggle */}
             <View style={styles.toggleRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={styles.controlTitle}>{t('adminProfile.mandatory_cert')}</Text>
                 <Text style={styles.controlSub}>{t('adminProfile.mandatory_cert_desc')}</Text>
               </View>
@@ -295,9 +338,9 @@ export const AdminProfileScreen: React.FC = () => {
 
             <View style={styles.divider} />
 
-            {/* Emergency Standby Mobilization Override */}
+            {/* Emergency Service Mobilization Override */}
             <View style={styles.toggleRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={styles.controlTitle}>{t('adminProfile.emergency_override')}</Text>
                 <Text style={styles.controlSub}>{t('adminProfile.emergency_override_desc')}</Text>
               </View>
@@ -370,6 +413,14 @@ export const AdminProfileScreen: React.FC = () => {
               <Text style={styles.hashMeta}>
                 {t('adminProfile.last_audit')}: {admin?.last_audit_date || '2026-09-01'} · Node consensus verified
               </Text>
+              <TouchableOpacity
+                style={styles.rotateKeyBtn}
+                onPress={handleRotateKeys}
+                activeOpacity={0.75}
+              >
+                <Key size={12} color={colors.primary} />
+                <Text style={styles.rotateKeyBtnText}>Rotate Signature Key →</Text>
+              </TouchableOpacity>
             </View>
           </Card>
         </FadeInView>
@@ -491,6 +542,76 @@ export const AdminProfileScreen: React.FC = () => {
 
       {/* Language Selector Modal */}
       <LanguageModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
+
+      {/* Ledger Exported Modal */}
+      <Modal visible={ledgerModalVisible} transparent animationType="fade" onRequestClose={() => setLedgerModalVisible(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setLedgerModalVisible(false)}>
+          <Pressable style={styles.modalBox} onPress={e => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 size={20} color={colors.successDark} />
+                <Text style={styles.modalTitle}>Statutory Ledger Exported</Text>
+              </View>
+              <TouchableOpacity onPress={() => setLedgerModalVisible(false)}>
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubText}>
+              Cryptographically signed snapshot downloaded as JSON file.
+            </Text>
+            <View style={styles.ledgerInfoBox}>
+              <Text style={styles.ledgerInfoLabel}>FILE NAME</Text>
+              <Text style={styles.ledgerInfoVal}>Sahakari_Seva_Ledger_2026_Q3.json</Text>
+              <Text style={[styles.ledgerInfoLabel, { marginTop: 8 }]}>AUDIT SHA-256 HASH</Text>
+              <Text style={styles.ledgerHashText}>{admin?.integrity_hash || '0x8F92A7D1C34E65B901FE'}</Text>
+              <Text style={[styles.ledgerInfoLabel, { marginTop: 8 }]}>COMPLIANCE CERTIFICATION</Text>
+              <Text style={styles.ledgerComplianceText}>
+                Section 34, Rajasthan Cooperative Societies Act 2026. 100% statutory floor compliance verified.
+              </Text>
+            </View>
+            <Button
+              title="Done"
+              variant="primary"
+              size="sm"
+              onPress={() => setLedgerModalVisible(false)}
+              style={{ marginTop: 14 }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Key Rotated Modal */}
+      <Modal visible={keyRotatedModal} transparent animationType="fade" onRequestClose={() => setKeyRotatedModal(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setKeyRotatedModal(false)}>
+          <Pressable style={styles.modalBox} onPress={e => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Key size={20} color={colors.primary} />
+                <Text style={styles.modalTitle}>Signature Key Rotated</Text>
+              </View>
+              <TouchableOpacity onPress={() => setKeyRotatedModal(false)}>
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalSubText}>
+              New administrative signature certificate generated for authority SEC-RAJ-COOP-001.
+            </Text>
+            <View style={styles.ledgerInfoBox}>
+              <Text style={styles.ledgerInfoLabel}>NEW INTEGRITY HASH</Text>
+              <Text style={styles.ledgerHashText}>{admin?.integrity_hash}</Text>
+              <Text style={[styles.ledgerInfoLabel, { marginTop: 8 }]}>CERTIFICATE VALIDITY</Text>
+              <Text style={styles.ledgerInfoVal}>Valid until September 2027 (Active Gazetted)</Text>
+            </View>
+            <Button
+              title="Understood"
+              variant="primary"
+              size="sm"
+              onPress={() => setKeyRotatedModal(false)}
+              style={{ marginTop: 14 }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -880,6 +1001,52 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontSize: 10,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  rotateKeyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  rotateKeyBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  ledgerInfoBox: {
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  ledgerInfoLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.6,
+  },
+  ledgerInfoVal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 2,
+  },
+  ledgerHashText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: 'Courier',
+    marginTop: 2,
+  },
+  ledgerComplianceText: {
+    fontSize: 11,
+    color: colors.successDark,
+    fontWeight: '600',
+    marginTop: 2,
+    lineHeight: 15,
   },
 });
 

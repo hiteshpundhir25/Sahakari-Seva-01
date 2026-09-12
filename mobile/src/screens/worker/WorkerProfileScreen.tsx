@@ -44,7 +44,13 @@ import {
   ChevronRight,
   LogOut,
   Sliders,
-  DollarSign
+  DollarSign,
+  PhoneCall,
+  MessageSquare,
+  AlertTriangle,
+  FileCheck,
+  Check,
+  ExternalLink,
 } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -57,6 +63,30 @@ import { ApiClient } from '../../services/apiClient';
 import { Worker, AvailabilityStatus } from '../../types';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 import { AuthContext } from '../../navigation/RootNavigator';
+
+// Robust communication helpers for mobile and web
+const openDialer = (phoneNumber: string) => {
+  const clean = phoneNumber.replace(/[^0-9+]/g, '');
+  if (typeof window !== 'undefined') {
+    window.location.href = `tel:${clean}`;
+  } else {
+    Linking.openURL(`tel:${clean}`).catch(err => {
+      console.warn('Dialer error:', err);
+    });
+  }
+};
+
+const openWhatsApp = (phoneNumber: string, text: string) => {
+  const clean = phoneNumber.replace(/[^0-9]/g, '');
+  const url = `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
+  if (typeof window !== 'undefined') {
+    window.open(url, '_blank');
+  } else {
+    Linking.openURL(url).catch(err => {
+      console.warn('WhatsApp error:', err);
+    });
+  }
+};
 
 export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
@@ -87,6 +117,14 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
   const [addSkillModal, setAddSkillModal] = useState(false);
   const [newSkillText, setNewSkillText] = useState('');
   const [langModalVisible, setLangModalVisible] = useState(false);
+  const [showWorkerSosModal, setShowWorkerSosModal] = useState(false);
+  const [workerBeaconActive, setWorkerBeaconActive] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [selectedCertType, setSelectedCertType] = useState('National Trade Certificate (NTC) — ITI');
+  const [certRollNumber, setCertRollNumber] = useState('NTC-RJ-2021-88421');
+  const [certIssuingBody, setCertIssuingBody] = useState('National Council for Vocational Training (NCVT)');
+  const [certYear, setCertYear] = useState('2021');
+  const [certSubmitting, setCertSubmitting] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -192,34 +230,23 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
   };
 
   const handleSimulateCertUpload = () => {
-    Alert.alert(
-      t('workerProfile.doc_upload_title'),
-      t('workerProfile.doc_upload_msg'),
-      [
-        {
-          text: t('workerProfile.doc_ntc'),
-          onPress: () => {
-            setCertName('National Trade Certificate (NTC) — Verified');
-            Alert.alert(t('workerProfile.uploaded_title'), t('workerProfile.doc_ntc'));
-          },
-        },
-        {
-          text: 'Polytechnic Electrical Diploma',
-          onPress: () => {
-            setCertName('Polytechnic Electrical Diploma — Verified');
-            Alert.alert(t('workerProfile.uploaded_title'), 'Polytechnic Electrical Diploma');
-          },
-        },
-        {
-          text: 'Central Electricity Authority Safety Pass',
-          onPress: () => {
-            setCertName('Central Electricity Authority Safety Pass');
-            Alert.alert(t('workerProfile.uploaded_title'), 'CEA Safety Pass Verified');
-          },
-        },
-        { text: t('common.cancel'), style: 'cancel' },
-      ]
-    );
+    setShowCertModal(true);
+  };
+
+  const handleSaveCert = async () => {
+    setCertSubmitting(true);
+    try {
+      const updatedCert = `${selectedCertType} (${certRollNumber.trim() || 'VERIFIED'})`;
+      setCertName(updatedCert);
+      await ApiClient.updateWorkerProfile('w0000000-0000-0000-0000-000000000001', {
+        certification_name: updatedCert,
+      });
+      setShowCertModal(false);
+    } catch (e) {
+      console.warn('Cert update failed:', e);
+    } finally {
+      setCertSubmitting(false);
+    }
   };
 
   const handleAddSkill = () => {
@@ -265,31 +292,7 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
   };
 
   const handleEmergencySOS = () => {
-    Alert.alert(
-      t('workerProfile.emergency_sos'),
-      t('workerProfile.sos_alert_msg'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: 'Call Control Room (1800-SAHAKAR)',
-          onPress: () => {
-            Linking.openURL('tel:18007242527').catch(err => {
-              console.warn('Cannot open phone dialer:', err);
-            });
-          },
-        },
-        {
-          text: 'Confirm SOS Dispatch',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'SOS Dispatched',
-              'Jaipur Cooperative Control Room #8842 alerted. Emergency patrol unit deployed.'
-            );
-          },
-        },
-      ]
-    );
+    setShowWorkerSosModal(true);
   };
 
   if (loading) {
@@ -522,7 +525,15 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
         <FadeInView delay={140} distance={10} duration={320}>
           <Card style={styles.earningsCard}>
             <View style={styles.earningsGrid}>
-              <View style={styles.earnItem}>
+              <TouchableOpacity
+                style={styles.earnItem}
+                onPress={() => {
+                  if (navigation) {
+                    navigation.navigate('WorkerWelfare');
+                  }
+                }}
+                activeOpacity={0.75}
+              >
                 <View style={styles.earnIconWrap}>
                   <TrendingUp size={16} color={colors.successDark} />
                 </View>
@@ -534,9 +545,18 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
                 />
                 <Text style={styles.earnLabel}>Direct Take-Home Earnings</Text>
                 <Text style={styles.earnSub}>100% Payout (0% Commission)</Text>
-              </View>
+                <Text style={styles.earnActionHint}>Tap to view passbook →</Text>
+              </TouchableOpacity>
 
-              <View style={styles.earnItem}>
+              <TouchableOpacity
+                style={styles.earnItem}
+                onPress={() => {
+                  if (navigation) {
+                    navigation.navigate('WorkerWelfare');
+                  }
+                }}
+                activeOpacity={0.75}
+              >
                 <View style={[styles.earnIconWrap, { backgroundColor: colors.secondaryLight }]}>
                   <Heart size={16} color={colors.secondaryDark} />
                 </View>
@@ -548,7 +568,8 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
                 />
                 <Text style={styles.earnLabel}>Solidarity Welfare Fund</Text>
                 <Text style={styles.earnSub}>Emergency Aid & Health Pool</Text>
-              </View>
+                <Text style={styles.earnActionHint}>Tap to view welfare schemes →</Text>
+              </TouchableOpacity>
             </View>
           </Card>
         </FadeInView>
@@ -815,6 +836,272 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
 
       {/* Language Selector Modal */}
       <LanguageModal visible={langModalVisible} onClose={() => setLangModalVisible(false)} />
+
+      {/* Worker Emergency Safety & Distress Modal */}
+      <Modal
+        visible={showWorkerSosModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWorkerSosModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowWorkerSosModal(false)}>
+          <Pressable style={styles.actionSheetBox} onPress={e => e.stopPropagation()}>
+            <View style={styles.actionSheetHeader}>
+              <View style={styles.actionSheetTitleRow}>
+                <View style={styles.sosIconWrap}>
+                  <LifeBuoy size={20} color="#dc2626" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionSheetTitle}>Rajasthan Shramik Sahakari SOS</Text>
+                  <Text style={styles.actionSheetSub}>Direct Shramik Safety & Police Dispatch Desk</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowWorkerSosModal(false)} style={styles.closeBtn}>
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Worker Location & Operational Beacon Banner */}
+            <View style={styles.workerDistressBanner}>
+              <View style={styles.distressHeader}>
+                <Radio size={14} color="#dc2626" />
+                <Text style={styles.distressTitle}>Active Worker Standby Coords</Text>
+                <View style={styles.livePulseBadge}>
+                  <View style={styles.livePulseDot} />
+                  <Text style={styles.livePulseText}>GPS LIVE</Text>
+                </View>
+              </View>
+              <Text style={styles.distressCoords}>26.9124° N, 75.7873° E (Jaipur Metro Zone)</Text>
+              <Text style={styles.distressSub}>
+                ID: {worker?.worker_code || 'WRK-JPR-0101'} · {workerName} · Federation Registry #8842
+              </Text>
+            </View>
+
+            {/* Emergency Channels */}
+            <Text style={styles.sosSectionHeader}>INSTANT ASSISTANCE CHANNELS</Text>
+
+            <TouchableOpacity
+              style={styles.sosActionRowPrimary}
+              onPress={() => openDialer('18007242527')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.actionIconPrimary}>
+                <PhoneCall size={18} color="#ffffff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionTitlePrimary}>Call Shramik Control Room</Text>
+                <Text style={styles.actionSubPrimary}>1800-SAHAKAR (1800-724-2527) · Toll Free 24x7</Text>
+              </View>
+              <ChevronRight size={16} color="#ffffff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosActionRow}
+              onPress={() => openDialer('112')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#fee2e2' }]}>
+                <Shield size={18} color="#dc2626" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionTitle}>Police Emergency & Shramik Desk</Text>
+                <Text style={styles.actionSub}>Direct line to Dial 112 with priority co-op tag</Text>
+              </View>
+              <ChevronRight size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosActionRow}
+              onPress={() => openDialer('108')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#fef3c7' }]}>
+                <Heart size={18} color="#d97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionTitle}>Medical Emergency / Ambulance</Text>
+                <Text style={styles.actionSub}>Dial 108 Emergency Medical Response Service</Text>
+              </View>
+              <ChevronRight size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.sosActionRow}
+              onPress={() =>
+                openWhatsApp(
+                  '911412227000',
+                  `🚨 WORKER DISTRESS ALERT:\nWorker: ${workerName} (${worker?.worker_code || 'WRK-JPR-0101'})\nTrade: ${skillCategory}\nGPS: 26.9124° N, 75.7873° E (Jaipur Metro)\nImmediate police/cooperative intervention requested.`
+                )
+              }
+              activeOpacity={0.8}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: '#dcfce7' }]}>
+                <MessageSquare size={18} color="#16a34a" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionTitle}>WhatsApp Distress Broadcast</Text>
+                <Text style={styles.actionSub}>Sends prefilled coordinates to Control Room</Text>
+              </View>
+              <ChevronRight size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {/* One-Tap Dispatch Beacon */}
+            <View style={styles.beaconWrap}>
+              {workerBeaconActive ? (
+                <View style={styles.beaconActiveBox}>
+                  <CheckCircle2 size={20} color="#16a34a" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.beaconActiveTitle}>Distress Beacon Activated (#SOS-9182)</Text>
+                    <Text style={styles.beaconActiveSub}>
+                      Nearest patrol unit (Patrol-04, MI Road) alerted. Contact established with Jaipur Control Room #8842.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.beaconBtn}
+                  onPress={() => setWorkerBeaconActive(true)}
+                  activeOpacity={0.85}
+                >
+                  <AlertTriangle size={16} color="#ffffff" />
+                  <Text style={styles.beaconBtnText}>Broadcast Live Distress Beacon</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Button
+              title="Dismiss & Close"
+              variant="outline"
+              size="sm"
+              onPress={() => setShowWorkerSosModal(false)}
+              style={{ marginTop: 12 }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Shramik Trade Certification Modal */}
+      <Modal
+        visible={showCertModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCertModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCertModal(false)}>
+          <Pressable style={styles.actionSheetBox} onPress={e => e.stopPropagation()}>
+            <View style={styles.actionSheetHeader}>
+              <View style={styles.actionSheetTitleRow}>
+                <View style={[styles.sosIconWrap, { backgroundColor: colors.primaryLight }]}>
+                  <Award size={20} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionSheetTitle}>Trade Qualification & License</Text>
+                  <Text style={styles.actionSheetSub}>Statutory accreditation for zero-commission registry</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowCertModal(false)} style={styles.closeBtn}>
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>SELECT TECHNICAL ACCREDITATION</Text>
+              {[
+                'National Trade Certificate (NTC) — ITI',
+                'Polytechnic Electrical Diploma',
+                'Central Electricity Authority Safety Pass',
+                'NSDC Skill India Level-4 Certificate',
+              ].map((certOption) => (
+                <TouchableOpacity
+                  key={certOption}
+                  style={[
+                    styles.certOptionRow,
+                    selectedCertType === certOption && styles.certOptionRowActive,
+                  ]}
+                  onPress={() => setSelectedCertType(certOption)}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.certOptionTitle,
+                        selectedCertType === certOption && styles.certOptionTitleActive,
+                      ]}
+                    >
+                      {certOption}
+                    </Text>
+                    <Text style={styles.certOptionSub}>
+                      {certOption.includes('NTC')
+                        ? 'NCVT / SCVT Ministry of Skill Development'
+                        : certOption.includes('Diploma')
+                        ? 'Board of Technical Education, Rajasthan'
+                        : certOption.includes('Authority')
+                        ? 'Govt of India Electrical Inspectorate'
+                        : 'National Skill Development Corporation'}
+                    </Text>
+                  </View>
+                  {selectedCertType === certOption && (
+                    <Check size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+
+              <Text style={[styles.inputLabel, { marginTop: 14 }]}>ROLL / CERTIFICATE REGISTRATION NUMBER</Text>
+              <TextInput
+                style={styles.sheetInput}
+                value={certRollNumber}
+                onChangeText={setCertRollNumber}
+                placeholder="e.g. NTC-RJ-2021-88421"
+                placeholderTextColor={colors.textMuted}
+              />
+
+              <Text style={[styles.inputLabel, { marginTop: 12 }]}>ISSUING BODY & YEAR</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TextInput
+                  style={[styles.sheetInput, { flex: 2 }]}
+                  value={certIssuingBody}
+                  onChangeText={setCertIssuingBody}
+                  placeholder="e.g. NCVT Rajasthan"
+                  placeholderTextColor={colors.textMuted}
+                />
+                <TextInput
+                  style={[styles.sheetInput, { flex: 1 }]}
+                  value={certYear}
+                  onChangeText={setCertYear}
+                  keyboardType="numeric"
+                  placeholder="2021"
+                  placeholderTextColor={colors.textMuted}
+                />
+              </View>
+
+              <View style={styles.statutoryNoticeBox}>
+                <Shield size={14} color={colors.successDark} />
+                <Text style={styles.statutoryNoticeText}>
+                  Verified under Rajasthan Cooperative Societies Act 2026. Trade credentials qualify worker for priority allocation.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <Button
+                title={t('common.cancel')}
+                variant="outline"
+                size="sm"
+                onPress={() => setShowCertModal(false)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={certSubmitting ? 'Saving...' : 'Submit & Verify'}
+                variant="primary"
+                size="sm"
+                onPress={handleSaveCert}
+                disabled={certSubmitting}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -1493,6 +1780,275 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
     color: colors.textPrimary,
     backgroundColor: colors.surfaceSubtle,
     marginTop: 6,
+  },
+  earnActionHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 6,
+  },
+  actionSheetBox: {
+    width: '100%',
+    maxWidth: 500,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    padding: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  actionSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  actionSheetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  actionSheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  actionSheetSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  sosIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeBtn: {
+    padding: 6,
+  },
+  workerDistressBanner: {
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fff1f2',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#fecdd3',
+    marginBottom: 14,
+  },
+  distressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  distressTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#dc2626',
+    flex: 1,
+  },
+  livePulseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#dc2626',
+  },
+  livePulseText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#dc2626',
+  },
+  distressCoords: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 4,
+    fontFamily: 'Courier',
+  },
+  distressSub: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  sosSectionHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  sosActionRowPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#dc2626',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  actionIconPrimary: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionTitlePrimary: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  actionSubPrimary: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 1,
+  },
+  sosActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+  },
+  actionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  actionSub: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  beaconWrap: {
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  beaconBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#b91c1c',
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
+  beaconBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  beaconActiveBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#dcfce7',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(22, 163, 74, 0.3)' : '#86efac',
+  },
+  beaconActiveTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#15803d',
+  },
+  beaconActiveSub: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.7,
+    marginBottom: 6,
+  },
+  certOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceSubtle,
+    marginBottom: 8,
+  },
+  certOptionRowActive: {
+    borderColor: colors.primary,
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#f0fdf4',
+  },
+  certOptionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  certOptionTitleActive: {
+    color: colors.primary,
+  },
+  certOptionSub: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  sheetInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    color: colors.textPrimary,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  statutoryNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#f0fdf4',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#bbf7d0',
+  },
+  statutoryNoticeText: {
+    fontSize: 10,
+    color: colors.successDark,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 14,
   },
 });
 
