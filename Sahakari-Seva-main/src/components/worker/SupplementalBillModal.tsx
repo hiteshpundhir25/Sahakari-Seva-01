@@ -42,35 +42,91 @@ interface SupplementalBillModalProps {
 }
 
 // Preset common defect suggestions mapped by trade category
-const TRADE_SUGGESTIONS: Record<string, Array<{ title: string; cost: number; type: ExtraTaskType }>> = {
+export const TRADE_SUGGESTIONS: Record<string, Array<{ title: string; cost: number; type: ExtraTaskType }>> = {
   Electrical: [
-    { title: 'Heavy-Duty 2.5µF Motor Capacitor', cost: 180, type: 'part' },
-    { title: 'Terminal Block Rewiring & Insulation', cost: 120, type: 'repair' },
     { title: '16A Heavy-Duty Modular Switch Replacement', cost: 150, type: 'part' },
+    { title: '6A / 10A Standard Switch / Socket Plate', cost: 95, type: 'part' },
+    { title: 'Heavy-Duty 2.5µF / 3.15µF Motor Capacitor', cost: 180, type: 'part' },
+    { title: 'Single-Pole 16A/32A MCB Breaker', cost: 240, type: 'part' },
+    { title: 'Ceiling Fan Step-Regulator Replacement', cost: 160, type: 'part' },
+    { title: 'LED Concealed Driver / Choke Unit', cost: 210, type: 'part' },
+    { title: 'Terminal Block Rewiring & Insulation', cost: 120, type: 'repair' },
     { title: 'Short-Circuit Fault Tracing & MCB Isolation', cost: 200, type: 'labor' },
+    { title: 'Copper Earthing & Neutral Wire Balancing', cost: 280, type: 'labor' },
   ],
   Plumbing: [
     { title: 'Brass Angle Cock Valve Replacement', cost: 240, type: 'part' },
     { title: 'Under-Sink PVC S-Trap & Waste Pipe Assembly', cost: 190, type: 'part' },
+    { title: 'Ceramic Disc Cartridge / Spindle for Mixer Tap', cost: 160, type: 'part' },
+    { title: 'CPVC Pipe Section Extension & Coupler', cost: 180, type: 'repair' },
+    { title: 'Water Tank Float Ball Valve Assembly', cost: 320, type: 'part' },
+    { title: 'Brass Bibcock Heavy Water Tap', cost: 260, type: 'part' },
     { title: 'High-Pressure Teflon Joint Sealing & Re-threading', cost: 110, type: 'repair' },
     { title: 'Deep Concealed Line Blockage Extraction', cost: 220, type: 'labor' },
+  ],
+  Carpentry: [
+    { title: 'Door Mortise Lock & Cylinder Replacement', cost: 380, type: 'part' },
+    { title: 'Hydraulic Soft-Close Cabinet Hinges (Pair)', cost: 220, type: 'part' },
+    { title: 'Heavy-Duty Ball Bearing Drawer Channel (Pair)', cost: 290, type: 'part' },
+    { title: 'Magnetic Door Stopper & Tower Bolt Fitting', cost: 130, type: 'part' },
+    { title: 'Wood Planing & Door Frame Re-alignment', cost: 160, type: 'labor' },
+    { title: 'Plywood Reinforcement & Structural Patching', cost: 240, type: 'repair' },
+  ],
+  Painting: [
+    { title: 'Waterproof Wall Putty & Primer Patching', cost: 280, type: 'repair' },
+    { title: 'Anti-Damp Chemical Barrier Coating', cost: 350, type: 'part' },
+    { title: 'Deep Wall Crack Mesh & Polymer Filler', cost: 190, type: 'repair' },
+    { title: 'Enamel Touch-Up & Surface Sanding', cost: 150, type: 'labor' },
+    { title: 'Fungicidal Anti-Mold Wash & Seal', cost: 220, type: 'labor' },
+  ],
+  'Cleaning & Sanitization': [
+    { title: 'Hospital-Grade Antibacterial Disinfectant Chemical', cost: 220, type: 'part' },
+    { title: 'Heavy Kitchen Grease Degreaser Solution', cost: 180, type: 'part' },
+    { title: 'Bathroom Hard-Water Descaling Acid Wash', cost: 190, type: 'repair' },
+    { title: 'Deep Upholstery Foam Extraction Treatment', cost: 260, type: 'labor' },
+    { title: 'High-Pressure Steam Sanitization Pass', cost: 280, type: 'labor' },
+  ],
+  'Gardening & Landscaping': [
+    { title: 'Organic Vermicompost & Nutrient Pack (5kg)', cost: 210, type: 'part' },
+    { title: 'Neem Oil Anti-Pest Foliar Spray Solution', cost: 160, type: 'repair' },
+    { title: 'Drip Micro-Irrigation Nozzle Replacement Kit', cost: 150, type: 'part' },
+    { title: 'Precision Hedge Pruning & Shrub Shaping', cost: 240, type: 'labor' },
+    { title: 'Soil Tilling & Root Zone Aeration', cost: 180, type: 'labor' },
   ],
   'Appliance Repair': [
     { title: 'OEM Thermostat Switch Replacement', cost: 320, type: 'part' },
     { title: 'Water Inlet Solenoid Valve Fix', cost: 260, type: 'part' },
-    { title: 'Motor Bushing Alignment & Greasing', cost: 180, type: 'labor' },
+    { title: 'Heavy-Duty Universal Drain Pump Unit', cost: 390, type: 'part' },
+    { title: 'Mica Sheet & Magnetron Diode Set', cost: 210, type: 'part' },
+    { title: 'Tub Drive Belt & Pulley Tensioning', cost: 190, type: 'repair' },
+    { title: 'Motor Bushing Alignment & High-Temp Greasing', cost: 180, type: 'labor' },
   ],
   'AC Repair & Servicing': [
     { title: 'Dual Run 35µF/45µF Compressor Capacitor', cost: 450, type: 'part' },
-    { title: 'Copper Flare Nut & Flare Joint Re-brazing', cost: 350, type: 'repair' },
     { title: 'Refrigerant Gas Top-Up (R32/R410A)', cost: 650, type: 'part' },
+    { title: 'Copper Flare Nut & Joint Re-brazing', cost: 350, type: 'repair' },
+    { title: 'Contactor Relay & PCB Sensor Probe Fix', cost: 380, type: 'repair' },
+    { title: 'Drain Tray & Condensate Line De-clog', cost: 180, type: 'labor' },
+    { title: 'Blower Motor Bearings & Impeller De-dust', cost: 220, type: 'labor' },
+  ],
+  'Driver Services': [
+    { title: 'Toll, Parking & State Tax Settlement', cost: 250, type: 'part' },
+    { title: 'Vehicle Exterior Foam Jet Wash & Vacuum', cost: 220, type: 'labor' },
+    { title: 'Night Driving Extended Shift Surcharge', cost: 200, type: 'labor' },
+    { title: 'Multi-Stop Unscheduled Route Deviation', cost: 150, type: 'labor' },
+  ],
+  'Caregiving & Nursing': [
+    { title: 'Sterile Dressing & Antiseptic Bandage Kit', cost: 180, type: 'part' },
+    { title: 'Vitals & Blood Glucose Diagnostic Strips Kit', cost: 160, type: 'part' },
+    { title: 'Mobility Assistance & Transfer Support Surcharge', cost: 200, type: 'labor' },
+    { title: 'Emergency Clinic Accompaniment & Escort', cost: 280, type: 'labor' },
   ],
 };
 
-const DEFAULT_SUGGESTIONS: Array<{ title: string; cost: number; type: ExtraTaskType }> = [
+export const DEFAULT_SUGGESTIONS: Array<{ title: string; cost: number; type: ExtraTaskType }> = [
   { title: 'Defective Core Component Replacement', cost: 250, type: 'part' },
-  { title: 'Emergency Deep Labor & Refitting', cost: 150, type: 'labor' },
-  { title: 'Protective Safety Re-alignment', cost: 100, type: 'repair' },
+  { title: 'Emergency Deep Labor & Refitting', cost: 180, type: 'labor' },
+  { title: 'Protective Safety Re-alignment & Testing', cost: 120, type: 'repair' },
 ];
 
 export const SupplementalBillModal: React.FC<SupplementalBillModalProps> = ({

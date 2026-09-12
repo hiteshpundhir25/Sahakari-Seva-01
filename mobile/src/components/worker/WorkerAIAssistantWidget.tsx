@@ -5,7 +5,7 @@
 // - Interactive conversational assistant with action cards
 // - Direct 1-tap execution of:
 //   * Start Service Work
-//   * Add Diagnostic Parts (+₹350)
+//   * Itemize & Submit Diagnostic Extra Parts across all trades
 //   * Complete Job & Claim Direct Wage
 //   * View Schedule & Customer Contacts
 //   * Speech recognition & text-to-speech
@@ -26,6 +26,7 @@ import {
   Platform,
   Linking,
   DeviceEventEmitter,
+  Alert,
 } from 'react-native';
 import {
   Sparkles,
@@ -46,6 +47,9 @@ import {
   User,
   Phone,
   ArrowRight,
+  Search,
+  Check,
+  Plus,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme';
 import {
@@ -55,6 +59,394 @@ import {
   AssistantMessage,
   AssistantActionCard,
 } from '../../services/aiAssistantService';
+import { ExtraTaskItem, ExtraTaskType } from '../../types';
+import { TRADE_SUGGESTIONS } from './SupplementalBillModal';
+
+// ==============================================================================
+// IN-CHAT INTERACTIVE DIAGNOSTIC & EXTRA PARTS PICKER CARD
+// ==============================================================================
+interface AssistantPartsPickerCardProps {
+  card: AssistantActionCard;
+  isDark: boolean;
+  onSubmit: (items: ExtraTaskItem[], notes?: string) => Promise<void>;
+}
+
+const AssistantPartsPickerCard: React.FC<AssistantPartsPickerCardProps> = ({
+  card,
+  isDark,
+  onSubmit,
+}) => {
+  const suggestionsCatalog = card.tradeSuggestions || TRADE_SUGGESTIONS;
+  const trades = card.availableTrades && card.availableTrades.length > 0
+    ? card.availableTrades
+    : Object.keys(suggestionsCatalog);
+
+  const defaultCategory = card.category && suggestionsCatalog[card.category]
+    ? card.category
+    : trades[0] || 'Electrical';
+
+  const [activeTrade, setActiveTrade] = useState<string>(defaultCategory);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedItems, setSelectedItems] = useState<ExtraTaskItem[]>(() => {
+    const list: ExtraTaskItem[] = [];
+    if (card.preSelectedTitles && card.preSelectedTitles.length > 0) {
+      for (const t of Object.keys(suggestionsCatalog)) {
+        for (const it of suggestionsCatalog[t]) {
+          if (card.preSelectedTitles.includes(it.title)) {
+            list.push({
+              id: 'part-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              title: it.title,
+              cost: it.cost,
+              type: it.type,
+            });
+          }
+        }
+      }
+    }
+    return list;
+  });
+
+  // Custom Item Form
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customCost, setCustomCost] = useState('');
+  const [customType, setCustomType] = useState<ExtraTaskType>('part');
+
+  // Inspection note
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  // Filter items in active trade, or search across all trades if query typed
+  const rawItems = searchQuery.trim().length > 0
+    ? Object.entries(suggestionsCatalog).flatMap(([_, items]) =>
+        items.filter(it => it.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : suggestionsCatalog[activeTrade] || [];
+
+  const handleToggleItem = (item: { title: string; cost: number; type: ExtraTaskType }) => {
+    if (submitted) return;
+    const existingIndex = selectedItems.findIndex(i => i.title === item.title);
+    if (existingIndex >= 0) {
+      setSelectedItems(prev => prev.filter((_, idx) => idx !== existingIndex));
+    } else {
+      setSelectedItems(prev => [
+        ...prev,
+        {
+          id: 'part-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          title: item.title,
+          cost: item.cost,
+          type: item.type,
+        },
+      ]);
+    }
+  };
+
+  const handleAddCustomItem = () => {
+    if (!customTitle.trim()) {
+      Alert.alert('Required', 'Please enter a description for the custom part or repair.');
+      return;
+    }
+    const costNum = Number(customCost);
+    if (isNaN(costNum) || costNum <= 0) {
+      Alert.alert('Required', 'Please enter a valid rupee cost.');
+      return;
+    }
+
+    setSelectedItems(prev => [
+      ...prev,
+      {
+        id: 'part-custom-' + Date.now(),
+        title: customTitle.trim(),
+        cost: costNum,
+        type: customType,
+      },
+    ]);
+
+    setCustomTitle('');
+    setCustomCost('');
+    setShowCustomForm(false);
+  };
+
+  const totalRupees = selectedItems.reduce((acc, it) => acc + (Number(it.cost) || 0), 0);
+
+  const handleSubmit = async () => {
+    if (selectedItems.length === 0 || submitting || submitted) return;
+    try {
+      setSubmitting(true);
+      await onSubmit(selectedItems, notes);
+      setSubmitted(true);
+    } catch (err) {
+      console.warn('Failed to submit diagnostic parts', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <View style={[styles.partsCardContainer, isDark && styles.partsCardContainerDark]}>
+      {/* Header */}
+      <View style={styles.partsCardHeader}>
+        <View style={styles.partsBadge}>
+          <Wrench size={12} color="#059669" />
+          <Text style={styles.partsBadgeText}>DIAGNOSTIC & EXTRA PARTS</Text>
+        </View>
+        <Text style={[styles.partsHeaderTitle, isDark && { color: '#ffffff' }]}>
+          Itemize Extra Repairs & Spare Parts
+        </Text>
+        <Text style={styles.partsHeaderSub}>
+          Select all necessary items to send an estimate to the customer:
+        </Text>
+      </View>
+
+      {/* Trade Switcher Pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.partsTradeScroll}
+      >
+        {trades.map(trade => {
+          const isActive = trade === activeTrade && searchQuery.trim().length === 0;
+          return (
+            <TouchableOpacity
+              key={trade}
+              style={[
+                styles.partsTradePill,
+                isActive && styles.partsTradePillActive,
+                isDark && !isActive && styles.partsTradePillDark,
+              ]}
+              onPress={() => {
+                setActiveTrade(trade);
+                setSearchQuery('');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.partsTradePillText,
+                  isActive && styles.partsTradePillTextActive,
+                  isDark && !isActive && { color: '#94a3b8' },
+                ]}
+              >
+                {trade}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Search Input */}
+      <View style={[styles.partsSearchBox, isDark && styles.partsSearchBoxDark]}>
+        <Search size={14} color="#94a3b8" />
+        <TextInput
+          style={[styles.partsSearchInput, isDark && { color: '#ffffff' }]}
+          placeholder="Search parts across trades..."
+          placeholderTextColor="#94a3b8"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <X size={14} color="#94a3b8" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Parts Checklist */}
+      <View style={styles.partsList}>
+        <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled showsVerticalScrollIndicator={true}>
+          <View style={{ gap: 6 }}>
+            {rawItems.map((item, idx) => {
+              const isSelected = selectedItems.some(i => i.title === item.title);
+              return (
+                <TouchableOpacity
+                  key={item.title + idx}
+                  style={[
+                    styles.partsItemRow,
+                    isSelected && styles.partsItemRowSelected,
+                    isDark && styles.partsItemRowDark,
+                    isDark && isSelected && styles.partsItemRowDarkSelected,
+                  ]}
+                  onPress={() => handleToggleItem(item)}
+                  activeOpacity={0.7}
+                  disabled={submitted}
+                >
+                  <View style={[styles.partsCheckbox, isSelected && styles.partsCheckboxChecked]}>
+                    {isSelected && <Check size={11} color="#ffffff" strokeWidth={3} />}
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.partsItemTitle,
+                        isSelected && styles.partsItemTitleSelected,
+                        isDark && { color: '#f1f5f9' },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {item.title}
+                    </Text>
+                    <View style={styles.partsTagRow}>
+                      <View
+                        style={[
+                          styles.typeBadge,
+                          item.type === 'part' && styles.typeBadgePart,
+                          item.type === 'labor' && styles.typeBadgeLabor,
+                          item.type === 'repair' && styles.typeBadgeRepair,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.typeBadgeText,
+                            item.type === 'part' && styles.typeBadgePartText,
+                            item.type === 'labor' && styles.typeBadgeLaborText,
+                            item.type === 'repair' && styles.typeBadgeRepairText,
+                          ]}
+                        >
+                          {item.type.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <Text style={styles.partsItemPrice}>₹{item.cost}</Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            {rawItems.length === 0 && (
+              <View style={styles.partsEmptyState}>
+                <Text style={styles.partsEmptyText}>No items found matching "{searchQuery}"</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Add Custom Item Drawer */}
+      {!submitted && (
+        <View style={styles.customSection}>
+          {!showCustomForm ? (
+            <TouchableOpacity
+              style={styles.addCustomBtn}
+              onPress={() => setShowCustomForm(true)}
+              activeOpacity={0.7}
+            >
+              <Plus size={13} color="#059669" />
+              <Text style={styles.addCustomBtnText}>+ Add Custom Defect or Part</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.customFormBox, isDark && styles.customFormBoxDark]}>
+              <View style={styles.customFormHeader}>
+                <Text style={[styles.customFormTitle, isDark && { color: '#ffffff' }]}>Custom Defect or Part</Text>
+                <TouchableOpacity onPress={() => setShowCustomForm(false)}>
+                  <X size={15} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+
+              <TextInput
+                style={[styles.customInput, isDark && styles.customInputDark]}
+                placeholder="Description (e.g. Copper Pipe 3m extension)"
+                placeholderTextColor="#94a3b8"
+                value={customTitle}
+                onChangeText={setCustomTitle}
+              />
+
+              <View style={styles.customRow}>
+                <TextInput
+                  style={[styles.customInput, { flex: 1, marginBottom: 0 }, isDark && styles.customInputDark]}
+                  placeholder="Cost ₹ (e.g. 250)"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                  value={customCost}
+                  onChangeText={setCustomCost}
+                />
+
+                <View style={styles.typeToggleGroup}>
+                  {(['part', 'labor', 'repair'] as ExtraTaskType[]).map(t => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.typeToggleBtn,
+                        customType === t && styles.typeToggleBtnActive,
+                      ]}
+                      onPress={() => setCustomType(t)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeToggleBtnText,
+                          customType === t && styles.typeToggleBtnTextActive,
+                        ]}
+                      >
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.addCustomSubmitBtn}
+                onPress={handleAddCustomItem}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addCustomSubmitBtnText}>Add to Estimate</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Defect Notes */}
+      {!submitted && (
+        <TextInput
+          style={[styles.notesInputCompact, isDark && styles.notesInputCompactDark]}
+          placeholder="Diagnosis note (optional, e.g. Customer agreed to switch replacement)"
+          placeholderTextColor="#94a3b8"
+          value={notes}
+          onChangeText={setNotes}
+        />
+      )}
+
+      {/* Live Summary & Submit Footer */}
+      <View style={[styles.partsFooter, isDark && styles.partsFooterDark]}>
+        <View>
+          <Text style={[styles.partsTotalCount, isDark && { color: '#cbd5e1' }]}>
+            {selectedItems.length} item{selectedItems.length === 1 ? '' : 's'} selected
+          </Text>
+          <Text style={styles.partsTotalSum}>Total: ₹{totalRupees}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.submitEstimateBtn,
+            (selectedItems.length === 0 || submitting || submitted) && styles.submitEstimateBtnDisabled,
+            submitted && styles.submitEstimateBtnDone,
+          ]}
+          onPress={handleSubmit}
+          disabled={selectedItems.length === 0 || submitting || submitted}
+          activeOpacity={0.85}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : submitted ? (
+            <>
+              <Check size={14} color="#ffffff" />
+              <Text style={styles.submitEstimateBtnText}>Estimate Sent</Text>
+            </>
+          ) : (
+            <>
+              <Send size={13} color="#ffffff" />
+              <Text style={styles.submitEstimateBtnText}>
+                {selectedItems.length > 0 ? `Send Estimate (₹${totalRupees})` : 'Select Items'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 export const WorkerAIAssistantWidget: React.FC = () => {
   const { colors, isDark } = useTheme();
@@ -146,7 +538,7 @@ export const WorkerAIAssistantWidget: React.FC = () => {
         booking: inProg,
         actions: [
           { label: `✓ Complete Job (Claim ₹${wage})`, command: 'complete job', variant: 'success' },
-          { label: '🔧 Add Extra Parts (+₹350)', command: 'add diagnostic parts', variant: 'warning' },
+          { label: '🔧 Add Extra Parts & Tasks', command: 'add diagnostic parts', variant: 'warning' },
           { label: '📞 Customer Details', command: 'customer contact', variant: 'neutral' },
         ],
       };
@@ -195,6 +587,45 @@ export const WorkerAIAssistantWidget: React.FC = () => {
         card,
       },
     ]);
+  };
+
+  const handleSendDiagnosticEstimate = async (bookingId: string, items: ExtraTaskItem[], notes?: string) => {
+    setActionInProgress(true);
+    try {
+      const res = await AIAssistantService.submitDiagnosticItems(bookingId, items, notes);
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const itemSummary = items.map(i => `${i.title} (₹${i.cost})`).join(', ');
+      const confirmMsg: AssistantMessage = {
+        id: 'ai-diag-' + Date.now(),
+        sender: 'ai',
+        text: `✅ ${res.message}\nItemized: ${itemSummary}`,
+        timestamp: time,
+        card: {
+          id: 'card-diag-followup-' + Date.now(),
+          type: 'action_buttons',
+          actions: [
+            { label: '✓ Complete Job When Ready', command: 'complete job', variant: 'success' },
+            { label: '🔧 Add More Parts', command: 'add diagnostic parts', variant: 'neutral' },
+          ],
+        },
+      };
+
+      setMessages(prev => [...prev, confirmMsg]);
+      setIsSpeaking(true);
+      AIAssistantService.speak(
+        `Estimate of ${res.total} rupees for ${items.length} item${items.length > 1 ? 's' : ''} sent to customer for authorization.`,
+        () => setIsSpeaking(false)
+      );
+      await refreshContext();
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not send diagnostic estimate');
+    } finally {
+      setActionInProgress(false);
+    }
   };
 
   const handleExecute = async (command: string) => {
@@ -486,6 +917,17 @@ export const WorkerAIAssistantWidget: React.FC = () => {
                       </View>
                     )}
 
+                    {/* Interactive Multi-Trade Parts & Diagnosis Picker */}
+                    {msg.card && msg.card.type === 'parts_picker' && msg.card.booking && (
+                      <AssistantPartsPickerCard
+                        card={msg.card}
+                        isDark={isDark}
+                        onSubmit={async (items, notes) => {
+                          await handleSendDiagnosticEstimate(msg.card!.booking!.id, items, notes);
+                        }}
+                      />
+                    )}
+
                     <Text
                       style={[
                         styles.bubbleTime,
@@ -533,7 +975,7 @@ export const WorkerAIAssistantWidget: React.FC = () => {
                   disabled={actionInProgress}
                 >
                   <Wrench size={13} color="#f59e0b" />
-                  <Text style={styles.chipText}>Add ₹350 Parts</Text>
+                  <Text style={styles.chipText}>Extra Parts</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -967,5 +1409,339 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     opacity: 0.4,
+  },
+
+  // Parts Picker Card Styles
+  partsCardContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    marginTop: 6,
+    gap: 10,
+  },
+  partsCardContainerDark: {
+    backgroundColor: '#0f172a',
+    borderColor: '#334155',
+  },
+  partsCardHeader: {
+    gap: 2,
+  },
+  partsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ecfdf5',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  partsBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#065f46',
+    letterSpacing: 0.5,
+  },
+  partsHeaderTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 3,
+  },
+  partsHeaderSub: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  partsTradeScroll: {
+    gap: 6,
+    paddingVertical: 4,
+  },
+  partsTradePill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4.5,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  partsTradePillActive: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  partsTradePillDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  partsTradePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  partsTradePillTextActive: {
+    color: '#ffffff',
+  },
+  partsSearchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    height: 32,
+    gap: 6,
+  },
+  partsSearchBoxDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  partsSearchInput: {
+    flex: 1,
+    fontSize: 11,
+    paddingVertical: 0,
+  },
+  partsList: {
+    gap: 6,
+  },
+  partsItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    gap: 8,
+  },
+  partsItemRowSelected: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  partsItemRowDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  partsItemRowDarkSelected: {
+    backgroundColor: '#064e3b',
+    borderColor: '#059669',
+  },
+  partsCheckbox: {
+    width: 17,
+    height: 17,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94a3b8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partsCheckboxChecked: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  partsItemTitle: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  partsItemTitleSelected: {
+    color: '#065f46',
+    fontWeight: '700',
+  },
+  partsTagRow: {
+    flexDirection: 'row',
+    marginTop: 2,
+  },
+  typeBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  typeBadgePart: {
+    backgroundColor: '#e0f2fe',
+  },
+  typeBadgeLabor: {
+    backgroundColor: '#f3e8ff',
+  },
+  typeBadgeRepair: {
+    backgroundColor: '#fef3c7',
+  },
+  typeBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+  },
+  typeBadgePartText: {
+    color: '#0284c7',
+  },
+  typeBadgeLaborText: {
+    color: '#7c3aed',
+  },
+  typeBadgeRepairText: {
+    color: '#d97706',
+  },
+  partsItemPrice: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  partsEmptyState: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  partsEmptyText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+  customSection: {
+    marginTop: 2,
+  },
+  addCustomBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 6,
+    backgroundColor: '#ecfdf5',
+  },
+  addCustomBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  customFormBox: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    padding: 8,
+    gap: 6,
+  },
+  customFormBoxDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  customFormHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  customFormTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  customInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 30,
+    fontSize: 11,
+  },
+  customInputDark: {
+    backgroundColor: '#0f172a',
+    borderColor: '#334155',
+    color: '#ffffff',
+  },
+  customRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  typeToggleGroup: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  typeToggleBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 4,
+    backgroundColor: '#e2e8f0',
+  },
+  typeToggleBtnActive: {
+    backgroundColor: '#059669',
+  },
+  typeToggleBtnText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  typeToggleBtnTextActive: {
+    color: '#ffffff',
+  },
+  addCustomSubmitBtn: {
+    backgroundColor: '#059669',
+    borderRadius: 6,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  addCustomSubmitBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  notesInputCompact: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    height: 30,
+    fontSize: 10.5,
+  },
+  notesInputCompactDark: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+    color: '#ffffff',
+  },
+  partsFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  partsFooterDark: {
+    borderTopColor: '#334155',
+  },
+  partsTotalCount: {
+    fontSize: 10.5,
+    color: '#64748b',
+  },
+  partsTotalSum: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  submitEstimateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#059669',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  submitEstimateBtnDisabled: {
+    backgroundColor: '#94a3b8',
+  },
+  submitEstimateBtnDone: {
+    backgroundColor: '#10b981',
+  },
+  submitEstimateBtnText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });

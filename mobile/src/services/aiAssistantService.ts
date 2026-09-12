@@ -9,7 +9,11 @@
 
 import { DeviceEventEmitter } from 'react-native';
 import { ApiClient } from './apiClient';
-import { Booking, ExtraTaskItem } from '../types';
+import { Booking, ExtraTaskItem, ExtraTaskType } from '../types';
+import {
+  TRADE_SUGGESTIONS,
+  DEFAULT_SUGGESTIONS,
+} from '../components/worker/SupplementalBillModal';
 
 export type AssistantIntentType =
   | 'START_WORK'
@@ -26,8 +30,12 @@ export type AssistantIntentType =
 
 export interface AssistantActionCard {
   id: string;
-  type: 'action_buttons' | 'job_summary' | 'earnings_summary';
+  type: 'action_buttons' | 'job_summary' | 'earnings_summary' | 'parts_picker';
   booking?: Booking;
+  category?: string;
+  availableTrades?: string[];
+  tradeSuggestions?: Record<string, Array<{ title: string; cost: number; type: ExtraTaskType }>>;
+  preSelectedTitles?: string[];
   actions?: {
     label: string;
     command: string;
@@ -187,6 +195,35 @@ export class AIAssistantService {
   }
 
   // ---------------------------------------------------------------------------
+  // 2.1 SUBMIT DIAGNOSTIC ITEMS
+  // ---------------------------------------------------------------------------
+  public static async submitDiagnosticItems(
+    bookingId: string,
+    items: ExtraTaskItem[],
+    notes?: string
+  ): Promise<{ success: boolean; count: number; total: number; message: string }> {
+    if (!items || items.length === 0) {
+      throw new Error('Please select at least one part or repair item.');
+    }
+    const total = items.reduce((sum, it) => sum + (Number(it.cost) || 0), 0);
+    const diagnosis_notes = notes?.trim() || `On-site diagnostic inspection: itemized ${items.length} defect correction(s) and spare parts.`;
+
+    await ApiClient.sendSupplementalBill(bookingId, {
+      diagnosis_notes,
+      items,
+    });
+
+    DeviceEventEmitter.emit('app_booking_updated');
+
+    return {
+      success: true,
+      count: items.length,
+      total,
+      message: `Estimate of ₹${total} for ${items.length} item${items.length > 1 ? 's' : ''} sent to customer for authorization.`,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // 3. INTENT CLASSIFICATION
   // ---------------------------------------------------------------------------
   public static classifyIntent(input: string): AssistantIntentType {
@@ -241,15 +278,29 @@ export class AIAssistantService {
       return 'DECLINE_JOB';
     }
 
-    // Diagnose extra parts / billing
+    // Diagnose extra parts / billing / repairs across all trades
     if (
       s.includes('part') ||
       s.includes('parts') ||
-      s.includes('diagnose') ||
+      s.includes('diagnos') ||
+      s.includes('defect') ||
+      s.includes('kharab') ||
+      s.includes('repair') ||
+      s.includes('spare') ||
       s.includes('bill') ||
       s.includes('extra') ||
       s.includes('saman') ||
-      s.includes('switchboard')
+      s.includes('switch') ||
+      s.includes('capacitor') ||
+      s.includes('valve') ||
+      s.includes('pipe') ||
+      s.includes('lock') ||
+      s.includes('hinge') ||
+      s.includes('gas') ||
+      s.includes('mcb') ||
+      s.includes('putty') ||
+      s.includes('wire') ||
+      s.includes('pump')
     ) {
       return 'DIAGNOSE_PARTS';
     }
@@ -594,48 +645,47 @@ export class AIAssistantService {
           };
         }
 
-        try {
-          const sampleItem: ExtraTaskItem = {
-            id: 'extra-' + Date.now(),
-            title: 'Modular Switchboard & Wiring Kit',
-            description: 'Replacement heavy-duty brass socket + conduit wiring',
-            cost: 350,
-            type: 'part',
-          };
-          await ApiClient.sendSupplementalBill(target.id, {
-            diagnosis_notes: 'Detected oxidized wiring and damaged switch terminals during on-site inspection.',
-            items: [sampleItem],
-          });
-          DeviceEventEmitter.emit('app_booking_updated');
+        // Determine booking trade category
+        const bookingTrade = target.service_category?.name || 'Electrical';
 
-          const msg = `🔧 Diagnostic bill of ₹350 sent to customer for job ${target.booking_code}. The customer will be prompted to authorize.`;
-          const speech = `Diagnostic estimate of 350 rupees sent to customer for authorization.`;
+        // Check if user specifically requested items by keyword
+        const lowerCmd = commandText.toLowerCase();
+        const preSelectedTitles: string[] = [];
 
-          return {
-            success: true,
-            intent,
-            message: msg,
-            speechText: speech,
-            affectedBookingId: target.id,
-            actionTaken: 'diagnosed',
-            card: {
-              id: 'card-diag-' + Date.now(),
-              type: 'action_buttons',
-              booking: target,
-              actions: [
-                { label: '✓ Complete Job When Ready', command: 'complete job', variant: 'success' },
-                { label: '📞 Call Customer', command: 'customer contact', variant: 'neutral' },
-              ],
-            },
-          };
-        } catch (err: any) {
-          return {
-            success: false,
-            intent,
-            message: `Diagnostic billing error: ${err.message}`,
-            speechText: `Could not send diagnostic bill.`,
-          };
+        for (const tradeKey of Object.keys(TRADE_SUGGESTIONS)) {
+          for (const item of TRADE_SUGGESTIONS[tradeKey]) {
+            const keywords = item.title.toLowerCase().split(/[\s\-&()µ/.]+/);
+            const isMatch = keywords.some(kw => kw.length > 3 && lowerCmd.includes(kw));
+            if (isMatch && !preSelectedTitles.includes(item.title)) {
+              preSelectedTitles.push(item.title);
+            }
+          }
         }
+
+        const msg = preSelectedTitles.length > 0
+          ? `I found ${preSelectedTitles.length} matching diagnostic item${preSelectedTitles.length > 1 ? 's' : ''} for job ${target.booking_code}. Review, select more items across trades, or send the estimate:`
+          : `Select diagnostic parts or extra tasks for job ${target.booking_code} from all available trades below:`;
+
+        const speech = preSelectedTitles.length > 0
+          ? `Found ${preSelectedTitles.length} matching items. Review and send estimate to customer.`
+          : `Select the extra parts or repairs needed for this job.`;
+
+        return {
+          success: true,
+          intent,
+          message: msg,
+          speechText: speech,
+          affectedBookingId: target.id,
+          card: {
+            id: 'card-parts-picker-' + Date.now(),
+            type: 'parts_picker',
+            booking: target,
+            category: bookingTrade,
+            availableTrades: Object.keys(TRADE_SUGGESTIONS),
+            tradeSuggestions: TRADE_SUGGESTIONS,
+            preSelectedTitles,
+          },
+        };
       }
 
       case 'CUSTOMER_INFO': {
