@@ -35,7 +35,8 @@
     "credentials": "प्रमाण-पत्र",
     "gps": "GPS और क्षेत्र",
     "federation": "संघ",
-    "verify_kyc": "KYC सत्यापन"
+    "verify_kyc": "KYC सत्यापन",
+    "assistant": "सहकारी AI"
   },
   "roles": {
     "customer": "ग्राहक",

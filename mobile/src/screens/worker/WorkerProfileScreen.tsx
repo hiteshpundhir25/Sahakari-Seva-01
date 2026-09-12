@@ -18,6 +18,7 @@ import {
   Pressable,
   DeviceEventEmitter,
   Linking,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -60,7 +61,7 @@ import { LanguageModal } from '../../components/common/LanguageModal';
 import { ThemeToggle } from '../../components/common/ThemeToggle';
 import { FadeInView, AnimatedNumber, ScalePressable } from '../../animations';
 import { ApiClient } from '../../services/apiClient';
-import { Worker, AvailabilityStatus } from '../../types';
+import { Worker, AvailabilityStatus, Welfare } from '../../types';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 import { AuthContext } from '../../navigation/RootNavigator';
 
@@ -97,6 +98,7 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
   const { logout } = useContext(AuthContext);
 
   const [worker, setWorker] = useState<Worker | null>(null);
+  const [welfareList, setWelfareList] = useState<Welfare[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -131,7 +133,10 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
       const load = async () => {
         setLoading(true);
         try {
-          const w = await ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001');
+          const [w, wel] = await Promise.all([
+            ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001'),
+            ApiClient.getWelfare('w0000000-0000-0000-0000-000000000001'),
+          ]);
           if (w) {
             setWorker(w);
             setBio(w.bio || 'Govt ITI certified electrician with 8+ years experience in domestic and commercial troubleshooting.');
@@ -157,6 +162,9 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
                   : w.availability_status || 'available'
               );
             }
+          }
+          if (wel && wel.length > 0) {
+            setWelfareList(wel);
           }
         } catch {
           // Handled in ApiClient fallback
@@ -306,6 +314,10 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
 
   const workerName = worker?.profile?.full_name || 'Rajesh Sharma';
   const workerInitials = workerName.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase();
+  const totalWelfareContribution = welfareList.reduce(
+    (sum, item) => sum + (item.contribution_balance || 0),
+    0
+  ) || 14920;
 
   return (
     <View style={styles.screenWrapper}>
@@ -521,19 +533,25 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
           </Card>
         </FadeInView>
 
-        {/* Lifetime Earnings & Welfare Fund Card */}
+        {/* Welfare & Social Security Passbook Section */}
         <FadeInView delay={140} distance={10} duration={320}>
-          <Card style={styles.earningsCard}>
+          <Card style={styles.welfareMainCard}>
+            <View style={styles.welfareHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Heart size={16} color={colors.secondaryDark} />
+                  <Text style={styles.welfareMainTitle}>Welfare & Social Security</Text>
+                </View>
+                <Text style={styles.welfareMainSub}>
+                  Autonomous 10% Co-op Solidarity Fund · 100% Direct Payout
+                </Text>
+              </View>
+              <Badge label="ACTIVE & RING-FENCED" variant="success" size="sm" />
+            </View>
+
+            {/* KPI Cards Grid */}
             <View style={styles.earningsGrid}>
-              <TouchableOpacity
-                style={styles.earnItem}
-                onPress={() => {
-                  if (navigation) {
-                    navigation.navigate('WorkerWelfare');
-                  }
-                }}
-                activeOpacity={0.75}
-              >
+              <View style={styles.earnItem}>
                 <View style={styles.earnIconWrap}>
                   <TrendingUp size={16} color={colors.successDark} />
                 </View>
@@ -543,33 +561,97 @@ export const WorkerProfileScreen: React.FC<{ navigation?: any }> = ({ navigation
                   format={n => n.toLocaleString('en-IN')}
                   style={[styles.earnValue, { color: colors.successDark }]}
                 />
-                <Text style={styles.earnLabel}>Direct Take-Home Earnings</Text>
-                <Text style={styles.earnSub}>100% Payout (0% Commission)</Text>
-                <Text style={styles.earnActionHint}>Tap to view passbook →</Text>
-              </TouchableOpacity>
+                <Text style={styles.earnLabel}>Direct Take-Home</Text>
+                <Text style={styles.earnSub}>100% Payout (0% Cut)</Text>
+              </View>
 
-              <TouchableOpacity
-                style={styles.earnItem}
-                onPress={() => {
-                  if (navigation) {
-                    navigation.navigate('WorkerWelfare');
-                  }
-                }}
-                activeOpacity={0.75}
-              >
+              <View style={styles.earnItem}>
                 <View style={[styles.earnIconWrap, { backgroundColor: colors.secondaryLight }]}>
                   <Heart size={16} color={colors.secondaryDark} />
                 </View>
                 <AnimatedNumber
-                  value={2450}
+                  value={totalWelfareContribution}
                   prefix="₹"
                   format={n => n.toLocaleString('en-IN')}
                   style={[styles.earnValue, { color: colors.secondaryDark }]}
                 />
-                <Text style={styles.earnLabel}>Solidarity Welfare Fund</Text>
-                <Text style={styles.earnSub}>Emergency Aid & Health Pool</Text>
-                <Text style={styles.earnActionHint}>Tap to view welfare schemes →</Text>
-              </TouchableOpacity>
+                <Text style={styles.earnLabel}>Welfare Corpus</Text>
+                <Text style={styles.earnSub}>10% Ring-fenced Fund</Text>
+              </View>
+            </View>
+
+            {/* Enrolled Welfare & Social Security Schemes */}
+            <View style={styles.schemesSection}>
+              <Text style={styles.schemesSectionTitle}>Enrolled Government & Co-op Schemes</Text>
+              {(welfareList.length > 0 ? welfareList : [
+                {
+                  id: 'wel-01',
+                  welfare_scheme: 'Ayushman Bharat PM-JAY Health Cover',
+                  enrollment_status: 'enrolled',
+                  insurance_status: 'Active · ₹5 Lakh Family Cover',
+                  insurance_provider: 'National Health Authority (NHA)',
+                  policy_reference: 'AB-PMJAY-2026-8842',
+                  valid_until: '2027-03-31',
+                  contribution_balance: 8420,
+                },
+                {
+                  id: 'wel-02',
+                  welfare_scheme: 'PM Shram Yogi Maandhan Pension (PMSYM)',
+                  enrollment_status: 'enrolled',
+                  insurance_status: 'Active · Guaranteed Pension Pool',
+                  insurance_provider: 'Ministry of Labour & Employment',
+                  policy_reference: 'PMSYM-RAJ-2026',
+                  valid_until: 'Lifetime (Age 60+)',
+                  contribution_balance: 4200,
+                },
+                {
+                  id: 'wel-03',
+                  welfare_scheme: 'Co-op Accidental & Disability Shield',
+                  enrollment_status: 'enrolled',
+                  insurance_status: 'Active · On-Duty SOS Cover',
+                  insurance_provider: 'Jaipur Shramik Sahakari Federation',
+                  policy_reference: 'JPR-COOP-ACC-101',
+                  valid_until: '2027-12-31',
+                  contribution_balance: 2300,
+                },
+              ]).map((scheme) => (
+                <View key={scheme.id} style={styles.schemeItemCard}>
+                  <View style={styles.schemeItemHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.schemeItemName}>{scheme.welfare_scheme}</Text>
+                      <Text style={styles.schemeItemProvider}>{scheme.insurance_provider}</Text>
+                    </View>
+                    <Badge label={scheme.enrollment_status.toUpperCase()} variant="success" size="sm" />
+                  </View>
+
+                  <View style={styles.schemeItemDetails}>
+                    <View style={styles.schemeDetailCol}>
+                      <Text style={styles.schemeDetailLabel}>Coverage</Text>
+                      <Text style={styles.schemeDetailVal}>{scheme.insurance_status}</Text>
+                    </View>
+                    <View style={styles.schemeDetailCol}>
+                      <Text style={styles.schemeDetailLabel}>Policy Ref</Text>
+                      <Text style={styles.schemeDetailValMono}>{scheme.policy_reference || 'REF-2026'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.schemeBalanceRow}>
+                    <Text style={styles.schemeBalanceLabel}>Scheme Allocation:</Text>
+                    <Text style={styles.schemeBalanceValue}>₹{Number(scheme.contribution_balance).toFixed(2)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Welfare Pledge Banner */}
+            <View style={styles.pledgeBannerBox}>
+              <Text style={{ fontSize: 16 }}>🤝</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pledgeBannerTitle}>100% Cooperative Solidarity</Text>
+                <Text style={styles.pledgeBannerText}>
+                  10% of every customer booking is autonomous social capital, ring-fenced for your medical emergencies, accidental protection, and retirement pension.
+                </Text>
+              </View>
             </View>
           </Card>
         </FadeInView>
@@ -1392,6 +1474,137 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
   },
   radiusChipTextActive: {
     color: '#ffffff',
+  },
+  welfareMainCard: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    backgroundColor: colors.surface,
+  },
+  welfareHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 8,
+  },
+  welfareMainTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  welfareMainSub: {
+    fontSize: 10.5,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  schemesSection: {
+    marginTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    paddingTop: 12,
+    gap: 8,
+  },
+  schemesSectionTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 4,
+    letterSpacing: 0.1,
+  },
+  schemeItemCard: {
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.surfaceSubtle,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#e2e8f0',
+    gap: 6,
+  },
+  schemeItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  schemeItemName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  schemeItemProvider: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 1,
+  },
+  schemeItemDetails: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 2,
+  },
+  schemeDetailCol: {
+    flex: 1,
+  },
+  schemeDetailLabel: {
+    fontSize: 9.5,
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  schemeDetailVal: {
+    fontSize: 10.5,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  schemeDetailValMono: {
+    fontSize: 10,
+    color: colors.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  schemeBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#e2e8f0',
+    paddingTop: 6,
+    marginTop: 4,
+  },
+  schemeBalanceLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  schemeBalanceValue: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: colors.secondaryDark,
+  },
+  pledgeBannerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : '#fffbeb',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#fde68a',
+  },
+  pledgeBannerTitle: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: isDark ? '#fbbf24' : '#b45309',
+  },
+  pledgeBannerText: {
+    fontSize: 10,
+    color: isDark ? '#fde68a' : '#92400e',
+    lineHeight: 14,
+    marginTop: 2,
   },
   earningsCard: {
     padding: spacing.md,

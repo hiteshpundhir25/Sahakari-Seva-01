@@ -35,7 +35,8 @@
     "credentials": "Credentials",
     "gps": "GPS & Radius",
     "federation": "Federation",
-    "verify_kyc": "Verify KYC"
+    "verify_kyc": "Verify KYC",
+    "assistant": "Sahakari AI"
   },
   "roles": {
     "customer": "Customer",

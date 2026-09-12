@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect, createContext } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createNavigationContainerRef } from '@react-navigation/native';
@@ -27,7 +27,8 @@ import {
   UserCheck,
   User,
   Shield,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react-native';
 
 // Customer Screens
@@ -260,22 +261,28 @@ function WorkerTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="WorkerWelfare"
-        component={WorkerWelfareScreen}
-        options={{
-          tabBarLabel: t('tabs.welfare'),
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon icon={Heart} color={color} size={size} focused={focused} colors={colors} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="WorkerLocation"
         component={WorkerLocationScreen}
         options={{
           tabBarLabel: t('tabs.gps'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon icon={NavIcon} color={color} size={size} focused={focused} colors={colors} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="WorkerAssistant"
+        component={WorkerHomeScreen}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            DeviceEventEmitter.emit('open_worker_ai_assistant');
+          },
+        }}
+        options={{
+          tabBarLabel: t('tabs.assistant', 'Sahakari AI'),
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon icon={Sparkles} color={color} size={size} focused={focused} colors={colors} />
           ),
         }}
       />
@@ -289,6 +296,7 @@ function WorkerStackNavigator() {
       <Stack.Screen name="WorkerTabs" component={WorkerTabNavigator} />
       <Stack.Screen name="WorkerJobDetail" component={WorkerJobDetailScreen} />
       <Stack.Screen name="WorkerProfile" component={WorkerProfileScreen} />
+      <Stack.Screen name="WorkerWelfare" component={WorkerWelfareScreen} />
     </Stack.Navigator>
   );
 }

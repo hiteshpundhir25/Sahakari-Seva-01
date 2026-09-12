@@ -690,7 +690,13 @@ const AssistantJobListCard: React.FC<AssistantJobListCardProps> = ({
   );
 };
 
-export const WorkerAIAssistantWidget: React.FC = () => {
+export interface WorkerAIAssistantWidgetProps {
+  showFloatingTrigger?: boolean;
+}
+
+export const WorkerAIAssistantWidget: React.FC<WorkerAIAssistantWidgetProps> = ({
+  showFloatingTrigger = false,
+}) => {
   const { colors, isDark } = useTheme();
 
   // Modal open/close & loading states
@@ -731,11 +737,15 @@ export const WorkerAIAssistantWidget: React.FC = () => {
   // Load context on mount and subscribe to app-wide updates
   useEffect(() => {
     refreshContext();
-    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+    const subBooking = DeviceEventEmitter.addListener('app_booking_updated', () => {
       refreshContext();
     });
+    const subOpen = DeviceEventEmitter.addListener('open_worker_ai_assistant', () => {
+      setIsOpen(true);
+    });
     return () => {
-      sub.remove();
+      subBooking.remove();
+      subOpen.remove();
     };
   }, []);
 
@@ -1005,44 +1015,46 @@ export const WorkerAIAssistantWidget: React.FC = () => {
   return (
     <>
       {/* ------------------------------------------------------------------- */}
-      {/* 1. FLOATING ACTION BUTTON (BOTTOM-RIGHT)                            */}
+      {/* 1. FLOATING ACTION BUTTON (BOTTOM-RIGHT) - OPTIONAL                 */}
       {/* ------------------------------------------------------------------- */}
-      <View style={styles.fabContainer} pointerEvents="box-none">
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+      {showFloatingTrigger && (
+        <View style={styles.fabContainer} pointerEvents="box-none">
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              style={[styles.fabButton, hasEmergencyPending && styles.fabButtonEmergency]}
+              onPress={() => setIsOpen(true)}
+              activeOpacity={0.85}
+              accessibilityLabel="Open Sahakari Assistant"
+            >
+              <View style={styles.fabInner}>
+                <Sparkles size={22} color="#ffffff" strokeWidth={2.5} />
+                {hasEmergencyPending ? (
+                  <View style={[styles.fabActiveDot, { backgroundColor: '#ef4444' }]} />
+                ) : context?.activeOnSiteJob ? (
+                  <View style={styles.fabActiveDot} />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
           <TouchableOpacity
-            style={[styles.fabButton, hasEmergencyPending && styles.fabButtonEmergency]}
+            style={[styles.fabLabelPill, hasEmergencyPending && styles.fabLabelPillEmergency]}
             onPress={() => setIsOpen(true)}
             activeOpacity={0.85}
-            accessibilityLabel="Open Sahakari Assistant"
           >
-            <View style={styles.fabInner}>
-              <Sparkles size={22} color="#ffffff" strokeWidth={2.5} />
-              {hasEmergencyPending ? (
-                <View style={[styles.fabActiveDot, { backgroundColor: '#ef4444' }]} />
-              ) : context?.activeOnSiteJob ? (
-                <View style={styles.fabActiveDot} />
-              ) : null}
-            </View>
+            {hasEmergencyPending ? (
+              <>
+                <AlertTriangle size={11} color="#fca5a5" />
+                <Text style={[styles.fabLabelText, { color: '#fca5a5' }]}>SOS Alert</Text>
+              </>
+            ) : (
+              <>
+                <Zap size={11} color="#10b981" />
+                <Text style={styles.fabLabelText}>Assistant</Text>
+              </>
+            )}
           </TouchableOpacity>
-        </Animated.View>
-        <TouchableOpacity
-          style={[styles.fabLabelPill, hasEmergencyPending && styles.fabLabelPillEmergency]}
-          onPress={() => setIsOpen(true)}
-          activeOpacity={0.85}
-        >
-          {hasEmergencyPending ? (
-            <>
-              <AlertTriangle size={11} color="#fca5a5" />
-              <Text style={[styles.fabLabelText, { color: '#fca5a5' }]}>SOS Alert</Text>
-            </>
-          ) : (
-            <>
-              <Zap size={11} color="#10b981" />
-              <Text style={styles.fabLabelText}>Assistant</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
 
       {/* ------------------------------------------------------------------- */}
       {/* 2. INTERACTIVE ASSISTANT MODAL SHEET                                */}
