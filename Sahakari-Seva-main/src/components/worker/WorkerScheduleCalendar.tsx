@@ -682,20 +682,15 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                             )}
                           </View>
                           <View style={styles.timeWrap}>
-                            <Clock size={11} color={isPending ? '#d97706' : colors.textMuted} />
-                            <Text
-                              style={[
-                                styles.timeSlotText,
-                                isPending && { color: '#b45309', fontWeight: '700' },
-                              ]}
-                            >
+                            <Clock size={11} color={colors.textMuted} />
+                            <Text style={styles.timeSlotText}>
                               {job.booking_time ? `${job.booking_time} hrs` : '10:00 AM'}
                             </Text>
                           </View>
                         </View>
 
                         <View style={styles.priceStatusCol}>
-                          <Text style={[styles.priceText, isPending && { color: '#b45309' }]}>
+                          <Text style={styles.priceText}>
                             ₹{job.final_amount || job.estimated_amount}
                           </Text>
                           <View
@@ -711,9 +706,9 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                               style={[
                                 styles.statusTagText,
                                 isPending && { color: '#b45309' },
-                                isAccepted && { color: colors.successDark },
+                                isAccepted && { color: '#059669' },
                                 isInProgress && { color: '#2563eb' },
-                                isCompleted && { color: colors.primary },
+                                isCompleted && { color: '#64748b' },
                               ]}
                             >
                               {isPending ? 'NEW REQUEST' : job.status.toUpperCase()}
@@ -1323,43 +1318,39 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       gap: 8,
     },
 
-    // Squeezed, Minimal Job Card
+    // Squeezed, Minimal Job Card (Lightened theme)
     jobCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,
       paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderWidth: 1.4,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1.5 },
-      shadowOpacity: 0.04,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.02,
+      shadowRadius: 3,
+      elevation: 1,
     },
     jobCardPending: {
-      borderColor: '#f59e0b',
-      borderLeftWidth: 4.5,
+      borderLeftWidth: 3,
       borderLeftColor: '#f59e0b',
-      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.06)' : '#fffdf5',
+      backgroundColor: colors.surface,
     },
     jobCardAccepted: {
-      borderColor: '#10b981',
-      borderLeftWidth: 4.5,
+      borderLeftWidth: 3,
       borderLeftColor: '#10b981',
-      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.06)' : '#f0fdf4',
+      backgroundColor: colors.surface,
     },
     jobCardInProgress: {
-      borderColor: '#3b82f6',
-      borderLeftWidth: 4.5,
+      borderLeftWidth: 3,
       borderLeftColor: '#3b82f6',
-      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.06)' : '#eff6ff',
+      backgroundColor: colors.surface,
     },
     jobCardCompleted: {
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
-      borderLeftWidth: 4,
+      borderLeftWidth: 3,
       borderLeftColor: '#94a3b8',
-      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#fafafa',
+      backgroundColor: colors.surface,
     },
 
     // Compact Top Info Row
@@ -1378,23 +1369,23 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       gap: 5,
     },
     jobCodeText: {
-      fontSize: 13,
-      fontWeight: '800',
+      fontSize: 12.5,
+      fontWeight: '600',
       color: colors.textPrimary,
     },
     emergencyTag: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 2,
-      backgroundColor: colors.dangerLight,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2',
       paddingHorizontal: 4,
       paddingVertical: 1.5,
       borderRadius: 3,
     },
     emergencyTagText: {
       fontSize: 8,
-      fontWeight: '800',
-      color: colors.danger,
+      fontWeight: '600',
+      color: '#dc2626',
     },
     timeWrap: {
       flexDirection: 'row',
@@ -1404,17 +1395,17 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     timeSlotText: {
       fontSize: 11,
-      fontWeight: '600',
-      color: colors.textMuted,
+      fontWeight: '500',
+      color: colors.textSecondary,
     },
     priceStatusCol: {
       alignItems: 'flex-end',
       gap: 3,
     },
     priceText: {
-      fontSize: 13.5,
-      fontWeight: '800',
-      color: colors.primary,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.textPrimary,
     },
     statusTag: {
       paddingHorizontal: 6,
@@ -1422,23 +1413,21 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderRadius: 4,
     },
     statusTagPending: {
-      backgroundColor: '#fef3c7',
-      borderWidth: 1,
-      borderColor: '#f59e0b',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fef3c7',
     },
     statusTagAccepted: {
-      backgroundColor: colors.successLight,
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
     },
     statusTagInProgress: {
-      backgroundColor: '#fef3c7',
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#eff6ff',
     },
     statusTagCompleted: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: isDark ? 'rgba(100, 116, 139, 0.1)' : '#f1f5f9',
     },
     statusTagText: {
       fontSize: 8.5,
-      fontWeight: '800',
-      letterSpacing: 0.3,
+      fontWeight: '600',
+      letterSpacing: 0.2,
     },
 
     // Compact Actions Row
@@ -1448,7 +1437,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       gap: 6,
       paddingTop: 6,
       borderTopWidth: 1,
-      borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+      borderTopColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
     },
     cardAcceptBtn: {
       flex: 1,
@@ -1456,14 +1445,14 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 4,
-      backgroundColor: colors.success,
-      paddingVertical: 6,
+      backgroundColor: '#10b981',
+      paddingVertical: 5.5,
       paddingHorizontal: 8,
-      borderRadius: 7,
+      borderRadius: 6,
     },
     cardAcceptBtnText: {
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '600',
       color: '#ffffff',
     },
     cardDeclineBtn: {
@@ -1472,16 +1461,16 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       justifyContent: 'center',
       gap: 3,
       borderWidth: 1,
-      borderColor: colors.danger,
-      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
-      paddingVertical: 6,
+      borderColor: isDark ? 'rgba(239, 68, 68, 0.25)' : '#fecaca',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.08)' : '#fef2f2',
+      paddingVertical: 5.5,
       paddingHorizontal: 8,
-      borderRadius: 7,
+      borderRadius: 6,
     },
     cardDeclineBtnText: {
       fontSize: 11,
-      fontWeight: '700',
-      color: colors.danger,
+      fontWeight: '600',
+      color: '#dc2626',
     },
     cardStartBtn: {
       flex: 1,
@@ -1489,14 +1478,14 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 4,
-      backgroundColor: colors.info,
-      paddingVertical: 6,
+      backgroundColor: '#3b82f6',
+      paddingVertical: 5.5,
       paddingHorizontal: 8,
-      borderRadius: 7,
+      borderRadius: 6,
     },
     cardStartBtnText: {
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '600',
       color: '#ffffff',
     },
     cardCompleteBtn: {
@@ -1506,22 +1495,22 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       justifyContent: 'center',
       gap: 4,
       backgroundColor: colors.primary,
-      paddingVertical: 6,
+      paddingVertical: 5.5,
       paddingHorizontal: 8,
-      borderRadius: 7,
+      borderRadius: 6,
     },
     cardCompleteBtnText: {
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '600',
       color: '#ffffff',
     },
     cardDetailsBtn: {
-      paddingVertical: 6,
-      paddingHorizontal: 8,
+      paddingVertical: 5.5,
+      paddingHorizontal: 7,
     },
     cardDetailsBtnText: {
       fontSize: 11,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.primary,
     },
 
