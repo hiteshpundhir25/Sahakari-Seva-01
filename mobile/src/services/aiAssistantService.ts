@@ -470,7 +470,7 @@ export class AIAssistantService {
               type: 'action_buttons',
               booking: target,
               actions: [
-                { label: '🔧 Add Extra Parts (+₹350)', command: 'add diagnostic parts', variant: 'warning' },
+                { label: '🔧 Add Extra Parts & Tasks', command: 'add diagnostic parts', variant: 'warning' },
                 { label: `✓ Complete Job (Claim ₹${wage})`, command: 'complete job', variant: 'success' },
                 { label: '📞 Call Customer', command: 'customer contact', variant: 'neutral' },
               ],
