@@ -296,49 +296,78 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   // Direct 1-tap Accept Job
   const handleDirectAccept = async (job: Booking) => {
     try {
-      await ApiClient.updateBookingStatus(job.id, 'accepted');
-      Alert.alert(
-        'Job Accepted! 🎉',
-        `Booking ${job.booking_code} is confirmed and scheduled.`
+      // Optimistically update local state immediately so UI updates instantly
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, status: 'accepted' as any } : j))
       );
+      await ApiClient.updateBookingStatus(job.id, 'accepted');
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          'Job Accepted! 🎉',
+          `Booking ${job.booking_code} is confirmed and scheduled.`
+        );
+      }
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not accept job');
     }
   };
 
   // Direct 1-tap Decline Job
   const handleDirectDecline = (job: Booking) => {
-    Alert.alert(
-      'Decline Job Request',
-      `Are you sure you want to decline booking ${job.booking_code}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ApiClient.updateBookingStatus(job.id, 'rejected');
-              await loadWorkerJobs();
-              DeviceEventEmitter.emit('app_booking_updated');
-            } catch (err: any) {
-              Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not decline job');
-            }
+    const doDecline = async () => {
+      try {
+        setAllJobs(prev =>
+          prev.map(j => (j.id === job.id ? { ...j, status: 'rejected' as any } : j))
+        );
+        await ApiClient.updateBookingStatus(job.id, 'rejected');
+        await loadWorkerJobs();
+        DeviceEventEmitter.emit('app_booking_updated');
+      } catch (err: any) {
+        await loadWorkerJobs();
+        Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not decline job');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined'
+        ? window.confirm(`Decline job request ${job.booking_code}?`)
+        : true;
+      if (confirmed) {
+        doDecline();
+      }
+    } else {
+      Alert.alert(
+        'Decline Job Request',
+        `Are you sure you want to decline booking ${job.booking_code}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Decline',
+            style: 'destructive',
+            onPress: doDecline,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   // Direct 1-tap Start Service
   const handleDirectStart = async (job: Booking) => {
     try {
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, status: 'in_progress' as any } : j))
+      );
       await ApiClient.updateBookingStatus(job.id, 'in_progress');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Service Started 🚀', `You have started job ${job.booking_code}.`);
+      }
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not start job');
     }
   };
@@ -346,10 +375,14 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   // Direct 1-tap Complete Job
   const handleDirectComplete = async (job: Booking) => {
     try {
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, status: 'completed' as any } : j))
+      );
       await ApiClient.updateBookingStatus(job.id, 'completed');
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not complete job');
     }
   };
@@ -358,15 +391,20 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   const handleUpdateStatus = async (newStatus: string) => {
     if (!activeJob) return;
     try {
-      await ApiClient.updateBookingStatus(activeJob.id, newStatus);
-      Alert.alert(
-        t('worker.status_updated_title', 'Status Updated'),
-        newStatus === 'accepted'
-          ? `Booking ${activeJob.booking_code} accepted! Added to your schedule.`
-          : newStatus === 'rejected'
-          ? `Booking ${activeJob.booking_code} declined.`
-          : t('worker.status_updated_msg', { status: newStatus })
+      setAllJobs(prev =>
+        prev.map(j => (j.id === activeJob.id ? { ...j, status: newStatus as any } : j))
       );
+      await ApiClient.updateBookingStatus(activeJob.id, newStatus);
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          t('worker.status_updated_title', 'Status Updated'),
+          newStatus === 'accepted'
+            ? `Booking ${activeJob.booking_code} accepted! Added to your schedule.`
+            : newStatus === 'rejected'
+            ? `Booking ${activeJob.booking_code} declined.`
+            : t('worker.status_updated_msg', { status: newStatus })
+        );
+      }
 
       if (newStatus === 'rejected') {
         setIsModalVisible(false);
@@ -378,6 +416,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message);
     }
   };

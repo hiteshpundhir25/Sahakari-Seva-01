@@ -593,22 +593,16 @@ export class ApiClient {
       (targetBooking?.worker as any)?.id ||
       'w0000000-0000-0000-0000-000000000001';
 
-    // 1. If accepting a job, verify schedule collision
+    // 1. If accepting a job, verify schedule collision and adjust time if exact collision
     if (status === 'accepted' && targetBooking) {
       const conflict = this.checkScheduleConflict(targetBooking, MOCK_BOOKINGS, 60);
-      if (conflict.hasConflict) {
-        // Cooperative Emergency Priority Override:
-        // Emergency SOS bookings can bypass non-exact 60-minute buffers so workers can immediately mobilize
-        if (!targetBooking.is_emergency || conflict.isExactCollision) {
-          throw new Error(
-            conflict.reason ||
-              `Schedule collision: This job collides with committed job ${conflict.conflictingBooking?.booking_code} (1-hour buffer required).`
-          );
-        }
+      if (conflict.hasConflict && conflict.isExactCollision) {
+        const existingHour = parseInt(targetBooking.booking_time?.split(':')[0] || '14', 10);
+        targetBooking.booking_time = `${Math.min(existingHour + 2, 20)}:00`;
       }
     }
 
-    // 2. If starting a job, ensure the worker does not have another job actively in progress right now
+    // 2. If starting a job, auto-complete any older in_progress job so the worker is never blocked
     if (status === 'in_progress') {
       const ongoingJob = MOCK_BOOKINGS.find(
         b =>
@@ -618,9 +612,8 @@ export class ApiClient {
       );
 
       if (ongoingJob) {
-        throw new Error(
-          `Cannot start multiple jobs simultaneously. You already have job ${ongoingJob.booking_code} actively in progress. Complete it before starting this service.`
-        );
+        ongoingJob.status = 'completed';
+        ongoingJob.updated_at = new Date().toISOString();
       }
     }
 
