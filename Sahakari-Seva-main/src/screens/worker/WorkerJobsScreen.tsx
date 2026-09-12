@@ -21,7 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
-import { Clock, MapPin, Zap, CheckCircle2, ChevronRight, Lock, AlertTriangle } from 'lucide-react-native';
+import { Clock, MapPin, Zap, CheckCircle2, ChevronRight, Lock, AlertTriangle, Navigation } from 'lucide-react-native';
 import { FadeInView } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -290,14 +290,24 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
             <Text style={styles.sectionHeaderLabel}>
               {inProgressJob ? 'CURRENTLY PERFORMING JOB' : 'CURRENT COMMITMENT STATUS'}
             </Text>
-            {activeBannerJob && (
-              <View style={[styles.liveHeaderBadge, inProgressJob && styles.liveHeaderBadgeWorking]}>
-                <View style={[styles.liveHeaderDot, inProgressJob && { backgroundColor: '#3b82f6' }]} />
-                <Text style={[styles.liveHeaderBadgeText, inProgressJob && { color: '#2563eb' }]}>
-                  {inProgressJob ? 'ON SITE ACTIVE' : 'COMMITTED'}
-                </Text>
-              </View>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                style={styles.mapLinkBtn}
+                onPress={() => navigation?.navigate('WorkerLocation')}
+                activeOpacity={0.78}
+              >
+                <Navigation size={11} color={colors.primary} />
+                <Text style={styles.mapLinkBtnText}>Live Map</Text>
+              </TouchableOpacity>
+              {activeBannerJob && (
+                <View style={[styles.liveHeaderBadge, inProgressJob && styles.liveHeaderBadgeWorking]}>
+                  <View style={[styles.liveHeaderDot, inProgressJob && { backgroundColor: '#3b82f6' }]} />
+                  <Text style={[styles.liveHeaderBadgeText, inProgressJob && { color: '#2563eb' }]}>
+                    {inProgressJob ? 'ON SITE ACTIVE' : 'COMMITTED'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {activeBannerJob ? (
@@ -527,6 +537,22 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontWeight: '800',
       color: colors.textMuted,
       letterSpacing: 0.6,
+    },
+    mapLinkBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
+      paddingHorizontal: 8,
+      paddingVertical: 2.5,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe',
+    },
+    mapLinkBtnText: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.primary,
     },
     liveHeaderBadge: {
       flexDirection: 'row',

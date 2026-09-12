@@ -22,6 +22,7 @@ import {
   Check,
   Lock,
   Briefcase,
+  Navigation,
 } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
@@ -180,18 +181,28 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                     {activeJob.service_description || 'Active cooperative service job'}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.activeJobBtn}
-                  onPress={() =>
-                    navigation.navigate('WorkerJobDetail', {
-                      bookingId: activeJob.id,
-                      job: activeJob,
-                    })
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.activeJobBtnText}>View Job</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TouchableOpacity
+                    style={styles.activeJobMapBtn}
+                    onPress={() => navigation?.navigate('WorkerLocation')}
+                    activeOpacity={0.8}
+                  >
+                    <Navigation size={11} color="#ffffff" />
+                    <Text style={styles.activeJobMapBtnText}>Map</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.activeJobBtn}
+                    onPress={() =>
+                      navigation.navigate('WorkerJobDetail', {
+                        bookingId: activeJob.id,
+                        job: activeJob,
+                      })
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.activeJobBtnText}>View Job</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -377,6 +388,20 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     borderRadius: 8,
   },
   activeJobBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  activeJobMapBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeJobMapBtnText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#ffffff',
