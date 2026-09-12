@@ -1,10 +1,11 @@
 // ==============================================================================
 // WORKER SCHEDULE CALENDAR COMPONENT
-// Interactive monthly calendar for Service Worker accepted & scheduled jobs.
-// Allows date filtering, inspecting job details, status management & rescheduling.
+// Interactive monthly calendar for Service Worker accepted, pending & scheduled jobs.
+// Fully reactive with real-time DeviceEventEmitter sync on incoming job requests.
+// Supports date filtering, inspecting job details, 1-tap accept/decline & rescheduling.
 // ==============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +17,7 @@ import {
   Alert,
   Linking,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -51,6 +53,20 @@ const MONTH_NAMES = [
 ];
 
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Normalizes dates like "2026-09-13T10:00:00Z" or "2026-9-13" into strict "YYYY-MM-DD"
+ */
+export const normalizeCalendarDate = (dateVal?: string): string => {
+  if (!dateVal) return '';
+  const clean = dateVal.trim();
+  const datePart = clean.includes('T') ? clean.split('T')[0] : clean;
+  const parts = datePart.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+  }
+  return datePart;
+};
 
 export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   workerId,
@@ -93,70 +109,101 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   const [newRescheduleTime, setNewRescheduleTime] = useState<string>('10:00');
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
 
-  // Fetch jobs for this specific worker
-  const loadWorkerJobs = async () => {
+  // Fetch jobs for this worker (including incoming pending requests)
+  const loadWorkerJobs = useCallback(async () => {
     try {
       setLoading(true);
       const data = await ApiClient.getBookings(undefined, workerId);
-      // Filter for jobs assigned to this worker
-      const filtered = (data || []).filter(
-        b => b.worker_id === workerId && (b.status === 'accepted' || b.status === 'in_progress' || b.status === 'completed')
-      );
-      setAllJobs(filtered);
+      // Filter for jobs relevant to this worker, including pending requests
+      const filtered = (data || []).filter(b => {
+        const matchesWorker =
+          !workerId ||
+          b.worker_id === workerId ||
+          (b.worker as any)?.id === workerId ||
+          (b.worker as any)?.workerId === workerId ||
+          (!b.worker_id && workerId === 'w0000000-0000-0000-0000-000000000001');
 
-      // Smart initial date: check if any job is scheduled for today or upcoming in current month
-      const activeAccepted = filtered.filter(b => b.status === 'accepted' || b.status === 'in_progress');
-      if (activeAccepted.length > 0) {
-        const curToday = getTodayDate();
-        const todayJob = activeAccepted.find(b => b.booking_date === curToday.dateStr);
-        if (todayJob) {
-          setSelectedDate(todayJob.booking_date);
-          const [y, m] = todayJob.booking_date.split('-').map(Number);
-          setCurrentYear(y);
-          setCurrentMonth(m - 1);
-        } else {
-          // If no job today, remain on today's date so worker views today by default
-          setCurrentYear(curToday.year);
-          setCurrentMonth(curToday.month);
-          setSelectedDate(curToday.dateStr);
-        }
-      }
+        const activeStatus =
+          b.status === 'pending' ||
+          b.status === 'accepted' ||
+          b.status === 'in_progress' ||
+          b.status === 'completed';
+
+        return matchesWorker && activeStatus;
+      });
+
+      setAllJobs(filtered);
     } catch (err) {
       console.warn('[WorkerScheduleCalendar] load error:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadWorkerJobs();
   }, [workerId]);
 
-  // Group accepted/in-progress jobs by YYYY-MM-DD
+  // Initial load and real-time subscription to booking updates
+  useEffect(() => {
+    loadWorkerJobs();
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      loadWorkerJobs();
+    });
+    return () => {
+      sub.remove();
+    };
+  }, [loadWorkerJobs]);
+
+  // Group all relevant jobs by normalized YYYY-MM-DD
   const jobsByDate = useMemo(() => {
     const map: Record<string, Booking[]> = {};
     for (const job of allJobs) {
-      if (!map[job.booking_date]) {
-        map[job.booking_date] = [];
+      const key = normalizeCalendarDate(job.booking_date);
+      if (!key) continue;
+      if (!map[key]) {
+        map[key] = [];
       }
-      map[job.booking_date].push(job);
+      map[key].push(job);
+    }
+
+    // Sort jobs on each date: pending first (urgent action), then in_progress, accepted, completed
+    for (const d in map) {
+      map[d].sort((a, b) => {
+        const priority: Record<string, number> = {
+          pending: 1,
+          in_progress: 2,
+          accepted: 3,
+          completed: 4,
+        };
+        return (priority[a.status] || 5) - (priority[b.status] || 5);
+      });
     }
     return map;
   }, [allJobs]);
 
   // Jobs for the currently selected month
-  const currentMonthJobsCount = useMemo(() => {
-    const monthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-    return allJobs.filter(
-      j => j.booking_date.startsWith(monthPrefix) && (j.status === 'accepted' || j.status === 'in_progress')
-    ).length;
-  }, [allJobs, currentYear, currentMonth]);
+  const monthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
-  // Next upcoming job after selected date
+  const currentMonthJobs = useMemo(() => {
+    return allJobs.filter(j => normalizeCalendarDate(j.booking_date).startsWith(monthPrefix));
+  }, [allJobs, monthPrefix]);
+
+  const pendingRequestsCount = useMemo(() => {
+    return currentMonthJobs.filter(j => j.status === 'pending').length;
+  }, [currentMonthJobs]);
+
+  const activeScheduledCount = useMemo(() => {
+    return currentMonthJobs.filter(j => j.status === 'accepted' || j.status === 'in_progress').length;
+  }, [currentMonthJobs]);
+
+  // Next upcoming job or pending request after selected date
   const nextUpcomingJob = useMemo(() => {
     const futureJobs = allJobs
-      .filter(j => (j.status === 'accepted' || j.status === 'in_progress') && j.booking_date > selectedDate)
-      .sort((a, b) => a.booking_date.localeCompare(b.booking_date));
+      .filter(
+        j =>
+          (j.status === 'pending' || j.status === 'accepted' || j.status === 'in_progress') &&
+          normalizeCalendarDate(j.booking_date) > selectedDate
+      )
+      .sort((a, b) =>
+        normalizeCalendarDate(a.booking_date).localeCompare(normalizeCalendarDate(b.booking_date))
+      );
     return futureJobs[0] || null;
   }, [allJobs, selectedDate]);
 
@@ -230,32 +277,86 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   };
 
   const handleJumpToDate = (targetDate: string) => {
-    const [y, m] = targetDate.split('-').map(Number);
-    setCurrentYear(y);
-    setCurrentMonth(m - 1);
-    setSelectedDate(targetDate);
+    const norm = normalizeCalendarDate(targetDate);
+    const parts = norm.split('-').map(Number);
+    if (parts.length === 3) {
+      setCurrentYear(parts[0]);
+      setCurrentMonth(parts[1] - 1);
+      setSelectedDate(norm);
+    }
   };
 
   // Open Job Detail Modal
   const handleOpenJobModal = (job: Booking) => {
     setActiveJob(job);
     setIsRescheduling(false);
-    setNewRescheduleDate(job.booking_date);
+    setNewRescheduleDate(normalizeCalendarDate(job.booking_date));
     setNewRescheduleTime(job.booking_time || '10:00');
     setIsModalVisible(true);
   };
 
-  // Update Status directly (Start Job / Mark Completed)
+  // Direct 1-tap Accept Job
+  const handleDirectAccept = async (job: Booking) => {
+    try {
+      await ApiClient.updateBookingStatus(job.id, 'accepted');
+      Alert.alert(
+        'Job Accepted! 🎉',
+        `Booking ${job.booking_code} is confirmed and scheduled in your calendar.`
+      );
+      await loadWorkerJobs();
+      DeviceEventEmitter.emit('app_booking_updated');
+    } catch (err: any) {
+      Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not accept job');
+    }
+  };
+
+  // Direct 1-tap Decline Job
+  const handleDirectDecline = (job: Booking) => {
+    Alert.alert(
+      'Decline Job Request',
+      `Are you sure you want to decline booking ${job.booking_code}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ApiClient.updateBookingStatus(job.id, 'rejected');
+              await loadWorkerJobs();
+              DeviceEventEmitter.emit('app_booking_updated');
+            } catch (err: any) {
+              Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not decline job');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Update Status from Modal (Accept, Start Job, Mark Completed, Reject)
   const handleUpdateStatus = async (newStatus: string) => {
     if (!activeJob) return;
     try {
       await ApiClient.updateBookingStatus(activeJob.id, newStatus);
       Alert.alert(
         t('worker.status_updated_title', 'Status Updated'),
-        t('worker.status_updated_msg', { status: newStatus })
+        newStatus === 'accepted'
+          ? `Booking ${activeJob.booking_code} accepted! Added to your schedule.`
+          : newStatus === 'rejected'
+          ? `Booking ${activeJob.booking_code} declined.`
+          : t('worker.status_updated_msg', { status: newStatus })
       );
-      setActiveJob(prev => prev ? { ...prev, status: newStatus as any } : null);
-      loadWorkerJobs();
+
+      if (newStatus === 'rejected') {
+        setIsModalVisible(false);
+        setActiveJob(null);
+      } else {
+        setActiveJob(prev => prev ? { ...prev, status: newStatus as any } : null);
+      }
+
+      await loadWorkerJobs();
+      DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
       Alert.alert(t('booking.error_title', 'Error'), err.message);
     }
@@ -281,6 +382,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
 
       // Refresh jobs list and switch calendar to the rescheduled date
       await loadWorkerJobs();
+      DeviceEventEmitter.emit('app_booking_updated');
       handleJumpToDate(newRescheduleDate);
     } catch (err: any) {
       Alert.alert(t('calendar.reschedule_title'), err.message || t('calendar.reschedule_error'));
@@ -344,29 +446,65 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
         {/* Section Header */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <View style={styles.iconCircle}>
-              <CalendarIcon size={18} color={colors.primary} />
+            <View style={[styles.iconCircle, pendingRequestsCount > 0 && { backgroundColor: '#fef3c7' }]}>
+              <CalendarIcon size={18} color={pendingRequestsCount > 0 ? '#d97706' : colors.primary} />
             </View>
             <View style={styles.titleTextCol}>
               <Text style={styles.sectionTitle} numberOfLines={1}>
-                {t('calendar.title', 'Accepted & Scheduled')}
+                {t('calendar.title', 'Schedule & Work Orders')}
               </Text>
               <Text style={styles.sectionSubtitle} numberOfLines={1}>
-                {t('calendar.subtitle', { count: currentMonthJobsCount })}
+                {pendingRequestsCount > 0
+                  ? `${activeScheduledCount} scheduled • ${pendingRequestsCount} new request(s)`
+                  : `${activeScheduledCount} jobs scheduled this month`}
               </Text>
             </View>
           </View>
 
-          {/* Quick "Today" Jump Button */}
-          <TouchableOpacity
-            style={styles.todayButton}
-            onPress={handleJumpToToday}
-            activeOpacity={0.7}
-          >
-            <Clock size={11} color={colors.primary} />
-            <Text style={styles.todayButtonText}>{t('calendar.today')}</Text>
-          </TouchableOpacity>
+          {/* Quick Actions: Today & Refresh */}
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity
+              style={styles.todayButton}
+              onPress={handleJumpToToday}
+              activeOpacity={0.7}
+            >
+              <Clock size={11} color={colors.primary} />
+              <Text style={styles.todayButtonText}>{t('calendar.today')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.refreshIconBtn}
+              onPress={loadWorkerJobs}
+              activeOpacity={0.7}
+            >
+              <RotateCcw size={12} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Pending Requests Alert Banner (Click to jump to date) */}
+        {pendingRequestsCount > 0 && (
+          <TouchableOpacity
+            style={styles.pendingAlertBanner}
+            activeOpacity={0.8}
+            onPress={() => {
+              const pendingJob = currentMonthJobs.find(j => j.status === 'pending');
+              if (pendingJob) {
+                handleJumpToDate(pendingJob.booking_date);
+              }
+            }}
+          >
+            <View style={styles.pendingAlertLeft}>
+              <View style={styles.pendingPulseDot} />
+              <Text style={styles.pendingAlertText}>
+                {pendingRequestsCount === 1
+                  ? '⚡ 1 New Job Request awaiting your action!'
+                  : `⚡ ${pendingRequestsCount} New Job Requests awaiting action!`}
+              </Text>
+            </View>
+            <Text style={styles.pendingAlertAction}>View Date →</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Month Navigation Row */}
         <View style={styles.monthNavRow}>
@@ -382,11 +520,17 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
             <Text style={styles.monthLabel}>
               {MONTH_NAMES[currentMonth]} {currentYear}
             </Text>
-            {currentMonthJobsCount > 0 && (
-              <View style={styles.monthBadge}>
-                <Text style={styles.monthBadgeText}>{currentMonthJobsCount} Active</Text>
+            {pendingRequestsCount > 0 ? (
+              <View style={[styles.monthBadge, { backgroundColor: '#fef3c7' }]}>
+                <Text style={[styles.monthBadgeText, { color: '#b45309' }]}>
+                  {pendingRequestsCount} New Request{pendingRequestsCount > 1 ? 's' : ''}
+                </Text>
               </View>
-            )}
+            ) : currentMonthJobs.length > 0 ? (
+              <View style={styles.monthBadge}>
+                <Text style={styles.monthBadgeText}>{currentMonthJobs.length} Active</Text>
+              </View>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -405,7 +549,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
               <Text
                 style={[
                   styles.weekdayText,
-                  idx === 0 && { color: colors.danger }, // Sunday subtle red
+                  idx === 0 && { color: colors.danger },
                 ]}
               >
                 {w}
@@ -427,7 +571,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
               }
 
               const hasJobs = item.jobs.length > 0;
-              const hasAccepted = item.jobs.some(j => j.status === 'accepted');
+              const hasPending = item.jobs.some(j => j.status === 'pending');
               const hasInProgress = item.jobs.some(j => j.status === 'in_progress');
               const hasEmergency = item.jobs.some(j => j.is_emergency);
 
@@ -443,6 +587,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                       styles.dayBadge,
                       item.isSelected && styles.dayBadgeSelected,
                       item.isToday && !item.isSelected && styles.dayBadgeToday,
+                      hasPending && !item.isSelected && styles.dayBadgePending,
                     ]}
                   >
                     <Text
@@ -450,6 +595,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                         styles.dayNumber,
                         item.isSelected && styles.dayNumberSelected,
                         item.isToday && !item.isSelected && styles.dayNumberToday,
+                        hasPending && !item.isSelected && !item.isToday && styles.dayNumberPending,
                       ]}
                     >
                       {item.day}
@@ -463,8 +609,8 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                             styles.jobDot,
                             {
                               backgroundColor: item.isSelected
-                                ? (hasEmergency ? '#fee2e2' : hasInProgress ? '#fef08a' : '#ffffff')
-                                : (hasEmergency ? colors.danger : hasInProgress ? '#f59e0b' : colors.success),
+                                ? (hasEmergency ? '#fee2e2' : hasPending ? '#fef08a' : hasInProgress ? '#93c5fd' : '#ffffff')
+                                : (hasEmergency ? colors.danger : hasPending ? '#f59e0b' : hasInProgress ? '#3b82f6' : colors.success),
                             },
                           ]}
                         />
@@ -474,6 +620,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                             style={[
                               styles.dotCountText,
                               item.isSelected && { color: '#ffffff' },
+                              hasPending && !item.isSelected && { color: '#d97706' },
                             ]}
                           >
                             {item.jobs.length}
@@ -500,6 +647,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
             <View style={styles.jobCountPill}>
               <Text style={styles.jobCountPillText}>
                 {selectedDateJobs.length} {selectedDateJobs.length === 1 ? 'Job' : 'Jobs'}
+                {selectedDateJobs.some(j => j.status === 'pending') ? ' • 1 Request' : ''}
               </Text>
             </View>
           </View>
@@ -507,81 +655,136 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
           {/* If Jobs Exist for Selected Date */}
           {selectedDateJobs.length > 0 ? (
             <View style={styles.jobsList}>
-              {selectedDateJobs.map((job, idx) => (
-                <FadeInView key={job.id} delay={idx * 60} distance={10} duration={260}>
-                  <ScalePressable
-                    onPress={() => handleOpenJobModal(job)}
-                    style={styles.jobCardPressable}
-                    scaleTo={0.98}
-                  >
-                    <View style={styles.jobCard}>
-                      <View style={styles.jobCardTop}>
-                        <View style={styles.jobCodeGroup}>
-                          <Text style={styles.jobCodeText}>{job.booking_code}</Text>
-                          {job.is_emergency && (
-                            <View style={styles.emergencyTag}>
-                              <Zap size={10} color={colors.danger} />
-                              <Text style={styles.emergencyTagText}>EMERGENCY</Text>
-                            </View>
-                          )}
-                        </View>
+              {selectedDateJobs.map((job, idx) => {
+                const isPending = job.status === 'pending';
+                const isAccepted = job.status === 'accepted';
+                const isInProgress = job.status === 'in_progress';
+                const isCompleted = job.status === 'completed';
 
-                        <View
-                          style={[
-                            styles.statusTag,
-                            job.status === 'accepted' && styles.statusTagAccepted,
-                            job.status === 'in_progress' && styles.statusTagInProgress,
-                            job.status === 'completed' && styles.statusTagCompleted,
-                          ]}
-                        >
-                          <Text
+                return (
+                  <FadeInView key={job.id} delay={idx * 60} distance={10} duration={260}>
+                    <View style={[styles.jobCard, isPending && styles.jobCardPending]}>
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => handleOpenJobModal(job)}
+                      >
+                        <View style={styles.jobCardTop}>
+                          <View style={styles.jobCodeGroup}>
+                            <Text style={styles.jobCodeText}>{job.booking_code}</Text>
+                            {job.is_emergency && (
+                              <View style={styles.emergencyTag}>
+                                <Zap size={10} color={colors.danger} />
+                                <Text style={styles.emergencyTagText}>EMERGENCY</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          <View
                             style={[
-                              styles.statusTagText,
-                              job.status === 'accepted' && { color: colors.successDark },
-                              job.status === 'in_progress' && { color: '#b45309' },
-                              job.status === 'completed' && { color: colors.primary },
+                              styles.statusTag,
+                              isPending && styles.statusTagPending,
+                              isAccepted && styles.statusTagAccepted,
+                              isInProgress && styles.statusTagInProgress,
+                              isCompleted && styles.statusTagCompleted,
                             ]}
                           >
-                            {job.status.toUpperCase()}
+                            <Text
+                              style={[
+                                styles.statusTagText,
+                                isPending && { color: '#b45309' },
+                                isAccepted && { color: colors.successDark },
+                                isInProgress && { color: '#b45309' },
+                                isCompleted && { color: colors.primary },
+                              ]}
+                            >
+                              {isPending ? 'NEW REQUEST' : job.status.toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Time and Price */}
+                        <View style={styles.timePriceRow}>
+                          <View style={styles.timeWrap}>
+                            <Clock size={12} color={isPending ? '#d97706' : colors.primary} />
+                            <Text
+                              style={[
+                                styles.timeSlotText,
+                                isPending && { color: '#b45309', fontWeight: '800' },
+                              ]}
+                            >
+                              {job.booking_time ? `${job.booking_time} hrs` : '10:00 AM'}
+                            </Text>
+                          </View>
+
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={[styles.priceText, isPending && { color: '#b45309' }]}>
+                              ₹{job.final_amount || job.estimated_amount}
+                            </Text>
+                            <Text style={styles.workerCutSmall}>
+                              ₹{Math.round((job.final_amount || job.estimated_amount || 349) * 0.85)} take-home
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Description */}
+                        <Text style={styles.jobDesc} numberOfLines={2}>
+                          {job.service_description}
+                        </Text>
+
+                        {/* Customer & Location */}
+                        <View style={styles.locationWrap}>
+                          <MapPin size={12} color={colors.textMuted} />
+                          <Text style={styles.locationText} numberOfLines={1}>
+                            {job.customer?.full_name ? `${job.customer.full_name} • ` : ''}
+                            {job.address} ({job.pincode})
                           </Text>
                         </View>
-                      </View>
+                      </TouchableOpacity>
 
-                      {/* Time and Price */}
-                      <View style={styles.timePriceRow}>
-                        <View style={styles.timeWrap}>
-                          <Clock size={12} color={colors.primary} />
-                          <Text style={styles.timeSlotText}>
-                            {job.booking_time ? `${job.booking_time} hrs` : '10:00 AM'}
-                          </Text>
+                      {/* Direct Action Buttons on Card */}
+                      {isPending ? (
+                        <View style={styles.pendingActionButtonsRow}>
+                          <TouchableOpacity
+                            style={styles.cardAcceptBtn}
+                            onPress={() => handleDirectAccept(job)}
+                            activeOpacity={0.8}
+                          >
+                            <CheckCircle2 size={13} color="#ffffff" />
+                            <Text style={styles.cardAcceptBtnText}>Accept Job</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.cardDeclineBtn}
+                            onPress={() => handleDirectDecline(job)}
+                            activeOpacity={0.8}
+                          >
+                            <X size={13} color={colors.danger} />
+                            <Text style={styles.cardDeclineBtnText}>Decline</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={styles.cardDetailsBtn}
+                            onPress={() => handleOpenJobModal(job)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={styles.cardDetailsBtnText}>Details →</Text>
+                          </TouchableOpacity>
                         </View>
-
-                        <Text style={styles.priceText}>₹{job.final_amount || job.estimated_amount}</Text>
-                      </View>
-
-                      {/* Description */}
-                      <Text style={styles.jobDesc} numberOfLines={2}>
-                        {job.service_description}
-                      </Text>
-
-                      {/* Customer & Location */}
-                      <View style={styles.locationWrap}>
-                        <MapPin size={12} color={colors.textMuted} />
-                        <Text style={styles.locationText} numberOfLines={1}>
-                          {job.address} ({job.pincode})
-                        </Text>
-                      </View>
-
-                      {/* Card Footer Actions */}
-                      <View style={styles.cardFooter}>
-                        <Text style={styles.managePromptText}>
-                          {t('calendar.manage_job')} • {t('calendar.reschedule')} →
-                        </Text>
-                      </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.cardFooter}
+                          onPress={() => handleOpenJobModal(job)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.managePromptText}>
+                            {t('calendar.manage_job')} • {t('calendar.reschedule')} →
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  </ScalePressable>
-                </FadeInView>
-              ))}
+                  </FadeInView>
+                );
+              })}
             </View>
           ) : (
             /* Empty State for Selected Date */
@@ -688,13 +891,35 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                   <Text style={styles.rateValue}>₹{activeJob?.final_amount || activeJob?.estimated_amount}</Text>
                 </View>
                 <Text style={styles.rateSub}>
-                  85% Direct Worker Take-Home (₹{Math.round((activeJob?.final_amount || 349) * 0.85)}) credited upon completion.
+                  85% Direct Worker Take-Home (₹{Math.round((activeJob?.final_amount || activeJob?.estimated_amount || 349) * 0.85)}) credited upon completion.
                 </Text>
               </View>
 
               {/* Status Update Quick Triggers */}
               <View style={styles.statusActionSection}>
                 <Text style={styles.detailSectionLabel}>JOB STATUS ACTIONS</Text>
+
+                {activeJob?.status === 'pending' && (
+                  <View style={styles.pendingModalActions}>
+                    <TouchableOpacity
+                      style={[styles.actionTriggerBtn, { backgroundColor: colors.success, marginBottom: 8 }]}
+                      onPress={() => handleUpdateStatus('accepted')}
+                      activeOpacity={0.8}
+                    >
+                      <CheckCircle2 size={16} color="#ffffff" />
+                      <Text style={styles.actionTriggerBtnText}>Accept Job Request ✓</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.actionTriggerBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2', borderWidth: 1, borderColor: colors.danger }]}
+                      onPress={() => handleUpdateStatus('rejected')}
+                      activeOpacity={0.8}
+                    >
+                      <X size={16} color={colors.danger} />
+                      <Text style={[styles.actionTriggerBtnText, { color: colors.danger }]}>Decline Request</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 {activeJob?.status === 'accepted' && (
                   <TouchableOpacity
@@ -888,6 +1113,11 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.textMuted,
       marginTop: 2,
     },
+    headerRightActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     todayButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -904,6 +1134,52 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontSize: 11,
       fontWeight: '700',
       color: colors.primary,
+    },
+    refreshIconBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 7,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pendingAlertBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+      borderColor: '#f59e0b',
+      borderWidth: 1.2,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      marginBottom: 10,
+    },
+    pendingAlertLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flex: 1,
+      marginRight: 6,
+    },
+    pendingPulseDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#f59e0b',
+    },
+    pendingAlertText: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: isDark ? '#fbbf24' : '#92400e',
+      flex: 1,
+    },
+    pendingAlertAction: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: isDark ? '#fcd34d' : '#b45309',
     },
     monthNavRow: {
       flexDirection: 'row',
@@ -998,6 +1274,11 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderColor: colors.primary,
       backgroundColor: colors.primaryLight,
     },
+    dayBadgePending: {
+      borderWidth: 1.5,
+      borderColor: '#f59e0b',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : 'rgba(254, 243, 199, 0.6)',
+    },
     dayNumber: {
       fontSize: 12.5,
       fontWeight: '700',
@@ -1010,6 +1291,10 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     dayNumberToday: {
       color: colors.primary,
+      fontWeight: '800',
+    },
+    dayNumberPending: {
+      color: isDark ? '#fbbf24' : '#d97706',
       fontWeight: '800',
     },
     indicatorContainer: {
@@ -1069,15 +1354,17 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     jobsList: {
       gap: 10,
     },
-    jobCardPressable: {
-      borderRadius: 14,
-    },
     jobCard: {
       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceSubtle,
       borderRadius: 14,
       padding: 13,
       borderWidth: 1.2,
       borderColor: colors.border,
+    },
+    jobCardPending: {
+      borderColor: '#f59e0b',
+      borderWidth: 1.5,
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.07)' : '#fffdf5',
     },
     jobCardTop: {
       flexDirection: 'row',
@@ -1114,6 +1401,11 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       paddingVertical: 2.5,
       borderRadius: 6,
     },
+    statusTagPending: {
+      backgroundColor: '#fef3c7',
+      borderWidth: 1,
+      borderColor: '#f59e0b',
+    },
     statusTagAccepted: {
       backgroundColor: colors.successLight,
     },
@@ -1149,6 +1441,12 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontWeight: '800',
       color: colors.primary,
     },
+    workerCutSmall: {
+      fontSize: 10,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginTop: 1,
+    },
     jobDesc: {
       fontSize: 12,
       color: colors.textSecondary,
@@ -1165,6 +1463,57 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       fontSize: 11,
       color: colors.textMuted,
       flex: 1,
+    },
+    pendingActionButtonsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 10,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    cardAcceptBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      backgroundColor: colors.success,
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+    },
+    cardAcceptBtnText: {
+      fontSize: 11.5,
+      fontWeight: '800',
+      color: '#ffffff',
+    },
+    cardDeclineBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      borderWidth: 1,
+      borderColor: colors.danger,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fef2f2',
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+    },
+    cardDeclineBtnText: {
+      fontSize: 11.5,
+      fontWeight: '700',
+      color: colors.danger,
+    },
+    cardDetailsBtn: {
+      paddingVertical: 7,
+      paddingHorizontal: 8,
+    },
+    cardDetailsBtnText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.primary,
     },
     cardFooter: {
       borderTopWidth: 1,
@@ -1360,6 +1709,9 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     },
     statusActionSection: {
       marginBottom: 16,
+    },
+    pendingModalActions: {
+      marginBottom: 6,
     },
     actionTriggerBtn: {
       flexDirection: 'row',
