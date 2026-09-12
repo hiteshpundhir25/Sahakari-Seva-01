@@ -781,33 +781,39 @@ export const WorkerAIAssistantWidget: React.FC = () => {
         type: 'action_buttons',
         booking: emergencyPending,
         actions: [
-          { label: `🚨 Accept Emergency (${emergencyPending.booking_code})`, command: 'accept job', variant: 'danger' },
-          { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'primary' },
+          { label: `🚨 Accept Emergency (${emergencyPending.booking_code})`, command: `accept job ${emergencyPending.booking_code}`, variant: 'danger' },
+          { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'warning' },
           { label: '📋 View All Requests', command: 'all requests', variant: 'neutral' },
         ],
       };
     } else if (inProg) {
       const wage = (Number(inProg.final_amount || inProg.estimated_amount || 0) * 0.85).toFixed(0);
-      greeting += `You are currently on-site for job ${inProg.booking_code} (${inProg.customer?.full_name || 'Customer'}). Expected wage: ₹${wage}. What would you like to do?`;
+      const isEmerg = inProg.is_emergency;
+      greeting += isEmerg
+        ? `🚨 EMERGENCY SERVICE IN PROGRESS! You are on-site for emergency SOS job ${inProg.booking_code} (${inProg.customer?.full_name || 'Customer'}). Operational mode is locked to Emergency Service until completion. Expected wage: ₹${wage} (+25% bonus included).`
+        : `You are currently on-site for job ${inProg.booking_code} (${inProg.customer?.full_name || 'Customer'}). Operational mode is locked until completion. Expected wage: ₹${wage}. What would you like to do?`;
       card = {
         id: 'init-card-1',
         type: 'action_buttons',
         booking: inProg,
         actions: [
-          { label: `✓ Complete Job (Claim ₹${wage})`, command: 'complete job', variant: 'success' },
+          { label: isEmerg ? `✓ Complete Emergency Job (Claim ₹${wage})` : `✓ Complete Job (Claim ₹${wage})`, command: 'complete job', variant: 'success' },
           { label: '🔧 Add Extra Parts & Tasks', command: 'add diagnostic parts', variant: 'warning' },
-          { label: '📞 Customer Details', command: 'customer contact', variant: 'neutral' },
+          { label: '📞 Call Customer', command: 'customer contact', variant: isEmerg ? 'warning' : 'neutral' },
         ],
       };
     } else if (accepted) {
       const wage = (Number(accepted.final_amount || accepted.estimated_amount || 0) * 0.85).toFixed(0);
-      greeting += `You have 1 confirmed job ready to start: ${accepted.booking_code} for ${accepted.customer?.full_name || 'Customer'} on ${accepted.booking_date} at ${accepted.booking_time}. Expected direct wage: ₹${wage}.`;
+      const isEmerg = accepted.is_emergency;
+      greeting += isEmerg
+        ? `🚨 EMERGENCY DISPATCH ACTIVE! You have accepted emergency job ${accepted.booking_code} for ${accepted.customer?.full_name || 'Customer'} (< 15-30 min arrival SLA). Operational mode is locked to Emergency Service. Expected direct wage: ₹${wage}.`
+        : `You have 1 confirmed job ready to start: ${accepted.booking_code} for ${accepted.customer?.full_name || 'Customer'} on ${accepted.booking_date} at ${accepted.booking_time}. Expected direct wage: ₹${wage}.`;
       card = {
         id: 'init-card-2',
         type: 'action_buttons',
         booking: accepted,
         actions: [
-          { label: '⚡ Start Service Work Now', command: 'start work', variant: 'success' },
+          { label: isEmerg ? '⚡ Start Emergency Work Now' : '⚡ Start Service Work Now', command: 'start work', variant: 'success' },
           { label: '📍 Customer & Address', command: 'customer contact', variant: 'neutral' },
           { label: '🔊 Read Order Aloud', command: 'read details aloud', variant: 'neutral' },
         ],
@@ -1111,25 +1117,50 @@ export const WorkerAIAssistantWidget: React.FC = () => {
 
             {/* Status Strip */}
             {activeJob && (
-              <View style={styles.statusStrip}>
+              <View
+                style={[
+                  styles.statusStrip,
+                  activeJob.is_emergency && styles.statusStripEmergency,
+                ]}
+              >
                 <View style={styles.statusStripLeft}>
                   <View
                     style={[
                       styles.statusDot,
                       {
-                        backgroundColor:
-                          context?.activeOnSiteJob ? '#10b981' : '#3b82f6',
+                        backgroundColor: activeJob.is_emergency
+                          ? '#ef4444'
+                          : context?.activeOnSiteJob
+                          ? '#10b981'
+                          : '#3b82f6',
                       },
                     ]}
                   />
-                  <Text style={styles.statusStripText} numberOfLines={1}>
-                    {context?.activeOnSiteJob ? 'In Progress: ' : 'Confirmed: '}
+                  <Text
+                    style={[
+                      styles.statusStripText,
+                      activeJob.is_emergency && { color: isDark ? '#fca5a5' : '#b91c1c', fontWeight: '700' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {activeJob.is_emergency
+                      ? context?.activeOnSiteJob
+                        ? '🚨 Emergency On-Site: '
+                        : '🚨 Emergency Dispatch: '
+                      : context?.activeOnSiteJob
+                      ? 'In Progress: '
+                      : 'Confirmed: '}
                     <Text style={{ fontWeight: '800' }}>{activeJob.booking_code}</Text>
                     {' • '}
                     {activeJob.customer?.full_name || 'Customer'}
                   </Text>
                 </View>
-                <Text style={styles.statusStripWage}>
+                <Text
+                  style={[
+                    styles.statusStripWage,
+                    activeJob.is_emergency && { color: isDark ? '#f87171' : '#dc2626' },
+                  ]}
+                >
                   ₹{(Number(activeJob.final_amount || activeJob.estimated_amount || 0) * 0.85).toFixed(0)} wage
                 </Text>
               </View>
@@ -1541,6 +1572,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
+  },
+  statusStripEmergency: {
+    backgroundColor: '#fef2f2',
+    borderBottomColor: '#fecaca',
   },
   statusStripLeft: {
     flexDirection: 'row',

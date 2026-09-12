@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Header } from '../../components/common/Header';
 import { WorkerScheduleCalendar } from '../../components/worker/WorkerScheduleCalendar';
 import { ApiClient } from '../../services/apiClient';
-import { Worker, AvailabilityStatus } from '../../types';
+import { Worker, AvailabilityStatus, Booking } from '../../types';
 import {
   ShieldCheck,
   DollarSign,
@@ -27,6 +27,8 @@ import {
   Zap,
   Power,
   Check,
+  Lock,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { FadeInView, ScalePressable, AnimatedNumber, PulseDot } from '../../animations';
 import { useTheme } from '../../theme';
@@ -34,7 +36,7 @@ import type { Palette } from '../../theme';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 interface StatusOptionItem {
-  id: AvailabilityStatus;
+  id: 'available' | 'offline';
   titleKey: string;
   defaultTitle: string;
   descKey: string;
@@ -47,40 +49,20 @@ interface StatusOptionItem {
 const STATUS_OPTIONS: StatusOptionItem[] = [
   {
     id: 'available',
-    titleKey: 'worker.online_ready',
-    defaultTitle: 'Online Ready',
-    descKey: 'worker.status_online_sub',
-    defaultDesc: 'Accepting new jobs',
+    titleKey: 'worker.active_for_work',
+    defaultTitle: 'Active for work',
+    descKey: 'worker.status_active_sub',
+    defaultDesc: 'Ready for new dispatches',
     icon: Radio,
     color: '#10b981',
     lightBg: '#ecfdf5',
   },
   {
-    id: 'busy',
-    titleKey: 'workerProfile.status_busy',
-    defaultTitle: 'On Active Job',
-    descKey: 'worker.status_busy_sub',
-    defaultDesc: 'Busy on active site',
-    icon: Briefcase,
-    color: '#f59e0b',
-    lightBg: '#fffbeb',
-  },
-  {
-    id: 'emergency_only',
-    titleKey: 'worker.emergency_24_7',
-    defaultTitle: 'Emergency SOS',
-    descKey: 'worker.status_emergency_sub',
-    defaultDesc: '24/7 priority call',
-    icon: Zap,
-    color: '#ef4444',
-    lightBg: '#fef2f2',
-  },
-  {
     id: 'offline',
     titleKey: 'worker.offline',
-    defaultTitle: 'Offline Mode',
+    defaultTitle: 'Offline',
     descKey: 'worker.status_offline_sub',
-    defaultDesc: 'Resting standby',
+    defaultDesc: 'Standby • Not taking jobs',
     icon: Power,
     color: '#64748b',
     lightBg: '#f1f5f9',
@@ -95,13 +77,30 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const [worker, setWorker] = useState<Worker | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<AvailabilityStatus>('available');
+  const [activeJob, setActiveJob] = useState<Booking | null>(null);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
       const data = await ApiClient.getWorkerById('w0000000-0000-0000-0000-000000000001'); // Demo Rahul Sharma
+      const workerBookings = await ApiClient.getBookings(undefined, 'w0000000-0000-0000-0000-000000000001');
+      const currentActive =
+        workerBookings.find((b: Booking) => b.status === 'in_progress') ||
+        workerBookings.find((b: Booking) => b.status === 'accepted') ||
+        null;
+
+      setActiveJob(currentActive);
       setWorker(data);
-      if (data) setStatus(data.availability_status);
+
+      if (currentActive) {
+        setStatus(currentActive.is_emergency ? 'emergency_only' : 'busy');
+      } else if (data) {
+        setStatus(
+          data.availability_status === 'busy' || data.availability_status === 'emergency_only'
+            ? 'available'
+            : data.availability_status
+        );
+      }
     } catch (err) {
       console.warn('Worker profile load failed:', err);
     } finally {
@@ -125,10 +124,33 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   }, []);
 
   const handleToggleStatus = async (newStatus: AvailabilityStatus) => {
+    if (activeJob) {
+      const isEmerg = activeJob.is_emergency;
+      Alert.alert(
+        isEmerg ? '🚨 Emergency Service Locked' : '⚡ Active Work in Progress',
+        isEmerg
+          ? `You are currently dispatched on an emergency SOS job (${activeJob.booking_code}). Operational mode is locked to Emergency Service until completion.`
+          : `You are currently on an active service assignment (${activeJob.booking_code}). Operational mode will automatically revert to "Active for work" once this job is completed.`,
+        [
+          {
+            text: 'View Job Details',
+            onPress: () =>
+              navigation.navigate('WorkerJobDetail', {
+                bookingId: activeJob.id,
+                job: activeJob,
+              }),
+          },
+          { text: 'Understood', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     setStatus(newStatus);
     try {
       if (worker) {
         await ApiClient.updateWorkerAvailability(worker.id, newStatus);
+        DeviceEventEmitter.emit('app_booking_updated');
       }
     } catch (err: any) {
       Alert.alert(t('worker.status_error_title'), err.message);
@@ -150,69 +172,125 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
               <View style={styles.statusTitleCol}>
                 <Text style={styles.statusHeading}>{t('worker.online_status', 'Availability Status')}</Text>
                 <Text style={styles.statusSubheading}>
-                  {status === 'available'
-                    ? t('worker.status_sub_available', 'Live on dispatch • Ready for new jobs')
-                    : status === 'busy'
-                    ? t('worker.status_sub_busy', 'Currently on active service booking')
-                    : status === 'emergency_only'
-                    ? t('worker.status_sub_emergency', 'Emergency SOS priority response only')
-                    : t('worker.status_sub_offline', 'Off-duty standby • Not taking jobs')}
+                  {activeJob?.is_emergency
+                    ? '🚨 Locked on Emergency Dispatch • Arrival SLA < 15-30 mins'
+                    : activeJob
+                    ? '⚡ Engaged on Active Work • Status locked until completion'
+                    : status === 'available'
+                    ? 'Live on dispatch • Ready for new customer bookings'
+                    : 'Offline standby • Not accepting new requests'}
                 </Text>
               </View>
 
               <View
                 style={[
                   styles.liveIndicatorRow,
-                  status === 'available' && styles.liveIndicatorAvailable,
-                  status === 'busy' && styles.liveIndicatorBusy,
-                  status === 'emergency_only' && styles.liveIndicatorEmergency,
-                  status === 'offline' && styles.liveIndicatorOffline,
+                  activeJob?.is_emergency
+                    ? styles.liveIndicatorEmergency
+                    : activeJob
+                    ? styles.liveIndicatorBusy
+                    : status === 'available'
+                    ? styles.liveIndicatorAvailable
+                    : styles.liveIndicatorOffline,
                 ]}
               >
-                {status === 'available' && <PulseDot color="#10b981" size={7} ringScale={2.4} duration={1400} />}
-                {status === 'emergency_only' && <PulseDot color="#ef4444" size={7} ringScale={2.4} duration={1200} />}
-                {status === 'busy' && <PulseDot color="#f59e0b" size={7} ringScale={2.4} duration={1200} />}
-                {status === 'offline' && <View style={styles.offlineDot} />}
+                {activeJob?.is_emergency ? (
+                  <PulseDot color="#ef4444" size={7} ringScale={2.4} duration={1200} />
+                ) : activeJob ? (
+                  <PulseDot color="#f59e0b" size={7} ringScale={2.4} duration={1200} />
+                ) : status === 'available' ? (
+                  <PulseDot color="#10b981" size={7} ringScale={2.4} duration={1400} />
+                ) : (
+                  <View style={styles.offlineDot} />
+                )}
                 <Text
                   style={[
                     styles.liveIndicatorText,
-                    status === 'available' && { color: '#059669' },
-                    status === 'busy' && { color: '#b45309' },
-                    status === 'emergency_only' && { color: '#dc2626' },
-                    status === 'offline' && { color: colors.textSecondary },
+                    activeJob?.is_emergency
+                      ? { color: '#dc2626' }
+                      : activeJob
+                      ? { color: '#b45309' }
+                      : status === 'available'
+                      ? { color: '#059669' }
+                      : { color: colors.textSecondary },
                   ]}
                 >
-                  {status === 'available'
-                    ? 'DISPATCH READY'
-                    : status === 'emergency_only'
-                    ? 'SOS PRIORITY'
-                    : status === 'busy'
-                    ? 'ON ACTIVE JOB'
-                    : 'STANDBY'}
+                  {activeJob?.is_emergency
+                    ? '🚨 ON EMERGENCY JOB'
+                    : activeJob
+                    ? '⚡ ON ACTIVE WORK'
+                    : status === 'available'
+                    ? 'ACTIVE FOR WORK'
+                    : 'OFFLINE'}
                 </Text>
               </View>
             </View>
 
-            {/* Active Job Alert Banner */}
-            {status === 'busy' && (
-              <View style={styles.activeJobBanner}>
-                <View style={styles.activeJobDotGlow} />
+            {/* Active Emergency SOS Job Alert Banner */}
+            {activeJob && activeJob.is_emergency && (
+              <View style={styles.activeEmergencyBanner}>
+                <View style={styles.activeEmergencyDotGlow} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.activeJobBannerTitle}>
-                    {t('workerProfile.status_busy', 'On Active Job')}
-                  </Text>
-                  <Text style={styles.activeJobBannerSub}>
-                    {t('worker.active_job_banner_desc', 'Assigned to an active booking. Duty status will revert upon job completion.')}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Zap size={14} color="#ef4444" fill="#ef4444" />
+                    <Text style={styles.activeEmergencyBannerTitle}>
+                      On Emergency Service (24/7 Rapid SOS)
+                    </Text>
+                  </View>
+                  <Text style={styles.activeEmergencyBannerSub}>
+                    Assigned to SOS #{activeJob.booking_code}. Arrival SLA: &lt; 15–30 mins. Operational mode locked until service is completed.
                   </Text>
                 </View>
+                <TouchableOpacity
+                  style={styles.activeEmergencyBtn}
+                  onPress={() =>
+                    navigation.navigate('WorkerJobDetail', {
+                      bookingId: activeJob.id,
+                      job: activeJob,
+                    })
+                  }
+                >
+                  <Text style={styles.activeEmergencyBtnText}>View Job</Text>
+                </TouchableOpacity>
               </View>
             )}
 
-            {/* 2x2 Availability Selection Grid */}
+            {/* Standard Active Job Alert Banner */}
+            {activeJob && !activeJob.is_emergency && (
+              <View style={styles.activeJobBanner}>
+                <View style={styles.activeJobDotGlow} />
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Briefcase size={14} color="#f59e0b" />
+                    <Text style={styles.activeJobBannerTitle}>
+                      On Active Work
+                    </Text>
+                  </View>
+                  <Text style={styles.activeJobBannerSub}>
+                    Assigned to booking #{activeJob.booking_code}. Operational mode locked until job completion.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.activeJobBtn}
+                  onPress={() =>
+                    navigation.navigate('WorkerJobDetail', {
+                      bookingId: activeJob.id,
+                      job: activeJob,
+                    })
+                  }
+                >
+                  <Text style={styles.activeJobBtnText}>View Job</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* 2-Option Availability Selection (Active for work vs Offline) */}
             <View style={styles.statusGrid}>
               {STATUS_OPTIONS.map((item) => {
-                const isSelected = status === item.id;
+                const isSelected = !activeJob ? status === item.id : item.id === 'available';
                 const IconComponent = item.icon;
+                const isLocked = !!activeJob;
+
                 return (
                   <ScalePressable
                     key={item.id}
@@ -232,6 +310,7 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                               },
                             ]
                           : styles.statusCardOptionInactive,
+                        isLocked && item.id === 'offline' && { opacity: 0.5 },
                       ]}
                     >
                       <View style={styles.statusCardTopRow}>
@@ -253,7 +332,12 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                           />
                         </View>
 
-                        {isSelected ? (
+                        {isLocked ? (
+                          <View style={styles.lockedBadge}>
+                            <Lock size={10} color={colors.textMuted} />
+                            <Text style={styles.lockedBadgeText}>LOCKED</Text>
+                          </View>
+                        ) : isSelected ? (
                           <View style={[styles.activeBadge, { backgroundColor: item.color }]}>
                             <Check size={10} color="#ffffff" strokeWidth={3} />
                             <Text style={styles.activeBadgeText}>ACTIVE</Text>
@@ -274,7 +358,7 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                           ]}
                           numberOfLines={1}
                         >
-                          {t(item.titleKey, item.defaultTitle)}
+                          {item.defaultTitle}
                         </Text>
                         <Text
                           style={[
@@ -285,7 +369,11 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                           ]}
                           numberOfLines={1}
                         >
-                          {t(item.descKey, item.defaultDesc)}
+                          {isLocked && item.id === 'available'
+                            ? activeJob?.is_emergency
+                              ? 'Emergency duty active'
+                              : 'Active job underway'
+                            : item.defaultDesc}
                         </Text>
                       </View>
                     </View>
@@ -468,6 +556,49 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     letterSpacing: 0.5,
     color: colors.textSecondary,
   },
+  activeEmergencyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#fef2f2',
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(239, 68, 68, 0.45)' : '#fca5a5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  activeEmergencyDotGlow: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  activeEmergencyBannerTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: isDark ? '#f87171' : '#dc2626',
+    letterSpacing: 0.2,
+  },
+  activeEmergencyBannerSub: {
+    fontSize: 11,
+    color: isDark ? '#fca5a5' : '#b91c1c',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  activeEmergencyBtn: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeEmergencyBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
   activeJobBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,6 +630,17 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     color: isDark ? '#fde68a' : '#92400e',
     marginTop: 2,
     lineHeight: 15,
+  },
+  activeJobBtn: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeJobBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   statusGrid: {
     flexDirection: 'row',
@@ -552,6 +694,21 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  lockedBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.textMuted,
     letterSpacing: 0.5,
   },
   inactiveIndicator: {

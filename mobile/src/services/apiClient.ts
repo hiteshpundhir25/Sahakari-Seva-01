@@ -646,8 +646,8 @@ export class ApiClient {
 
       if (assignedWorkerId) {
         if (status === 'accepted' || status === 'in_progress') {
-          // When a service worker accepts or begins a job -> shift to 'busy' ("On Active Job")
-          await this.updateWorkerAvailability(assignedWorkerId, 'busy');
+          const targetMode = resultBooking.is_emergency ? 'emergency_only' : 'busy';
+          await this.updateWorkerAvailability(assignedWorkerId, targetMode);
 
           // Notify customer that booking is officially confirmed
           const workerObj = MOCK_WORKERS.find(w => w.id === assignedWorkerId);
@@ -655,23 +655,34 @@ export class ApiClient {
           MOCK_NOTIFICATIONS.customer.unshift({
             id: 'notif-c-' + Date.now(),
             user_id: resultBooking.customer_id || 'p0000000-0000-0000-0000-000000000002',
-            type: 'booking',
-            title: `Booking Confirmed! 🎉 (${resultBooking.booking_code})`,
-            message: `${workerName} has accepted and confirmed your booking! Worker duty status is now "On Active Job".`,
+            type: resultBooking.is_emergency ? 'emergency' : 'booking',
+            title: resultBooking.is_emergency
+              ? `🚨 Emergency Dispatch Confirmed! (${resultBooking.booking_code})`
+              : `Booking Confirmed! 🎉 (${resultBooking.booking_code})`,
+            message: resultBooking.is_emergency
+              ? `${workerName} has accepted your emergency request! Worker is on 24/7 Emergency Service (< 15-30 min arrival SLA).`
+              : `${workerName} has accepted and confirmed your booking! Worker duty status is now "On Active Job".`,
             read: false,
             action_url: '/bookings',
             created_at: new Date().toISOString(),
           });
         } else if (status === 'completed' || status === 'cancelled' || status === 'rejected') {
           // Check if worker has any other active jobs in 'accepted' or 'in_progress'
-          const hasOtherActiveJobs = MOCK_BOOKINGS.some(
+          const remainingActiveJobs = MOCK_BOOKINGS.filter(
             bk =>
               (bk.worker_id === assignedWorkerId || (bk.worker as any)?.id === assignedWorkerId) &&
               bk.id !== bookingId &&
               (bk.status === 'accepted' || bk.status === 'in_progress')
           );
-          if (!hasOtherActiveJobs) {
+          if (remainingActiveJobs.length === 0) {
+            // Revert automatically back to 'available' ("Active for work")
             await this.updateWorkerAvailability(assignedWorkerId, 'available');
+          } else if (remainingActiveJobs.some(b => b.is_emergency)) {
+            // Keep on emergency service if another emergency job is active
+            await this.updateWorkerAvailability(assignedWorkerId, 'emergency_only');
+          } else {
+            // Otherwise remain on active work
+            await this.updateWorkerAvailability(assignedWorkerId, 'busy');
           }
         }
       }

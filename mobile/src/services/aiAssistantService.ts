@@ -231,33 +231,7 @@ export class AIAssistantService {
   public static classifyIntent(input: string): AssistantIntentType {
     const s = input.toLowerCase().trim();
 
-    // Emergency SOS request / Urgent job
-    if (
-      s.includes('emergency') ||
-      s.includes('urgent') ||
-      s.includes('sos') ||
-      s.includes('turant') ||
-      s.includes('aapatkalin') ||
-      s.includes('jaldi') ||
-      s.includes('danger') ||
-      s.includes('immediate')
-    ) {
-      return 'EMERGENCY_REQUEST';
-    }
-
-    // Start work
-    if (
-      s.includes('start') ||
-      s.includes('begin') ||
-      s.includes('chalu') ||
-      s.includes('shuru') ||
-      s.includes('service start') ||
-      s.includes('kaam shuru')
-    ) {
-      return 'START_WORK';
-    }
-
-    // Complete work
+    // 1. Complete work (must come before general checks)
     if (
       s.includes('complete') ||
       s.includes('finish') ||
@@ -271,7 +245,19 @@ export class AIAssistantService {
       return 'COMPLETE_WORK';
     }
 
-    // Accept job
+    // 2. Start work
+    if (
+      s.includes('start') ||
+      s.includes('begin') ||
+      s.includes('chalu') ||
+      s.includes('shuru') ||
+      s.includes('service start') ||
+      s.includes('kaam shuru')
+    ) {
+      return 'START_WORK';
+    }
+
+    // 3. Accept job (crucial: must execute before emergency keyword to avoid loops)
     if (
       s.includes('accept') ||
       s.includes('confirm') ||
@@ -283,7 +269,7 @@ export class AIAssistantService {
       return 'ACCEPT_JOB';
     }
 
-    // Decline job
+    // 4. Decline job
     if (
       s.includes('decline') ||
       s.includes('reject') ||
@@ -292,6 +278,20 @@ export class AIAssistantService {
       s.includes('nahi')
     ) {
       return 'DECLINE_JOB';
+    }
+
+    // 5. Emergency SOS request / Urgent inquiry
+    if (
+      s.includes('emergency') ||
+      s.includes('urgent') ||
+      s.includes('sos') ||
+      s.includes('turant') ||
+      s.includes('aapatkalin') ||
+      s.includes('jaldi') ||
+      s.includes('danger') ||
+      s.includes('immediate')
+    ) {
+      return 'EMERGENCY_REQUEST';
     }
 
     // Diagnose extra parts / billing / repairs across all trades
@@ -477,8 +477,13 @@ export class AIAssistantService {
 
           const custName = target.customer?.full_name || 'Customer';
           const wage = (Number(target.final_amount || target.estimated_amount || 0) * 0.85).toFixed(0);
-          const msg = `⚡ Service work started on ${target.booking_code} for ${custName}! Your duty status shifted to "On Active Job". Expected wage: ₹${wage}.`;
-          const speech = `Service work started for ${custName}. Perform work according to cooperative quality standards.`;
+          const isEmerg = target.is_emergency;
+          const msg = isEmerg
+            ? `🚨 EMERGENCY on-site work started on ${target.booking_code} for ${custName}! Your operational mode is locked to "Emergency Service" until completion. Expected wage: ₹${wage} (+25% bonus).`
+            : `⚡ Service work started on ${target.booking_code} for ${custName}! Your operational mode is shifted to "On Active Work" and locked until completion. Expected wage: ₹${wage}.`;
+          const speech = isEmerg
+            ? `Emergency service work started for ${custName}. Focus on safety and rapid resolution.`
+            : `Service work started for ${custName}. Perform work according to cooperative quality standards.`;
 
           return {
             success: true,
@@ -528,8 +533,13 @@ export class AIAssistantService {
           const totalAmt = Number(target.final_amount || target.estimated_amount || 0);
           const wageAmt = (totalAmt * 0.85).toFixed(2);
           const welfareAmt = (totalAmt * 0.10).toFixed(2);
-          const msg = `🎉 Job ${target.booking_code} completed! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%).`;
-          const speech = `Job ${target.booking_code} marked completed. ₹${wageAmt} direct wage credited.`;
+          const isEmerg = target.is_emergency;
+          const msg = isEmerg
+            ? `🎉 EMERGENCY SOS job ${target.booking_code} completed! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`
+            : `🎉 Job ${target.booking_code} completed! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`;
+          const speech = isEmerg
+            ? `Emergency job ${target.booking_code} marked completed. ₹${wageAmt} direct wage credited. Your mode is now active for work.`
+            : `Job ${target.booking_code} marked completed. ₹${wageAmt} direct wage credited.`;
 
           return {
             success: true,
@@ -559,17 +569,29 @@ export class AIAssistantService {
       }
 
       case 'ACCEPT_JOB': {
-        // Prioritize pending emergency jobs first (with cooperative priority override)
-        let safeJob = context.pendingJobs.find(pj => {
-          if (pj.is_emergency) {
-            const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
-            return !conflict.isExactCollision;
-          }
-          return false;
-        });
+        // 1. Check if command explicitly references a booking code (e.g., 'BK-1002' or UUID)
+        const codeMatch = commandText.match(/BK-\d+/i) || commandText.match(/[a-f0-9-]{36}/i);
+        let safeJob: Booking | undefined;
+        if (codeMatch) {
+          const matchedStr = codeMatch[0].toLowerCase();
+          safeJob = context.pendingJobs.find(
+            pj => pj.booking_code.toLowerCase() === matchedStr || pj.id.toLowerCase() === matchedStr
+          );
+        }
 
+        // 2. Prioritize pending emergency jobs first (with cooperative priority override)
         if (!safeJob) {
-          // Find standard non-colliding pending job
+          safeJob = context.pendingJobs.find(pj => {
+            if (pj.is_emergency) {
+              const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
+              return !conflict.isExactCollision;
+            }
+            return false;
+          });
+        }
+
+        // 3. Fallback to standard non-colliding pending job
+        if (!safeJob) {
           safeJob = context.pendingJobs.find(pj => {
             const conflict = ApiClient.checkScheduleConflict(pj, context.allJobs, 60);
             return !conflict.hasConflict;
@@ -601,11 +623,11 @@ export class AIAssistantService {
 
           const isEmerg = safeJob.is_emergency;
           const msg = isEmerg
-            ? `🚨 Accepted EMERGENCY SOS job ${safeJob.booking_code}! Immediate dispatch active (< 15-30 min arrival). Estimated Value: ₹${safeJob.estimated_amount} (+25% bonus included).`
-            : `✅ Accepted job ${safeJob.booking_code} scheduled for ${safeJob.booking_date} at ${safeJob.booking_time}! Value: ₹${safeJob.estimated_amount}.`;
+            ? `🚨 Accepted EMERGENCY SOS job ${safeJob.booking_code}! Immediate dispatch active (< 15–30 min arrival).\n\n• Operational Mode: Automatically shifted to "Emergency Service" (locked until completion).\n• Estimated Value: ₹${safeJob.estimated_amount} (+25% bonus included).\n• Customer: ${safeJob.customer?.full_name || 'Customer'}\n• Address: ${safeJob.address || safeJob.city || 'Jaipur'}`
+            : `✅ Accepted job ${safeJob.booking_code} scheduled for ${safeJob.booking_date} at ${safeJob.booking_time}!\n\n• Operational Mode: Automatically shifted to "On Active Work" (locked until completion).\n• Value: ₹${safeJob.estimated_amount}.\n• Customer: ${safeJob.customer?.full_name || 'Customer'}`;
           const speech = isEmerg
-            ? `Emergency dispatch accepted for job ${safeJob.booking_code}. Arrival expected within 15 to 30 minutes.`
-            : `Job ${safeJob.booking_code} accepted for ${safeJob.booking_date} at ${safeJob.booking_time}.`;
+            ? `Emergency dispatch accepted for job ${safeJob.booking_code}. You are now on emergency service. Arrival expected within 15 to 30 minutes.`
+            : `Job ${safeJob.booking_code} accepted. You are now on active work.`;
 
           return {
             success: true,
@@ -618,10 +640,17 @@ export class AIAssistantService {
               id: 'card-accepted-' + Date.now(),
               type: 'action_buttons',
               booking: safeJob,
-              actions: [
-                { label: `⚡ Start ${safeJob.booking_code}`, command: `start work on ${safeJob.booking_code}`, variant: 'success' },
-                { label: '📞 Customer Details', command: 'customer contact', variant: 'neutral' },
-              ],
+              actions: isEmerg
+                ? [
+                    { label: `⚡ Start Emergency Work (${safeJob.booking_code})`, command: `start work on ${safeJob.booking_code}`, variant: 'success' },
+                    { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'warning' },
+                    { label: '📋 View All Jobs', command: 'my jobs', variant: 'neutral' },
+                  ]
+                : [
+                    { label: `⚡ Start ${safeJob.booking_code}`, command: `start work on ${safeJob.booking_code}`, variant: 'success' },
+                    { label: '📞 Customer Details', command: 'customer contact', variant: 'neutral' },
+                    { label: '📋 View All Jobs', command: 'my jobs', variant: 'neutral' },
+                  ],
             },
           };
         } catch (err: any) {
@@ -651,7 +680,7 @@ export class AIAssistantService {
             `• Location: ${addr}\n` +
             `• Expected Response: < 15–30 min immediate arrival\n` +
             `• Emergency Take-Home Wage: ₹${wage} (+25% bonus included)\n\n` +
-            `Cooperative Priority Override is active. Tap below to immediately accept emergency dispatch!`;
+            `Cooperative Priority Override is active. Once accepted, your operational mode will automatically lock into Emergency Service until completed. Tap below to accept:`;
 
           const speech = `Urgent emergency SOS job ${topEmergency.booking_code} from ${custName} requires immediate dispatch within 15 to 30 minutes! Direct wage of ₹${wage} with 25% bonus. Tap to accept dispatch now.`;
 
@@ -666,9 +695,9 @@ export class AIAssistantService {
               type: 'action_buttons',
               booking: topEmergency,
               actions: [
-                { label: `🚨 Accept Emergency Dispatch`, command: `accept emergency job ${topEmergency.booking_code}`, variant: 'danger' },
-                { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'neutral' },
-                { label: '📋 View All Requests', command: 'list available requests', variant: 'primary' },
+                { label: `🚨 Accept Emergency Dispatch`, command: `accept job ${topEmergency.booking_code}`, variant: 'danger' },
+                { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'warning' },
+                { label: '📋 View All Requests', command: 'list available requests', variant: 'neutral' },
               ],
             },
           };
@@ -676,8 +705,12 @@ export class AIAssistantService {
 
         if (emergencyCommitted.length > 0) {
           const activeEmergency = emergencyCommitted[0];
-          const msg = `⚡ You have an active Emergency SOS assignment ${activeEmergency.booking_code} (${activeEmergency.status === 'in_progress' ? 'Work underway on-site' : 'Confirmed, on route'}).`;
-          const speech = `You have an active emergency assignment ${activeEmergency.booking_code}. Complete service as per cooperative protocol.`;
+          const isOnSite = activeEmergency.status === 'in_progress';
+          const msg = `⚡ ACTIVE EMERGENCY SERVICE (${activeEmergency.booking_code})\n` +
+            `• Status: ${isOnSite ? '🚨 On-Site Service Underway' : '⚡ Confirmed Dispatch (En Route)'}\n` +
+            `• Arrival SLA: < 15–30 minutes rapid response\n` +
+            `• Operational Mode: Locked to Emergency Service until service completion.`;
+          const speech = `You are actively deployed on emergency service for job ${activeEmergency.booking_code}. Operational mode is locked until completion.`;
 
           return {
             success: true,
@@ -690,14 +723,15 @@ export class AIAssistantService {
               type: 'action_buttons',
               booking: activeEmergency,
               actions: [
-                { label: activeEmergency.status === 'in_progress' ? '✓ Complete Emergency Job' : `⚡ Start On-Site Work`, command: activeEmergency.status === 'in_progress' ? 'complete job' : 'start work', variant: 'success' },
-                { label: '📞 Call Customer', command: 'customer contact', variant: 'neutral' },
+                { label: isOnSite ? '✓ Complete Emergency Job' : `⚡ Start Emergency Work`, command: isOnSite ? 'complete job' : 'start work', variant: 'success' },
+                { label: '📞 Call Customer Instantly', command: 'customer contact', variant: 'warning' },
+                { label: '🔧 Add Extra Parts & Tasks', command: 'add diagnostic parts', variant: 'primary' },
               ],
             },
           };
         }
 
-        const speech = `No pending emergency SOS jobs for you right now. You are in ready standby. Your standard requests are operating normally.`;
+        const speech = `No pending emergency SOS jobs for you right now. You are in ready standby for 24/7 emergency dispatch.`;
         return {
           success: true,
           intent,
