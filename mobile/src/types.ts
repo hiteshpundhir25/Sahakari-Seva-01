@@ -192,6 +192,11 @@ export interface Booking {
   created_at: string;
   updated_at: string;
 
+  completion_requested?: boolean;
+  completion_requested_at?: string;
+  completion_code?: string;
+  completion_qr_payload?: string;
+
   customer?: Profile;
   worker?: Worker;
   service_category?: ServiceCategory;

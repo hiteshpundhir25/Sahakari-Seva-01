@@ -9,22 +9,24 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
+  DeviceEventEmitter,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock, Clock } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Check, X, Wrench, ShieldCheck, Receipt, Star, Lock, Clock, QrCode } from 'lucide-react-native';
 import { radii, spacing, makeTypography, useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { Card, Button, Badge } from '../../components/ui';
 import RatingModal from '../../components/common/RatingModal';
 import { PaymentCheckoutModal } from '../../components/common/PaymentCheckoutModal';
 import { PaymentConfirmedModal } from '../../components/common/PaymentConfirmedModal';
+import { CompletionQRModal } from '../../components/common/CompletionQRModal';
 import { ApiClient } from '../../services/apiClient';
 import { Booking, Payment, Invoice } from '../../types';
 import { translateTrade } from '../../i18n';
 
 type RouteParams = {
-  BookingDetail: { bookingId: string };
+  BookingDetail: { bookingId: string; showCompletionQr?: boolean };
 };
 
 export const BookingDetailScreen: React.FC = () => {
@@ -45,6 +47,7 @@ export const BookingDetailScreen: React.FC = () => {
   const [confirmedModalVisible, setConfirmedModalVisible] = useState(false);
   const [latestPayment, setLatestPayment] = useState<Payment | null>(null);
   const [latestInvoice, setLatestInvoice] = useState<Invoice | null>(null);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
 
   const fetchBooking = async () => {
     if (!bookingId) return;
@@ -61,6 +64,21 @@ export const BookingDetailScreen: React.FC = () => {
 
   useEffect(() => {
     fetchBooking();
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (route.params?.showCompletionQr) {
+      setQrModalVisible(true);
+    }
+  }, [route.params?.showCompletionQr]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('app_booking_updated', () => {
+      fetchBooking();
+    });
+    return () => {
+      sub.remove();
+    };
   }, [bookingId]);
 
   const handleCallWorker = (phone?: string) => {
@@ -355,6 +373,32 @@ export const BookingDetailScreen: React.FC = () => {
               <Text style={styles.statusExplainerDescAccepted}>
                 {worker?.profile?.full_name || 'Assigned Professional'} has confirmed your booking and is scheduled on active duty for this service.
               </Text>
+            </View>
+          </View>
+        )}
+
+        {booking.status === 'in_progress' && (
+          <View style={styles.statusExplainerCardInProgress}>
+            <View style={styles.statusExplainerIconCircleInProgress}>
+              <ShieldCheck size={18} color="#2563eb" strokeWidth={2.5} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.statusExplainerTitleInProgress}>
+                Service In Progress ⚡
+              </Text>
+              <Text style={styles.statusExplainerDescInProgress}>
+                {worker?.profile?.full_name || 'Assigned Professional'} is actively performing on-site service.
+              </Text>
+              <TouchableOpacity
+                style={styles.showQrActionBtn}
+                onPress={() => setQrModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <QrCode size={15} color="#ffffff" />
+                <Text style={styles.showQrActionBtnText}>
+                  {booking.completion_requested ? 'Worker Ready — Show Completion QR ✓' : 'Show Completion Pass QR'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -761,18 +805,30 @@ export const BookingDetailScreen: React.FC = () => {
         {booking.status === 'in_progress' && !isPaid && (
           <View style={styles.pendingActionCard}>
             <View style={styles.pendingTrustRow}>
-              <View style={[styles.pendingTrustIconCircle, { backgroundColor: '#eff6ff' }]}>
-                <Clock size={18} color="#3b82f6" />
+              <View style={[styles.pendingTrustIconCircle, { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#eff6ff' }]}>
+                <ShieldCheck size={18} color={isDark ? '#60a5fa' : '#2563eb'} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.pendingTrustTitle, { color: '#1d4ed8' }]}>
-                  Service In Progress • Payment Unlocks Upon Completion
+                <Text style={[styles.pendingTrustTitle, { color: isDark ? '#60a5fa' : '#1d4ed8' }]}>
+                  {booking.completion_requested ? 'Worker Ready for Sign-Off' : 'Service In Progress'}
                 </Text>
                 <Text style={styles.pendingTrustDesc}>
-                  {worker?.profile?.full_name || 'The professional'} is actively performing the service work. You will be prompted to verify and pay ₹{finalPrice.toFixed(0)} once the job is marked complete.
+                  {booking.completion_requested
+                    ? `${worker?.profile?.full_name || 'The professional'} has finished the work and requested your sign-off. Show your Completion Pass QR to authorize.`
+                    : `${worker?.profile?.full_name || 'The professional'} is actively performing the service work. You will authorize completion by displaying your QR code.`}
                 </Text>
               </View>
             </View>
+            <TouchableOpacity
+              style={[styles.showQrActionBtn, { marginTop: 12 }]}
+              onPress={() => setQrModalVisible(true)}
+              activeOpacity={0.85}
+            >
+              <QrCode size={15} color="#ffffff" />
+              <Text style={styles.showQrActionBtnText}>
+                {booking.completion_requested ? 'Show Completion Pass QR ✓' : 'Show Completion QR'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -881,6 +937,13 @@ export const BookingDetailScreen: React.FC = () => {
         customerName={t('bookingDetail.verified_customer', 'Verified Customer')}
         onClose={() => setRatingModalVisible(false)}
         onSubmitted={() => fetchBooking()}
+      />
+
+      {/* Customer Job Completion Authorization QR Modal */}
+      <CompletionQRModal
+        visible={qrModalVisible}
+        booking={booking}
+        onClose={() => setQrModalVisible(false)}
       />
       </ScrollView>
     </View>
@@ -1319,6 +1382,52 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
     fontSize: 11.5,
     color: isDark ? '#A7F3D0' : '#047857',
     lineHeight: 16,
+  },
+  statusExplainerCardInProgress: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: isDark ? 'rgba(37,99,235,0.12)' : '#EFF6FF',
+    borderWidth: 1,
+    borderColor: isDark ? 'rgba(37,99,235,0.3)' : '#BFDBFE',
+    borderRadius: radii.md,
+    padding: spacing.sm + 2,
+    marginBottom: spacing.md,
+  },
+  statusExplainerIconCircleInProgress: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: isDark ? 'rgba(37,99,235,0.25)' : '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusExplainerTitleInProgress: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: isDark ? '#60A5FA' : '#1D4ED8',
+    marginBottom: 2,
+  },
+  statusExplainerDescInProgress: {
+    fontSize: 11.5,
+    color: isDark ? '#93C5FD' : '#1E40AF',
+    lineHeight: 16,
+  },
+  showQrActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: radii.md,
+    gap: 7,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  showQrActionBtnText: {
+    color: '#ffffff',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   statusExplainerCardCancelled: {
     flexDirection: 'row',

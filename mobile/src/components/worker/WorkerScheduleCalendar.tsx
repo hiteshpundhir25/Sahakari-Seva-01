@@ -35,11 +35,14 @@ import {
   X,
   Sparkles,
   CalendarDays,
+  QrCode,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
 import { useTheme, Palette } from '../../theme';
 import { FadeInView } from '../../animations';
+import { WorkerCompletionScannerModal } from './WorkerCompletionScannerModal';
 
 interface WorkerScheduleCalendarProps {
   workerId: string;
@@ -107,6 +110,8 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   const [newRescheduleDate, setNewRescheduleDate] = useState<string>('');
   const [newRescheduleTime, setNewRescheduleTime] = useState<string>('10:00');
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
+  const [scannerJob, setScannerJob] = useState<Booking | null>(null);
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
 
   // Fetch jobs for this worker (including incoming pending requests)
   const loadWorkerJobs = useCallback(async () => {
@@ -296,77 +301,138 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
   // Direct 1-tap Accept Job
   const handleDirectAccept = async (job: Booking) => {
     try {
-      await ApiClient.updateBookingStatus(job.id, 'accepted');
-      Alert.alert(
-        'Job Accepted! 🎉',
-        `Booking ${job.booking_code} is confirmed and scheduled.`
+      // Optimistically update local state immediately so UI updates instantly
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, status: 'accepted' as any } : j))
       );
+      await ApiClient.updateBookingStatus(job.id, 'accepted');
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          'Job Accepted! 🎉',
+          `Booking ${job.booking_code} is confirmed and scheduled.`
+        );
+      }
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not accept job');
     }
   };
 
   // Direct 1-tap Decline Job
   const handleDirectDecline = (job: Booking) => {
-    Alert.alert(
-      'Decline Job Request',
-      `Are you sure you want to decline booking ${job.booking_code}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ApiClient.updateBookingStatus(job.id, 'rejected');
-              await loadWorkerJobs();
-              DeviceEventEmitter.emit('app_booking_updated');
-            } catch (err: any) {
-              Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not decline job');
-            }
+    const doDecline = async () => {
+      try {
+        setAllJobs(prev =>
+          prev.map(j => (j.id === job.id ? { ...j, status: 'rejected' as any } : j))
+        );
+        await ApiClient.updateBookingStatus(job.id, 'rejected');
+        await loadWorkerJobs();
+        DeviceEventEmitter.emit('app_booking_updated');
+      } catch (err: any) {
+        await loadWorkerJobs();
+        Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not decline job');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined'
+        ? window.confirm(`Decline job request ${job.booking_code}?`)
+        : true;
+      if (confirmed) {
+        doDecline();
+      }
+    } else {
+      Alert.alert(
+        'Decline Job Request',
+        `Are you sure you want to decline booking ${job.booking_code}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Decline',
+            style: 'destructive',
+            onPress: doDecline,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   // Direct 1-tap Start Service
   const handleDirectStart = async (job: Booking) => {
     try {
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, status: 'in_progress' as any } : j))
+      );
       await ApiClient.updateBookingStatus(job.id, 'in_progress');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Service Started 🚀', `You have started job ${job.booking_code}.`);
+      }
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not start job');
     }
   };
 
-  // Direct 1-tap Complete Job
-  const handleDirectComplete = async (job: Booking) => {
+  // Request Customer Sign-Off for Job Completion
+  const handleRequestCompletion = async (job: Booking) => {
     try {
-      await ApiClient.updateBookingStatus(job.id, 'completed');
+      setAllJobs(prev =>
+        prev.map(j => (j.id === job.id ? { ...j, completion_requested: true } : j))
+      );
+      if (activeJob?.id === job.id) {
+        setActiveJob(prev => prev ? { ...prev, completion_requested: true } : null);
+      }
+      await ApiClient.requestJobCompletion(job.id);
+      Alert.alert(
+        'Sign-Off Request Sent 🛡️',
+        `A completion pass notification has been sent to the customer for booking ${job.booking_code}. Ask customer to show their QR code, then tap "Scan Customer QR".`
+      );
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
-      Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not complete job');
+      await loadWorkerJobs();
+      Alert.alert(t('booking.error_title', 'Error'), err.message || 'Could not request completion');
     }
   };
 
-  // Update Status from Modal (Accept, Start Job, Mark Completed, Reject)
+  // Open Scanner Modal to scan Customer QR
+  const handleOpenScanner = (job: Booking) => {
+    setScannerJob(job);
+    setIsScannerVisible(true);
+  };
+
+  // Update Status from Modal (Accept, Start Job, Request Sign-Off, Reject)
   const handleUpdateStatus = async (newStatus: string) => {
     if (!activeJob) return;
+
+    if (newStatus === 'completed') {
+      if (activeJob.completion_requested) {
+        handleOpenScanner(activeJob);
+      } else {
+        await handleRequestCompletion(activeJob);
+      }
+      return;
+    }
+
     try {
-      await ApiClient.updateBookingStatus(activeJob.id, newStatus);
-      Alert.alert(
-        t('worker.status_updated_title', 'Status Updated'),
-        newStatus === 'accepted'
-          ? `Booking ${activeJob.booking_code} accepted! Added to your schedule.`
-          : newStatus === 'rejected'
-          ? `Booking ${activeJob.booking_code} declined.`
-          : t('worker.status_updated_msg', { status: newStatus })
+      setAllJobs(prev =>
+        prev.map(j => (j.id === activeJob.id ? { ...j, status: newStatus as any } : j))
       );
+      await ApiClient.updateBookingStatus(activeJob.id, newStatus);
+      if (Platform.OS !== 'web') {
+        Alert.alert(
+          t('worker.status_updated_title', 'Status Updated'),
+          newStatus === 'accepted'
+            ? `Booking ${activeJob.booking_code} accepted! Added to your schedule.`
+            : newStatus === 'rejected'
+            ? `Booking ${activeJob.booking_code} declined.`
+            : t('worker.status_updated_msg', { status: newStatus })
+        );
+      }
 
       if (newStatus === 'rejected') {
         setIsModalVisible(false);
@@ -378,6 +444,7 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
       await loadWorkerJobs();
       DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
+      await loadWorkerJobs();
       Alert.alert(t('booking.error_title', 'Error'), err.message);
     }
   };
@@ -762,12 +829,28 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
 
                             {isInProgress && (
                               <TouchableOpacity
-                                style={styles.cardCompleteBtn}
-                                onPress={() => handleDirectComplete(job)}
+                                style={[
+                                  styles.cardCompleteBtn,
+                                  job.completion_requested && { backgroundColor: '#059669' },
+                                ]}
+                                onPress={() =>
+                                  job.completion_requested
+                                    ? handleOpenScanner(job)
+                                    : handleRequestCompletion(job)
+                                }
                                 activeOpacity={0.8}
                               >
-                                <CheckCircle2 size={12} color="#ffffff" />
-                                <Text style={styles.cardCompleteBtnText}>Complete Job</Text>
+                                {job.completion_requested ? (
+                                  <>
+                                    <QrCode size={12} color="#ffffff" />
+                                    <Text style={styles.cardCompleteBtnText}>Scan Customer QR</Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShieldCheck size={12} color="#ffffff" />
+                                    <Text style={styles.cardCompleteBtnText}>Request Sign-Off</Text>
+                                  </>
+                                )}
                               </TouchableOpacity>
                             )}
 
@@ -933,12 +1016,30 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
 
                 {activeJob?.status === 'in_progress' && (
                   <TouchableOpacity
-                    style={[styles.actionTriggerBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => handleUpdateStatus('completed')}
+                    style={[
+                      styles.actionTriggerBtn,
+                      { backgroundColor: activeJob.completion_requested ? '#059669' : colors.primary },
+                    ]}
+                    onPress={() => {
+                      if (activeJob.completion_requested) {
+                        handleOpenScanner(activeJob);
+                      } else {
+                        handleRequestCompletion(activeJob);
+                      }
+                    }}
                     activeOpacity={0.8}
                   >
-                    <CheckCircle2 size={16} color="#ffffff" />
-                    <Text style={styles.actionTriggerBtnText}>Mark Job Completed ✓</Text>
+                    {activeJob.completion_requested ? (
+                      <>
+                        <QrCode size={16} color="#ffffff" />
+                        <Text style={styles.actionTriggerBtnText}>Scan Customer QR to Finalize</Text>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={16} color="#ffffff" />
+                        <Text style={styles.actionTriggerBtnText}>Request Sign-Off / Complete</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
@@ -1049,10 +1150,31 @@ export const WorkerScheduleCalendar: React.FC<WorkerScheduleCalendarProps> = ({
                 <Text style={styles.jobsTabLinkText}>{t('calendar.view_in_jobs')}</Text>
                 <ArrowRight size={14} color={colors.primary} />
               </TouchableOpacity>
-            </ScrollView>
+              </ScrollView>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+
+      {/* Worker Scanner Modal for Customer Completion QR */}
+      <WorkerCompletionScannerModal
+        visible={isScannerVisible}
+        booking={scannerJob}
+        onClose={() => {
+          setIsScannerVisible(false);
+          setScannerJob(null);
+        }}
+        onSuccess={completedBooking => {
+          Alert.alert(
+            'Service Completed! 🎉',
+            `Booking ${completedBooking.booking_code} was successfully verified by customer. 85% wage credited.`
+          );
+          loadWorkerJobs();
+          DeviceEventEmitter.emit('app_booking_updated');
+          if (activeJob?.id === completedBooking.id) {
+            setActiveJob(completedBooking);
+          }
+        }}
+      />
     </View>
   );
 };

@@ -689,6 +689,135 @@ export class ApiClient {
     return resultBooking!;
   }
 
+  /**
+   * Worker requests customer authorization to complete an on-site service.
+   * Generates a single-use 4-digit code and QR payload, and notifies the customer.
+   */
+  public static async requestJobCompletion(bookingId: string): Promise<Booking> {
+    const targetBooking = MOCK_BOOKINGS.find(x => x.id === bookingId);
+    if (!targetBooking) {
+      throw new Error('Booking not found');
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const qrPayload = JSON.stringify({
+      type: 'SAHAKARI_VERIFY',
+      bookingId: targetBooking.id,
+      bookingCode: targetBooking.booking_code,
+      code,
+      timestamp: Date.now(),
+    });
+
+    targetBooking.completion_requested = true;
+    targetBooking.completion_requested_at = new Date().toISOString();
+    targetBooking.completion_code = code;
+    targetBooking.completion_qr_payload = qrPayload;
+    targetBooking.updated_at = new Date().toISOString();
+
+    const workerObj = MOCK_WORKERS.find(
+      w => w.id === (targetBooking.worker_id || (targetBooking.worker as any)?.id)
+    );
+    const workerName =
+      workerObj?.profile?.full_name || (workerObj as any)?.name || 'Your Service Professional';
+
+    // Notify customer that service sign-off is requested
+    MOCK_NOTIFICATIONS.customer.unshift({
+      id: `notif-c-comp-${Date.now()}`,
+      user_id: targetBooking.customer_id || 'p0000000-0000-0000-0000-000000000002',
+      type: 'booking',
+      title: 'Job Completion Sign-Off 🛡️',
+      message: `${workerName} has completed work for ${targetBooking.booking_code}. Tap to authorize and show Completion QR.`,
+      read: false,
+      action_url: `/bookings/${targetBooking.id}?showCompletionQr=1`,
+      created_at: new Date().toISOString(),
+    });
+
+    DeviceEventEmitter.emit('app_booking_updated');
+    DeviceEventEmitter.emit('customer_completion_requested', {
+      bookingId,
+      code,
+      qrPayload,
+      bookingCode: targetBooking.booking_code,
+    });
+
+    return { ...targetBooking };
+  }
+
+  /**
+   * Worker verifies customer QR or enters 4-digit PIN to mark job as complete.
+   */
+  public static async verifyAndCompleteJob(
+    bookingId: string,
+    codeOrPayload: string
+  ): Promise<Booking> {
+    const targetBooking = MOCK_BOOKINGS.find(x => x.id === bookingId);
+    if (!targetBooking) {
+      throw new Error('Booking not found');
+    }
+
+    const trimmed = (codeOrPayload || '').trim();
+    let extractedCode = trimmed;
+    try {
+      if (trimmed.startsWith('{')) {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.code) extractedCode = String(parsed.code);
+      }
+    } catch {
+      // not json
+    }
+
+    const isSimulated = trimmed === 'SIMULATED_QR_SCAN';
+    const isMatch =
+      targetBooking.completion_code &&
+      (extractedCode === targetBooking.completion_code ||
+        trimmed.includes(targetBooking.completion_code));
+
+    // In demo mode, if code hasn't been generated yet or matches
+    if (!isSimulated && !isMatch && targetBooking.completion_code) {
+      throw new Error(
+        'Invalid Verification Code. Please ask customer to show their screen with the Completion QR.'
+      );
+    }
+
+    targetBooking.status = 'completed';
+    targetBooking.completion_requested = false;
+    targetBooking.completion_code = undefined;
+    targetBooking.completion_qr_payload = undefined;
+    targetBooking.payment_status = 'paid';
+    targetBooking.updated_at = new Date().toISOString();
+
+    const assignedWorkerId =
+      targetBooking.worker_id ||
+      (targetBooking.worker as any)?.id ||
+      (targetBooking as any)?.workerId;
+
+    if (assignedWorkerId) {
+      const remainingActiveJobs = MOCK_BOOKINGS.filter(
+        bk =>
+          (bk.worker_id === assignedWorkerId || (bk.worker as any)?.id === assignedWorkerId) &&
+          bk.id !== bookingId &&
+          (bk.status === 'accepted' || bk.status === 'in_progress')
+      );
+      if (remainingActiveJobs.length === 0) {
+        await this.updateWorkerAvailability(assignedWorkerId, 'available');
+      }
+    }
+
+    MOCK_NOTIFICATIONS.customer.unshift({
+      id: `notif-c-done-${Date.now()}`,
+      user_id: targetBooking.customer_id || 'p0000000-0000-0000-0000-000000000002',
+      type: 'booking',
+      title: 'Service Completed! ✓',
+      message: `Service ${targetBooking.booking_code} was successfully verified and completed. Thank you!`,
+      read: false,
+      action_url: `/bookings/${targetBooking.id}`,
+      created_at: new Date().toISOString(),
+    });
+
+    DeviceEventEmitter.emit('app_booking_updated');
+    return { ...targetBooking };
+  }
+
   public static async rescheduleBooking(
     bookingId: string,
     newDate: string,

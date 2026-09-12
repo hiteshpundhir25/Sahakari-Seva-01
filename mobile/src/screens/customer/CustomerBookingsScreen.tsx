@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
-import { Clock, MapPin, AlertTriangle, CheckCircle2, Zap } from 'lucide-react-native';
+import { Clock, MapPin, AlertTriangle, CheckCircle2, Zap, QrCode } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -87,7 +87,10 @@ export const CustomerBookingsScreen: React.FC = () => {
 
             return (
               <FadeInView key={booking.id} delay={idx * 70} distance={14} duration={320}>
-                <ScalePressable onPress={() => navigation.navigate('BookingDetail', { bookingId: booking.id })}>
+                <ScalePressable onPress={() => navigation.navigate('BookingDetail', { 
+                  bookingId: booking.id, 
+                  showCompletionQr: !!(booking.status === 'in_progress' && booking.completion_requested)
+                })}>
                   <View style={styles.bookingCard}>
                     <View style={styles.cardHeader}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -126,6 +129,16 @@ export const CustomerBookingsScreen: React.FC = () => {
                         <Text style={styles.metaText}>{booking.pincode}</Text>
                       </View>
                     </View>
+
+                    {/* Completion Sign-Off Requested by Worker */}
+                    {booking.status === 'in_progress' && booking.completion_requested && (
+                      <View style={styles.completionRequestedPill}>
+                        <QrCode size={11} color="#2563eb" />
+                        <Text style={styles.completionRequestedPillText}>
+                          Worker requested sign-off • Tap to show QR Pass
+                        </Text>
+                      </View>
+                    )}
 
                     {/* Action Needed Badge for Supplemental Bill */}
                     {booking.supplemental_bill?.status === 'pending_approval' && (
@@ -257,6 +270,23 @@ const createStyles = (colors: Palette) => StyleSheet.create({
     color: colors.textMuted,
     marginTop: 4,
     textAlign: 'center'
+  },
+  completionRequestedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.35)',
+  },
+  completionRequestedPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563eb',
   },
   actionNeededPill: {
     flexDirection: 'row',

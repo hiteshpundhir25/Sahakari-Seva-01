@@ -21,7 +21,7 @@ import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import type { Welfare, Worker } from '../../types';
 import { useTranslation } from 'react-i18next';
-import { FadeInView, AnimatedNumber, PulseDot, ScalePressable } from '../../animations';
+import { FadeInView, AnimatedNumber, ScalePressable } from '../../animations';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 interface PassbookTransaction {
@@ -164,9 +164,9 @@ export const WorkerWelfareScreen: React.FC<{ navigation?: any }> = ({ navigation
         {/* Status Chip Banner */}
         <FadeInView distance={8} duration={280}>
           <View style={styles.statusPillBar}>
-            <PulseDot color="#10b981" size={7} />
-            <Text style={styles.statusPillText}>
-              WRK-JPR-0101 · Protected Member · Rajasthan Co-op Act §16
+            <View style={styles.statusDot} />
+            <Text style={styles.statusPillText} numberOfLines={1} ellipsizeMode="tail">
+              WRK-JPR-0101 · Active Member · Co-op Act §16
             </Text>
           </View>
         </FadeInView>
@@ -359,15 +359,22 @@ const createStyles = (colors: Palette, typography: ReturnType<typeof makeTypogra
     statusPillBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 7,
       backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.08)',
       paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingVertical: 5,
       borderRadius: 20,
       alignSelf: 'flex-start',
       marginBottom: 12,
       borderWidth: 1,
       borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+      maxWidth: '100%',
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#10b981',
     },
     statusPillText: {
       fontSize: 10.5,

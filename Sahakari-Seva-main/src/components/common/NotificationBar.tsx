@@ -78,7 +78,11 @@ function getActionLabel(item: Notification, t: (k: string, opts?: any) => string
   const id = item.id;
   const msg = item.message || '';
   const type = item.type || '';
+  const url = item.action_url || '';
 
+  if (id.startsWith('notif-compl-') || msg.includes('Completion Pass') || item.title?.includes('Sign-Off') || url.includes('showCompletionQr')) {
+    return t('notifications.action_show_qr', 'Show QR Pass');
+  }
   if (id === 'notif-c-01' || msg.includes('BK-2026-JPR-001')) {
     return t('notifications.action_view_booking', 'View Booking');
   }
@@ -167,6 +171,12 @@ export const NotificationBar: React.FC = () => {
 
     // 1. CUSTOMER ROLE DESTINATIONS
     if (role === 'customer' || !role) {
+      if (id.startsWith('notif-compl-') || url.includes('showCompletionQr') || msg.includes('Completion Pass') || item.title?.includes('Sign-Off')) {
+        const match = url.match(/bookings\/([a-zA-Z0-9_-]+)/);
+        const targetBookingId = match ? match[1] : (msg.includes('BK-2026-JPR-001') ? 'bk-demo-1' : 'bk-demo-1');
+        safeNavigate('BookingDetail', { bookingId: targetBookingId, showCompletionQr: true });
+        return;
+      }
       if (id === 'notif-c-01' || msg.includes('BK-2026-JPR-001')) {
         safeNavigate('BookingDetail', { bookingId: 'bk-demo-1' });
         return;

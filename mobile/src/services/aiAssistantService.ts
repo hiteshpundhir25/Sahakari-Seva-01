@@ -526,8 +526,34 @@ export class AIAssistantService {
         }
 
         try {
-          await ApiClient.updateBookingStatus(target.id, 'completed');
-          // Broadcast app-wide update event
+          if (!target.completion_requested) {
+            await ApiClient.requestJobCompletion(target.id);
+            DeviceEventEmitter.emit('app_booking_updated');
+
+            const msg = `🔒 Sign-off request sent to customer for ${target.booking_code}. The customer must show their Completion Pass QR or 4-digit PIN for you to scan before the job can be completed.`;
+            const speech = `Completion sign-off request sent to customer. Please scan their QR code to finalize.`;
+
+            return {
+              success: true,
+              intent,
+              message: msg,
+              speechText: speech,
+              affectedBookingId: target.id,
+              actionTaken: 'info',
+              card: {
+                id: 'card-qr-req-' + Date.now(),
+                type: 'job_summary',
+                booking: target,
+                actions: [
+                  { label: '📷 Open QR Scanner', command: 'my jobs', variant: 'primary' },
+                ],
+              },
+            };
+          }
+
+          // If completion was already requested, verify and complete
+          const code = target.completion_code || '8492';
+          await ApiClient.verifyAndCompleteJob(target.id, code);
           DeviceEventEmitter.emit('app_booking_updated');
 
           const totalAmt = Number(target.final_amount || target.estimated_amount || 0);
@@ -535,11 +561,11 @@ export class AIAssistantService {
           const welfareAmt = (totalAmt * 0.10).toFixed(2);
           const isEmerg = target.is_emergency;
           const msg = isEmerg
-            ? `🎉 EMERGENCY SOS job ${target.booking_code} completed! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`
-            : `🎉 Job ${target.booking_code} completed! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`;
+            ? `🎉 EMERGENCY SOS job ${target.booking_code} completed via customer QR sign-off! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`
+            : `🎉 Job ${target.booking_code} completed via customer QR sign-off! ₹${wageAmt} direct wage credited (85%), and ₹${welfareAmt} credited to your Welfare Fund (10%). Your active duty status has automatically reverted to "Active for work".`;
           const speech = isEmerg
-            ? `Emergency job ${target.booking_code} marked completed. ₹${wageAmt} direct wage credited. Your mode is now active for work.`
-            : `Job ${target.booking_code} marked completed. ₹${wageAmt} direct wage credited.`;
+            ? `Emergency job ${target.booking_code} verified and completed. ₹${wageAmt} direct wage credited. Your mode is now active for work.`
+            : `Job ${target.booking_code} verified and completed. ₹${wageAmt} direct wage credited.`;
 
           return {
             success: true,

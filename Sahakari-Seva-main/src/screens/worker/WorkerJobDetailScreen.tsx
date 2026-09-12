@@ -34,6 +34,7 @@ import {
   DollarSign,
   HeartHandshake,
   AlertTriangle,
+  QrCode,
 } from 'lucide-react-native';
 import { ApiClient } from '../../services/apiClient';
 import { Booking, ExtraTaskItem } from '../../types';
@@ -41,6 +42,7 @@ import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
 import { FadeInView, ScalePressable } from '../../animations';
 import { SupplementalBillModal } from '../../components/worker/SupplementalBillModal';
+import { WorkerCompletionScannerModal } from '../../components/worker/WorkerCompletionScannerModal';
 import { useAppBackHandler } from '../../hooks/useAppBackHandler';
 
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -88,6 +90,7 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
   });
   const [ongoingServiceConflict, setOngoingServiceConflict] = useState<Booking | null>(null);
   const [billModalVisible, setBillModalVisible] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
 
   const fetchJob = async () => {
     if (!bookingId) return;
@@ -692,18 +695,43 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
 
                 {job.status === 'in_progress' && (
                   <TouchableOpacity
-                    style={styles.completeBtn}
-                    onPress={() => handleUpdateStatus('completed')}
+                    style={[styles.completeBtn, job.completion_requested && { backgroundColor: '#059669' }]}
+                    onPress={async () => {
+                      if (job.completion_requested) {
+                        setScannerVisible(true);
+                      } else {
+                        try {
+                          setUpdating(true);
+                          await ApiClient.requestJobCompletion(job.id);
+                          Alert.alert(
+                            'Sign-Off Request Sent 🛡️',
+                            'Customer has been sent a verification notification. Ask them to show their Completion QR, then tap "Scan Customer QR to Finalize".'
+                          );
+                          await fetchJob();
+                        } catch (err: any) {
+                          Alert.alert('Action Failed', err.message || 'Could not request completion');
+                        } finally {
+                          setUpdating(false);
+                        }
+                      }
+                    }}
                     disabled={updating}
                     activeOpacity={0.85}
                   >
                     {updating ? (
                       <ActivityIndicator size="small" color="#ffffff" />
+                    ) : job.completion_requested ? (
+                      <>
+                        <QrCode size={18} color="#ffffff" />
+                        <Text style={styles.completeBtnText}>
+                          Scan Customer QR to Finalize (₹{finalAmount})
+                        </Text>
+                      </>
                     ) : (
                       <>
-                        <CheckCircle2 size={18} color="#ffffff" />
+                        <ShieldCheck size={18} color="#ffffff" />
                         <Text style={styles.completeBtnText}>
-                          {t('worker.mark_completed', 'Mark Job Completed ✓')} (₹{finalAmount})
+                          Request Customer Sign-Off (₹{finalAmount})
                         </Text>
                       </>
                     )}
@@ -732,6 +760,22 @@ export const WorkerJobDetailScreen: React.FC<WorkerJobDetailScreenProps> = ({
           onClose={() => setBillModalVisible(false)}
           booking={job}
           onSubmit={handleSubmitSupplementalBill}
+        />
+      )}
+
+      {/* Customer Completion QR Scanner Modal */}
+      {job && (
+        <WorkerCompletionScannerModal
+          visible={scannerVisible}
+          booking={job}
+          onClose={() => setScannerVisible(false)}
+          onSuccess={async (completedBooking) => {
+            Alert.alert(
+              'Job Completed! ✓',
+              `Great job! ₹${completedBooking.final_amount} service verified by customer. 85% wage credited.`
+            );
+            await fetchJob();
+          }}
         />
       )}
     </View>

@@ -318,10 +318,10 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
                 <View style={styles.radiusIconWrap}>
                   <Compass size={15} color={colors.primary} />
                 </View>
-                <View>
-                  <Text style={styles.radiusTitle}>Operating Service Radius</Text>
-                  <Text style={styles.radiusSub}>
-                    Receive job assignments within {serviceRadius} km of Jaipur base
+                <View style={styles.radiusTextWrap}>
+                  <Text style={styles.radiusTitle} numberOfLines={1}>Operating Service Radius</Text>
+                  <Text style={styles.radiusSub} numberOfLines={1}>
+                    Assignments within {serviceRadius} km of base
                   </Text>
                 </View>
               </View>
@@ -593,6 +593,11 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  radiusTextWrap: {
+    flex: 1,
+    marginRight: 8,
   },
   radiusTitle: {
     fontSize: 13,
@@ -614,6 +619,7 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#bfdbfe',
+    flexShrink: 0,
   },
   radiusMapBtnText: {
     fontSize: 10.5,
