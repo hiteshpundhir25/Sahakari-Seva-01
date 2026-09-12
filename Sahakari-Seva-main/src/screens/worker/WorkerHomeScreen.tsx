@@ -21,6 +21,7 @@ import {
   Power,
   Check,
   Lock,
+  Briefcase,
 } from 'lucide-react-native';
 import { FadeInView, ScalePressable } from '../../animations';
 import { useTheme } from '../../theme';
@@ -163,6 +164,36 @@ export const WorkerHomeScreen: React.FC<{ navigation: any }> = ({ navigation }) 
             <View style={styles.statusHeadingRow}>
               <Text style={styles.statusHeading}>{t('worker.online_status', 'Availability Status')}</Text>
             </View>
+
+            {/* On Active Work Banner */}
+            {activeJob && (
+              <View style={styles.activeJobBanner}>
+                <View style={styles.activeJobDotGlow} />
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Briefcase size={13} color="#f59e0b" />
+                    <Text style={styles.activeJobBannerTitle}>
+                      On Active Work
+                    </Text>
+                  </View>
+                  <Text style={styles.activeJobBannerSub} numberOfLines={1}>
+                    {activeJob.service_description || 'Active cooperative service job'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.activeJobBtn}
+                  onPress={() =>
+                    navigation.navigate('WorkerJobDetail', {
+                      bookingId: activeJob.id,
+                      job: activeJob,
+                    })
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.activeJobBtnText}>View Job</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* 2-Option Availability Selection (Active for work vs Offline) */}
             <View style={styles.statusGrid}>
@@ -308,6 +339,47 @@ const createStyles = (colors: Palette, isDark: boolean) => StyleSheet.create({
     fontWeight: '800',
     color: colors.textPrimary,
     letterSpacing: -0.2,
+  },
+  activeJobBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb',
+    borderWidth: 1.2,
+    borderColor: isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  activeJobDotGlow: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: '#f59e0b',
+  },
+  activeJobBannerTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: isDark ? '#fbbf24' : '#b45309',
+    letterSpacing: 0.2,
+  },
+  activeJobBannerSub: {
+    fontSize: 11,
+    color: isDark ? '#fcd34d' : '#92400e',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  activeJobBtn: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  activeJobBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   statusGrid: {
     flexDirection: 'row',
