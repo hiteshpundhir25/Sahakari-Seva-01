@@ -1,8 +1,11 @@
 // ==============================================================================
 // WORKER JOBS SCREEN — INCOMING REQUESTS & ACCEPT/DECLINE ACTIONS
+// Clear visual separation of Current Commitment, Job Requests, Upcoming, and Past
+// Compact squeezed cards so multiple job requests are visible simultaneously
+// Prominent color distinction & uncluttered clean layout
 // ==============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +13,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   DeviceEventEmitter,
 } from 'react-native';
@@ -19,7 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Header } from '../../components/common/Header';
 import { ApiClient } from '../../services/apiClient';
 import { Booking } from '../../types';
-import { Clock, MapPin, Zap, CheckCircle2, AlertCircle, ChevronRight, Lock } from 'lucide-react-native';
+import { Clock, MapPin, Zap, CheckCircle2, ChevronRight, Lock, AlertTriangle } from 'lucide-react-native';
 import { FadeInView } from '../../animations';
 import { useTheme } from '../../theme';
 import type { Palette } from '../../theme';
@@ -29,10 +31,12 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const { handleBack } = useAppBackHandler({ homeRouteName: 'WorkerHome', isHome: false });
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
-  const styles = createStyles(colors, isDark);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
   const [jobs, setJobs] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'requests' | 'scheduled' | 'completed'>('all');
 
   const loadJobs = async () => {
     try {
@@ -62,9 +66,17 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
     };
   }, []);
 
-  const inProgressJob = jobs.find((b) => b.status === 'in_progress');
-  const acceptedJobs = jobs.filter((b) => b.status === 'accepted');
+  // Filtered Job Categories
+  const inProgressJob = useMemo(() => jobs.find((b) => b.status === 'in_progress'), [jobs]);
+  const acceptedJobs = useMemo(() => jobs.filter((b) => b.status === 'accepted'), [jobs]);
   const activeBannerJob = inProgressJob || acceptedJobs[0];
+
+  const pendingJobs = useMemo(() => jobs.filter((b) => b.status === 'pending'), [jobs]);
+  const scheduledJobs = useMemo(() => jobs.filter((b) => b.status === 'accepted' || b.status === 'in_progress'), [jobs]);
+  const completedJobs = useMemo(
+    () => jobs.filter((b) => b.status === 'completed' || b.status === 'rejected' || b.status === 'cancelled'),
+    [jobs]
+  );
 
   const handleOpenJobDetail = (job: Booking) => {
     if (navigation?.navigate) {
@@ -72,11 +84,187 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
     }
   };
 
+  // Compact Squeezed Job Card Component
+  const renderJobCard = (job: Booking, idx: number) => {
+    const isViolation = ApiClient.isPrepaidViolation(job);
+    const scheduleConflict = ApiClient.checkScheduleConflict(job, jobs, 60);
+
+    const isPending = job.status === 'pending';
+    const isAccepted = job.status === 'accepted';
+    const isInProgress = job.status === 'in_progress';
+    const isCompleted = job.status === 'completed';
+    const isCollision = isPending && scheduleConflict.isExactCollision;
+    const isBuffer = isPending && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && !job.is_emergency;
+
+    return (
+      <FadeInView key={job.id} delay={idx * 25} distance={6} duration={220}>
+        <TouchableOpacity
+          style={[
+            styles.jobCard,
+            isPending && styles.jobCardPending,
+            isAccepted && styles.jobCardAccepted,
+            isInProgress && styles.jobCardInProgress,
+            isCompleted && styles.jobCardCompleted,
+            isViolation && styles.jobCardViolation,
+            isCollision && styles.jobCardCollisionExact,
+            isBuffer && styles.jobCardCollisionBuffer,
+            job.is_emergency && styles.jobCardEmergency,
+          ]}
+          activeOpacity={0.78}
+          onPress={() => handleOpenJobDetail(job)}
+        >
+          {/* Card Top Row: Code, Badge, Amount */}
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <View style={styles.codeRow}>
+                <Text style={styles.jobCode}>{job.booking_code}</Text>
+                {job.is_emergency && (
+                  <View style={styles.emergencyPill}>
+                    <Zap size={9} color="#ef4444" />
+                    <Text style={styles.emergencyPillText}>{t('worker.emergency', 'EMERGENCY')}</Text>
+                  </View>
+                )}
+                {isViolation && (
+                  <View style={styles.violationPill}>
+                    <Lock size={9} color="#ef4444" />
+                    <Text style={styles.violationPillText}>SEC 14-B LOCKOUT</Text>
+                  </View>
+                )}
+                {isCollision && (
+                  <View style={styles.exactCollisionPill}>
+                    <AlertTriangle size={9} color="#ffffff" />
+                    <Text style={styles.exactCollisionPillText}>COLLISION</Text>
+                  </View>
+                )}
+                {isBuffer && (
+                  <View style={styles.bufferCollisionPill}>
+                    <Clock size={9} color={isDark ? '#fbbf24' : '#b45309'} />
+                    <Text style={styles.bufferCollisionPillText}>1-HR BUFFER</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.timeRow}>
+                <Clock size={11} color={colors.textMuted} />
+                <Text style={styles.timeText}>
+                  {job.booking_date} at {job.booking_time}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.headerRightCol}>
+              <View style={[styles.amountBadge, isViolation && styles.amountBadgeViolation]}>
+                <Text style={[styles.amountText, isViolation && styles.amountTextViolation]}>
+                  ₹{job.final_amount || job.estimated_amount}
+                </Text>
+              </View>
+
+              {/* Status Pill */}
+              <View
+                style={[
+                  styles.statusBadge,
+                  isPending && styles.statusBadgePending,
+                  isAccepted && styles.statusBadgeAccepted,
+                  isInProgress && styles.statusBadgeInProgress,
+                  isCompleted && styles.statusBadgeCompleted,
+                  job.status === 'rejected' && styles.statusBadgeRejected,
+                  isViolation && styles.statusBadgeViolation,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    isPending && styles.statusTextPending,
+                    isAccepted && styles.statusTextAccepted,
+                    isInProgress && styles.statusTextInProgress,
+                    isCompleted && styles.statusTextCompleted,
+                    job.status === 'rejected' && styles.statusTextRejected,
+                    isViolation && styles.statusTextViolation,
+                  ]}
+                >
+                  {isViolation
+                    ? 'LOCKED'
+                    : isPending
+                    ? 'REQUESTED'
+                    : isAccepted
+                    ? 'CONFIRMED'
+                    : isInProgress
+                    ? 'IN PROGRESS'
+                    : isCompleted
+                    ? 'COMPLETED'
+                    : job.status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Service Description (Single line compact preview) */}
+          <Text style={styles.descText} numberOfLines={1}>
+            {job.service_description}
+          </Text>
+
+          {/* Address Summary */}
+          <View style={styles.addressRow}>
+            <MapPin size={11} color={isViolation ? '#ef4444' : colors.textMuted} />
+            <Text
+              style={[styles.addressText, isViolation && styles.addressTextViolation]}
+              numberOfLines={1}
+            >
+              {isViolation
+                ? 'Coordinates locked by federation audit'
+                : `${job.address} (${job.pincode})`}
+            </Text>
+          </View>
+
+          {/* Card Footer: Clean text without icons */}
+          <View style={[styles.cardFooter, isViolation && styles.cardFooterViolation]}>
+            <Text
+              style={[
+                styles.cardFooterText,
+                isViolation && styles.cardFooterTextViolation,
+                isPending && { color: isDark ? '#fbbf24' : '#b45309' },
+                isAccepted && { color: '#059669' },
+                isInProgress && { color: '#2563eb' },
+              ]}
+            >
+              {isViolation
+                ? 'View Federation Lockout Notice'
+                : isInProgress
+                ? 'Manage Active Work →'
+                : isAccepted
+                ? 'Manage Confirmed Job →'
+                : isPending
+                ? 'Review & Manage Job Request →'
+                : 'View Job Details & Wages →'}
+            </Text>
+            <ChevronRight
+              size={13}
+              color={
+                isViolation
+                  ? '#ef4444'
+                  : isPending
+                  ? isDark ? '#fbbf24' : '#b45309'
+                  : isAccepted
+                  ? '#059669'
+                  : isInProgress
+                  ? '#2563eb'
+                  : colors.primary
+              }
+            />
+          </View>
+        </TouchableOpacity>
+      </FadeInView>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Header
         title={t('tabs.jobs', 'Work Orders')}
-        subtitle={t('worker.assigned_bookings', { count: jobs.length, defaultValue: `${jobs.length} total bookings assigned` })}
+        subtitle={t('worker.assigned_bookings', {
+          count: jobs.length,
+          defaultValue: `${jobs.length} total bookings assigned`,
+        })}
         showBack={true}
         onBack={handleBack}
       />
@@ -84,222 +272,225 @@ export const WorkerJobsScreen: React.FC<{ navigation?: any }> = ({ navigation })
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadJobs(); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadJobs();
+            }}
+          />
+        }
       >
-        {/* Active Commitment Status Banner */}
-        {activeBannerJob ? (
-          <FadeInView distance={8} duration={260}>
-            <TouchableOpacity
-              style={[
-                styles.activeBanner,
-                inProgressJob && styles.activeBannerInProgress,
-              ]}
-              activeOpacity={0.85}
-              onPress={() => handleOpenJobDetail(activeBannerJob)}
-            >
-              <View style={styles.activeBannerLeft}>
-                <View
-                  style={[
-                    styles.activePulseDot,
-                    inProgressJob && { backgroundColor: '#3b82f6' },
-                  ]}
-                />
-                <View style={{ flex: 1 }}>
-                  <View style={styles.activeBannerTitleRow}>
-                    <Text style={styles.activeBannerTitle}>
-                      {inProgressJob
-                        ? `On-Site Active: ${inProgressJob.booking_code}`
-                        : `Committed: ${activeBannerJob.booking_code}${acceptedJobs.length > 1 ? ` (+${acceptedJobs.length - 1} more)` : ''}`}
+        {/* ========================================================================= */}
+        {/* SECTION 1: CURRENT COMMITMENT / ACTIVE JOB (CLEANLY SEPARATED) */}
+        {/* ========================================================================= */}
+        <View style={styles.currentJobSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeaderLabel}>
+              {inProgressJob ? 'CURRENTLY PERFORMING JOB' : 'CURRENT COMMITMENT STATUS'}
+            </Text>
+            {activeBannerJob && (
+              <View style={[styles.liveHeaderBadge, inProgressJob && styles.liveHeaderBadgeWorking]}>
+                <View style={[styles.liveHeaderDot, inProgressJob && { backgroundColor: '#3b82f6' }]} />
+                <Text style={[styles.liveHeaderBadgeText, inProgressJob && { color: '#2563eb' }]}>
+                  {inProgressJob ? 'ON SITE ACTIVE' : 'COMMITTED'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {activeBannerJob ? (
+            <FadeInView distance={8} duration={260}>
+              <TouchableOpacity
+                style={[
+                  styles.activeBanner,
+                  inProgressJob && styles.activeBannerInProgress,
+                ]}
+                activeOpacity={0.85}
+                onPress={() => handleOpenJobDetail(activeBannerJob)}
+              >
+                <View style={styles.activeBannerLeft}>
+                  <View
+                    style={[
+                      styles.activePulseDot,
+                      inProgressJob && { backgroundColor: '#3b82f6' },
+                    ]}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.activeBannerTitleRow}>
+                      <Text style={styles.activeBannerTitle}>
+                        {inProgressJob
+                          ? `On-Site Active: ${inProgressJob.booking_code}`
+                          : `Committed: ${activeBannerJob.booking_code}${acceptedJobs.length > 1 ? ` (+${acceptedJobs.length - 1} more)` : ''}`}
+                      </Text>
+                      <View
+                        style={[
+                          styles.activeStatusPill,
+                          inProgressJob && { backgroundColor: '#3b82f6' },
+                        ]}
+                      >
+                        <Text style={styles.activeStatusPillText}>
+                          {inProgressJob ? 'ON SITE / WORKING' : 'COMMITTED'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.activeBannerSub} numberOfLines={1}>
+                      {activeBannerJob.service_description}
                     </Text>
-                    <View
+                    <Text
                       style={[
-                        styles.activeStatusPill,
-                        inProgressJob && { backgroundColor: '#3b82f6' },
+                        styles.activeBannerPolicyNote,
+                        inProgressJob && { color: '#2563eb' },
                       ]}
                     >
-                      <Text style={styles.activeStatusPillText}>
-                        {inProgressJob ? 'ON SITE / WORKING' : 'COMMITTED'}
-                      </Text>
-                    </View>
+                      {inProgressJob
+                        ? 'Working on-site now. Complete service before starting other jobs.'
+                        : `Scheduled: ${activeBannerJob.booking_date} at ${activeBannerJob.booking_time}. Multiple non-overlapping jobs permitted.`}
+                    </Text>
                   </View>
-                  <Text style={styles.activeBannerSub} numberOfLines={1}>
-                    {activeBannerJob.service_description}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.activeBannerPolicyNote,
-                      inProgressJob && { color: '#2563eb' },
-                    ]}
-                  >
-                    {inProgressJob
-                      ? 'Working on-site now. Complete service before starting other jobs.'
-                      : `Scheduled: ${activeBannerJob.booking_date} at ${activeBannerJob.booking_time}. Multiple non-overlapping jobs permitted.`}
+                </View>
+                <View style={styles.activeBannerArrow}>
+                  <ChevronRight size={18} color={inProgressJob ? '#2563eb' : '#10b981'} />
+                </View>
+              </TouchableOpacity>
+            </FadeInView>
+          ) : (
+            <FadeInView distance={8} duration={260}>
+              <View style={styles.readyBanner}>
+                <CheckCircle2 size={16} color="#10b981" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.readyBannerTitle}>Available for Assignment</Text>
+                  <Text style={styles.readyBannerSub}>
+                    Review pending work orders below. You may accept assignments that do not overlap (1-hr buffer).
                   </Text>
                 </View>
               </View>
-              <View style={styles.activeBannerArrow}>
-                <ChevronRight size={18} color={inProgressJob ? '#2563eb' : '#10b981'} />
-              </View>
+            </FadeInView>
+          )}
+        </View>
+
+        {/* ========================================================================= */}
+        {/* CLEAR SEPARATION DIVIDER */}
+        {/* ========================================================================= */}
+        <View style={styles.sectionSeparator}>
+          <View style={styles.separatorLine} />
+        </View>
+
+        {/* Filter Navigation Tabs */}
+        <View style={styles.filterPillsRow}>
+          {[
+            { key: 'all', label: 'All Orders', count: jobs.length },
+            { key: 'requests', label: 'Requests', count: pendingJobs.length },
+            { key: 'scheduled', label: 'Scheduled', count: scheduledJobs.length },
+            { key: 'completed', label: 'Past Jobs', count: completedJobs.length },
+          ].map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.filterTabPill,
+                activeFilter === tab.key && styles.filterTabPillActive,
+                tab.key === 'requests' && pendingJobs.length > 0 && activeFilter !== tab.key && styles.filterTabPillPendingGlow,
+              ]}
+              onPress={() => setActiveFilter(tab.key as any)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.filterTabPillText,
+                  activeFilter === tab.key && styles.filterTabPillTextActive,
+                  tab.key === 'requests' && pendingJobs.length > 0 && activeFilter !== tab.key && { color: isDark ? '#fbbf24' : '#b45309' },
+                ]}
+              >
+                {tab.label} ({tab.count})
+              </Text>
             </TouchableOpacity>
-          </FadeInView>
-        ) : (
-          <FadeInView distance={8} duration={260}>
-            <View style={styles.readyBanner}>
-              <CheckCircle2 size={16} color="#10b981" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.readyBannerTitle}>Available for Assignment</Text>
-                <Text style={styles.readyBannerSub}>
-                  Review pending work orders below. You may accept assignments that do not overlap (1-hr buffer).
-                </Text>
-              </View>
-            </View>
-          </FadeInView>
-        )}
+          ))}
+        </View>
 
         {loading ? (
           <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 40 }} />
         ) : jobs.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyTitle}>{t('worker.no_requests_title', 'No Work Orders')}</Text>
-            <Text style={styles.emptySubtitle}>{t('worker.no_requests_sub', 'Assigned booking orders will appear here.')}</Text>
+            <Text style={styles.emptySubtitle}>
+              {t('worker.no_requests_sub', 'Assigned booking orders will appear here.')}
+            </Text>
           </View>
         ) : (
-          jobs.map((job, idx) => {
-            const isViolation = ApiClient.isPrepaidViolation(job);
-            const isThisActive = job.status === 'accepted' || job.status === 'in_progress';
-            const scheduleConflict = ApiClient.checkScheduleConflict(job, jobs, 60);
+          <>
+            {/* =================================================================== */}
+            {/* SECTION 2: INCOMING JOB REQUESTS (SQUEEZED, MULTIPLE VISIBLE) */}
+            {/* =================================================================== */}
+            {(activeFilter === 'all' || activeFilter === 'requests') && (
+              <View style={styles.groupedSection}>
+                <View style={styles.groupHeaderRow}>
+                  <Text style={styles.groupHeadingText}>INCOMING JOB REQUESTS</Text>
+                  <View style={styles.groupBadgePending}>
+                    <Text style={styles.groupBadgePendingText}>{pendingJobs.length} New</Text>
+                  </View>
+                </View>
 
-            return (
-              <FadeInView key={job.id} delay={idx * 40} distance={12} duration={280}>
-                <TouchableOpacity
-                  style={[
-                    styles.jobCard,
-                    isViolation && styles.jobCardViolation,
-                    isThisActive && styles.jobCardActive,
-                    job.status === 'pending' && scheduleConflict.isExactCollision && styles.jobCardCollisionExact,
-                    job.status === 'pending' && !scheduleConflict.isExactCollision && scheduleConflict.isBufferCollision && !job.is_emergency && styles.jobCardCollisionBuffer,
-                    job.is_emergency && styles.jobCardEmergency,
-                  ]}
-                  activeOpacity={0.78}
-                  onPress={() => handleOpenJobDetail(job)}
-                >
-                  {/* Card Top Row: Code, Badge, Amount */}
-                  <View style={styles.cardHeader}>
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.codeRow}>
-                        <Text style={styles.jobCode}>{job.booking_code}</Text>
-                        {job.is_emergency && (
-                          <View style={styles.emergencyPill}>
-                            <Zap size={10} color="#ef4444" />
-                            <Text style={styles.emergencyPillText}>{t('worker.emergency', 'EMERGENCY')}</Text>
-                          </View>
-                        )}
-                        {isViolation && (
-                          <View style={styles.violationPill}>
-                            <Lock size={10} color="#ef4444" />
-                            <Text style={styles.violationPillText}>SEC 14-B LOCKOUT</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.timeRow}>
-                        <Clock size={11} color={colors.textMuted} />
-                        <Text style={styles.timeText}>
-                          {job.booking_date} at {job.booking_time}
-                        </Text>
-                      </View>
+                {pendingJobs.length === 0 ? (
+                  activeFilter === 'requests' && (
+                    <View style={styles.emptyGroupCard}>
+                      <Text style={styles.emptyGroupText}>No new pending job requests</Text>
                     </View>
+                  )
+                ) : (
+                  pendingJobs.map((job, idx) => renderJobCard(job, idx))
+                )}
+              </View>
+            )}
 
-                    <View style={styles.headerRightCol}>
-                      <View style={[styles.amountBadge, isViolation && styles.amountBadgeViolation]}>
-                        <Text style={[styles.amountText, isViolation && styles.amountTextViolation]}>
-                          ₹{job.final_amount || job.estimated_amount}
-                        </Text>
-                      </View>
+            {/* =================================================================== */}
+            {/* SECTION 3: UPCOMING & SCHEDULED WORK */}
+            {/* =================================================================== */}
+            {(activeFilter === 'all' || activeFilter === 'scheduled') && (
+              <View style={styles.groupedSection}>
+                <View style={styles.groupHeaderRow}>
+                  <Text style={styles.groupHeadingText}>UPCOMING & SCHEDULED</Text>
+                  <View style={styles.groupBadgeScheduled}>
+                    <Text style={styles.groupBadgeScheduledText}>{scheduledJobs.length} Confirmed</Text>
+                  </View>
+                </View>
 
-                      {/* Status Pill */}
-                      <View
-                        style={[
-                          styles.statusBadge,
-                          job.status === 'pending' && styles.statusBadgePending,
-                          job.status === 'accepted' && styles.statusBadgeAccepted,
-                          job.status === 'in_progress' && styles.statusBadgeInProgress,
-                          job.status === 'completed' && styles.statusBadgeCompleted,
-                          job.status === 'rejected' && styles.statusBadgeRejected,
-                          isViolation && styles.statusBadgeViolation,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusBadgeText,
-                            job.status === 'pending' && styles.statusTextPending,
-                            job.status === 'accepted' && styles.statusTextAccepted,
-                            job.status === 'in_progress' && styles.statusTextInProgress,
-                            job.status === 'completed' && styles.statusTextCompleted,
-                            job.status === 'rejected' && styles.statusTextRejected,
-                            isViolation && styles.statusTextViolation,
-                          ]}
-                        >
-                          {isViolation
-                            ? 'LOCKED'
-                            : job.status === 'pending'
-                            ? 'REQUESTED'
-                            : job.status === 'accepted'
-                            ? 'CONFIRMED'
-                            : job.status === 'in_progress'
-                            ? 'IN PROGRESS'
-                            : job.status === 'completed'
-                            ? 'COMPLETED'
-                            : job.status.toUpperCase()}
-                        </Text>
-                      </View>
+                {scheduledJobs.length === 0 ? (
+                  activeFilter === 'scheduled' && (
+                    <View style={styles.emptyGroupCard}>
+                      <Text style={styles.emptyGroupText}>No upcoming scheduled jobs</Text>
                     </View>
-                  </View>
+                  )
+                ) : (
+                  scheduledJobs.map((job, idx) => renderJobCard(job, idx))
+                )}
+              </View>
+            )}
 
-                  {/* Service Description */}
-                  <Text style={styles.descText} numberOfLines={2}>
-                    {job.service_description}
-                  </Text>
-
-                  {/* Address Summary */}
-                  <View style={styles.addressRow}>
-                    <MapPin size={12} color={isViolation ? '#ef4444' : colors.textMuted} />
-                    <Text
-                      style={[styles.addressText, isViolation && styles.addressTextViolation]}
-                      numberOfLines={1}
-                    >
-                      {isViolation
-                        ? 'Coordinates locked by federation audit'
-                        : `${job.address} (${job.pincode})`}
-                    </Text>
+            {/* =================================================================== */}
+            {/* SECTION 4: PREVIOUSLY DONE JOBS (COMPLETED HISTORY) */}
+            {/* =================================================================== */}
+            {(activeFilter === 'all' || activeFilter === 'completed') && (
+              <View style={styles.groupedSection}>
+                <View style={styles.groupHeaderRow}>
+                  <Text style={styles.groupHeadingText}>PREVIOUSLY DONE JOBS</Text>
+                  <View style={styles.groupBadgeCompleted}>
+                    <Text style={styles.groupBadgeCompletedText}>{completedJobs.length} Completed</Text>
                   </View>
+                </View>
 
-                  {/* Card Footer: Clear action to open dedicated panel */}
-                  <View style={[styles.cardFooter, isViolation && styles.cardFooterViolation]}>
-                    <Text
-                      style={[
-                        styles.cardFooterText,
-                        isViolation && styles.cardFooterTextViolation,
-                      ]}
-                    >
-                      {isViolation
-                        ? '🔒 View Federation Lockout Notice'
-                        : job.status === 'in_progress'
-                        ? '⚡ Manage On-Site Active Work →'
-                        : job.status === 'accepted'
-                        ? '⚡ Manage Confirmed Job Panel →'
-                        : job.status === 'pending'
-                        ? '👉 Review & Manage Job Request →'
-                        : 'View Job Details & Wages →'}
-                    </Text>
-                    <ChevronRight
-                      size={14}
-                      color={isViolation ? '#ef4444' : colors.primary}
-                    />
-                  </View>
-                </TouchableOpacity>
-              </FadeInView>
-            );
-          })
+                {completedJobs.length === 0 ? (
+                  activeFilter === 'completed' && (
+                    <View style={styles.emptyGroupCard}>
+                      <Text style={styles.emptyGroupText}>No previously completed jobs</Text>
+                    </View>
+                  )
+                ) : (
+                  completedJobs.map((job, idx) => renderJobCard(job, idx))
+                )}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
@@ -316,9 +507,52 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flex: 1,
     },
     scrollContent: {
-      padding: 16,
+      padding: 14,
       paddingBottom: 40,
     },
+
+    // Current Commitment / Active Job Section
+    currentJobSection: {
+      marginBottom: 6,
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+      paddingHorizontal: 2,
+    },
+    sectionHeaderLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.textMuted,
+      letterSpacing: 0.6,
+    },
+    liveHeaderBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    liveHeaderBadgeWorking: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+    },
+    liveHeaderDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#10b981',
+    },
+    liveHeaderBadgeText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: '#059669',
+      letterSpacing: 0.3,
+    },
+
     // Active Commitment Banner
     activeBanner: {
       flexDirection: 'row',
@@ -326,10 +560,19 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       justifyContent: 'space-between',
       backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ecfdf5',
       borderRadius: 14,
-      borderWidth: 1.4,
+      borderWidth: 1.5,
       borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#a7f3d0',
-      padding: 14,
-      marginBottom: 16,
+      padding: 12,
+      shadowColor: '#10b981',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 5,
+      elevation: 2,
+    },
+    activeBannerInProgress: {
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
+      borderColor: isDark ? 'rgba(59, 130, 246, 0.35)' : '#bfdbfe',
+      shadowColor: '#3b82f6',
     },
     activeBannerLeft: {
       flex: 1,
@@ -348,39 +591,40 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 3,
+      flexWrap: 'wrap',
     },
     activeBannerTitle: {
-      fontSize: 13.5,
+      fontSize: 13,
       fontWeight: '800',
       color: colors.textPrimary,
     },
     activeStatusPill: {
       backgroundColor: '#10b981',
       paddingHorizontal: 6,
-      paddingVertical: 2,
+      paddingVertical: 1.5,
       borderRadius: 4,
     },
     activeStatusPillText: {
-      fontSize: 9,
+      fontSize: 8.5,
       fontWeight: '800',
       color: '#ffffff',
-      letterSpacing: 0.4,
+      letterSpacing: 0.5,
     },
     activeBannerSub: {
-      fontSize: 12,
+      fontSize: 11.5,
       color: colors.textSecondary,
-      lineHeight: 16,
+      marginTop: 2,
     },
     activeBannerPolicyNote: {
-      fontSize: 10.5,
+      fontSize: 10,
       color: '#059669',
+      marginTop: 3,
       fontWeight: '600',
-      marginTop: 4,
     },
     activeBannerArrow: {
       paddingLeft: 8,
     },
+
     // Ready Banner
     readyBanner: {
       flexDirection: 'row',
@@ -388,10 +632,9 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       gap: 10,
       backgroundColor: isDark ? 'rgba(59, 130, 246, 0.08)' : '#eff6ff',
       borderRadius: 12,
-      borderWidth: 1,
+      borderWidth: 1.2,
       borderColor: isDark ? 'rgba(59, 130, 246, 0.2)' : '#dbeafe',
       padding: 12,
-      marginBottom: 16,
     },
     readyBannerTitle: {
       fontSize: 12.5,
@@ -403,58 +646,194 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.textMuted,
       marginTop: 1,
     },
-    // Job Card
+
+    // Section Separation Divider
+    sectionSeparator: {
+      marginVertical: 12,
+    },
+    separatorLine: {
+      height: 1,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    },
+
+    // Filter Navigation Pills Row
+    filterPillsRow: {
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: 12,
+    },
+    filterTabPill: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+      borderRadius: 8,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceSubtle,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterTabPillActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterTabPillPendingGlow: {
+      borderColor: '#f59e0b',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fef3c7',
+    },
+    filterTabPillText: {
+      fontSize: 10.5,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    filterTabPillTextActive: {
+      color: '#ffffff',
+      fontWeight: '800',
+    },
+
+    // Grouped Sections
+    groupedSection: {
+      marginBottom: 16,
+    },
+    groupHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
+      paddingHorizontal: 2,
+    },
+    groupHeadingText: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: colors.textPrimary,
+      letterSpacing: 0.5,
+    },
+    groupBadgePending: {
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 5,
+    },
+    groupBadgePendingText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: isDark ? '#fbbf24' : '#b45309',
+    },
+    groupBadgeScheduled: {
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 5,
+    },
+    groupBadgeScheduledText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: '#059669',
+    },
+    groupBadgeCompleted: {
+      backgroundColor: isDark ? 'rgba(100, 116, 139, 0.15)' : '#f1f5f9',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 5,
+    },
+    groupBadgeCompletedText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: '#64748b',
+    },
+    emptyGroupCard: {
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.surfaceSubtle,
+      borderRadius: 10,
+      padding: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    emptyGroupText: {
+      fontSize: 11,
+      color: colors.textMuted,
+    },
+
+    // Compact Squeezed Job Card
     jobCard: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 16,
-      borderWidth: 1.2,
+      borderRadius: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderWidth: 1.5,
       borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-      marginBottom: 14,
+      marginBottom: 9,
       shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.25 : 0.04,
-      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 1.5 },
+      shadowOpacity: isDark ? 0.2 : 0.04,
+      shadowRadius: 4,
       elevation: 2,
     },
-    jobCardActive: {
+    jobCardPending: {
+      borderColor: '#f59e0b',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#f59e0b',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffdf5',
+    },
+    jobCardAccepted: {
       borderColor: '#10b981',
-      borderWidth: 1.5,
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#10b981',
+      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.07)' : '#f0fdf4',
+    },
+    jobCardInProgress: {
+      borderColor: '#3b82f6',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#3b82f6',
+      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.07)' : '#eff6ff',
+    },
+    jobCardCompleted: {
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#e2e8f0',
+      borderLeftWidth: 4,
+      borderLeftColor: '#94a3b8',
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#fafafa',
     },
     jobCardViolation: {
       borderColor: '#ef4444',
-      borderWidth: 1.5,
-      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#ef4444',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.08)' : '#fef2f2',
     },
     jobCardEmergency: {
-      borderColor: '#f43f5e',
-      borderWidth: 1.5,
-      backgroundColor: isDark ? 'rgba(244, 63, 94, 0.05)' : '#fff1f2',
+      borderColor: '#ef4444',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#ef4444',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.08)' : '#fff1f2',
     },
     jobCardCollisionExact: {
       borderColor: '#ef4444',
-      borderWidth: 1.5,
-      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.06)' : '#fef2f2',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#ef4444',
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.08)' : '#fef2f2',
     },
     jobCardCollisionBuffer: {
       borderColor: '#f59e0b',
-      borderWidth: 1.3,
-      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : '#fffbeb',
+      borderLeftWidth: 4.5,
+      borderLeftColor: '#f59e0b',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.08)' : '#fffbeb',
     },
+
+    // Card Header
     cardHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 10,
+      marginBottom: 5,
     },
     codeRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 5,
       flexWrap: 'wrap',
     },
     jobCode: {
-      fontSize: 14.5,
+      fontSize: 13,
       fontWeight: '800',
       color: colors.textPrimary,
     },
@@ -462,13 +841,13 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#fee2e2',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      paddingHorizontal: 5,
+      paddingVertical: 1.5,
       borderRadius: 4,
-      gap: 3,
+      gap: 2,
     },
     emergencyPillText: {
-      fontSize: 9,
+      fontSize: 8.5,
       fontWeight: '800',
       color: '#ef4444',
     },
@@ -476,41 +855,69 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: '#ef4444',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      paddingHorizontal: 5,
+      paddingVertical: 1.5,
       borderRadius: 4,
-      gap: 3,
+      gap: 2,
     },
     violationPillText: {
-      fontSize: 8.5,
+      fontSize: 8,
       fontWeight: '800',
       color: '#ffffff',
+    },
+    exactCollisionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#ef4444',
+      paddingHorizontal: 5,
+      paddingVertical: 1.5,
+      borderRadius: 4,
+      gap: 2,
+    },
+    exactCollisionPillText: {
+      fontSize: 8,
+      fontWeight: '800',
+      color: '#ffffff',
+    },
+    bufferCollisionPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      paddingHorizontal: 5,
+      paddingVertical: 1.5,
+      borderRadius: 4,
+      gap: 2,
+    },
+    bufferCollisionPillText: {
+      fontSize: 8,
+      fontWeight: '800',
+      color: isDark ? '#fbbf24' : '#b45309',
     },
     timeRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      marginTop: 4,
+      marginTop: 2,
     },
     timeText: {
-      fontSize: 11.5,
+      fontSize: 10.5,
       color: colors.textMuted,
     },
     headerRightCol: {
       alignItems: 'flex-end',
-      gap: 4,
+      gap: 3,
     },
     amountBadge: {
       backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
-      paddingHorizontal: 9,
-      paddingVertical: 3.5,
-      borderRadius: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 2.5,
+      borderRadius: 6,
     },
     amountBadgeViolation: {
       backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2',
     },
     amountText: {
-      fontSize: 13.5,
+      fontSize: 12.5,
       fontWeight: '800',
       color: '#10b981',
     },
@@ -518,18 +925,24 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: '#ef4444',
     },
     statusBadge: {
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 5,
+      paddingHorizontal: 6,
+      paddingVertical: 1.5,
+      borderRadius: 4,
     },
     statusBadgePending: {
-      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7',
+      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
+      borderWidth: 1,
+      borderColor: '#f59e0b',
     },
     statusBadgeAccepted: {
       backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+      borderWidth: 1,
+      borderColor: '#10b981',
     },
     statusBadgeInProgress: {
       backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+      borderWidth: 1,
+      borderColor: '#3b82f6',
     },
     statusBadgeCompleted: {
       backgroundColor: isDark ? 'rgba(100, 116, 139, 0.15)' : '#f1f5f9',
@@ -541,7 +954,7 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       backgroundColor: '#ef4444',
     },
     statusBadgeText: {
-      fontSize: 9.5,
+      fontSize: 8.5,
       fontWeight: '800',
       letterSpacing: 0.3,
     },
@@ -563,20 +976,22 @@ const createStyles = (colors: Palette, isDark: boolean) =>
     statusTextViolation: {
       color: '#ffffff',
     },
+
+    // Compact Description & Address
     descText: {
-      fontSize: 13,
+      fontSize: 11.5,
       color: colors.textSecondary,
-      lineHeight: 18,
-      marginBottom: 8,
+      lineHeight: 15,
+      marginBottom: 4,
     },
     addressRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
-      marginBottom: 12,
+      gap: 4,
+      marginBottom: 6,
     },
     addressText: {
-      fontSize: 11.5,
+      fontSize: 10.5,
       color: colors.textMuted,
       flex: 1,
     },
@@ -584,11 +999,13 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: '#ef4444',
       fontWeight: '600',
     },
+
+    // Card Footer (No icons before text)
     cardFooter: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingTop: 10,
+      paddingTop: 6,
       borderTopWidth: 1,
       borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9',
     },
@@ -596,13 +1013,15 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       borderTopColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fecaca',
     },
     cardFooterText: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
       color: colors.primary,
     },
     cardFooterTextViolation: {
       color: '#ef4444',
     },
+
+    // Empty Box
     emptyBox: {
       alignItems: 'center',
       justifyContent: 'center',
@@ -618,37 +1037,5 @@ const createStyles = (colors: Palette, isDark: boolean) =>
       color: colors.textMuted,
       marginTop: 4,
       textAlign: 'center',
-    },
-    activeBannerInProgress: {
-      backgroundColor: isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
-      borderColor: isDark ? 'rgba(59, 130, 246, 0.35)' : '#bfdbfe',
-    },
-    exactCollisionPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#ef4444',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      gap: 3,
-    },
-    exactCollisionPillText: {
-      fontSize: 8.5,
-      fontWeight: '800',
-      color: '#ffffff',
-    },
-    bufferCollisionPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      gap: 3,
-    },
-    bufferCollisionPillText: {
-      fontSize: 8.5,
-      fontWeight: '800',
-      color: isDark ? '#fbbf24' : '#b45309',
     },
   });

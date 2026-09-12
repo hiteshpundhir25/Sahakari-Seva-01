@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  DeviceEventEmitter
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Header } from '../../components/common/Header';
@@ -119,6 +120,7 @@ export const BookingCreateScreen: React.FC<{ route: any; navigation: any }> = ({
       const result = await ApiClient.createBooking(payload);
       setConfirmedBooking(result);
       void refreshNotifications();
+      DeviceEventEmitter.emit('app_booking_updated');
     } catch (err: any) {
       Alert.alert(t('booking.error_title'), err.message || t('booking.error_title'));
     } finally {

@@ -7,6 +7,7 @@
 
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 import {
   Worker,
   NearbyWorkerResult,
@@ -403,10 +404,12 @@ export class ApiClient {
 
   public static async createBooking(bookingPayload: any): Promise<Booking> {
     try {
-      return await this.request<Booking>('/bookings', {
+      const created = await this.request<Booking>('/bookings', {
         method: 'POST',
         body: JSON.stringify(bookingPayload)
       });
+      DeviceEventEmitter.emit('app_booking_updated');
+      return created;
     } catch {
       const workerInfo = MOCK_WORKERS.find(w => w.id === bookingPayload.worker_id);
       const customerInfo = MOCK_CUSTOMERS.find(c => c.id === bookingPayload.customer_id);
@@ -451,6 +454,7 @@ export class ApiClient {
         action_url: '/jobs',
         created_at: new Date().toISOString(),
       });
+      DeviceEventEmitter.emit('app_booking_updated');
       return booking;
     }
   }
@@ -688,6 +692,7 @@ export class ApiClient {
       }
     }
 
+    DeviceEventEmitter.emit('app_booking_updated');
     return resultBooking!;
   }
 
@@ -697,18 +702,22 @@ export class ApiClient {
     newTime: string
   ): Promise<Booking> {
     try {
-      return await this.request<Booking>(`/bookings/${bookingId}/reschedule`, {
+      const res = await this.request<Booking>(`/bookings/${bookingId}/reschedule`, {
         method: 'PATCH',
         body: JSON.stringify({ booking_date: newDate, booking_time: newTime })
       });
+      DeviceEventEmitter.emit('app_booking_updated');
+      return res;
     } catch {
       const b = MOCK_BOOKINGS.find(x => x.id === bookingId);
       if (b) {
         b.booking_date = newDate;
         b.booking_time = newTime;
         b.updated_at = new Date().toISOString();
+        DeviceEventEmitter.emit('app_booking_updated');
         return { ...b };
       }
+      DeviceEventEmitter.emit('app_booking_updated');
       return { id: bookingId, booking_date: newDate, booking_time: newTime } as any;
     }
   }
@@ -1106,6 +1115,7 @@ export class ApiClient {
       b.final_amount = amt;
       b.updated_at = new Date().toISOString();
       await this.persistBooking(b);
+      DeviceEventEmitter.emit('app_booking_updated');
     }
 
     // Automatically reset worker operational duty status back to 'available' if no other active jobs
