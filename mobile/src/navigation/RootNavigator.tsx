@@ -5,7 +5,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect, createContext } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, DeviceEventEmitter } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, DeviceEventEmitter, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createNavigationContainerRef } from '@react-navigation/native';
@@ -377,7 +377,7 @@ function AdminStackNavigator() {
 const SESSION_STORAGE_KEY = '@sahakari_user_session';
 
 const getInitialSession = (): UserSession => {
-  if (typeof window !== 'undefined' && window.localStorage) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
     try {
       const saved = window.localStorage.getItem(SESSION_STORAGE_KEY);
       if (saved) {
@@ -423,7 +423,7 @@ export const RootNavigator: React.FC = () => {
     setSession(newSession);
     try {
       await AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
-      if (typeof window !== 'undefined' && window.localStorage) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
       }
     } catch (e) {
@@ -435,7 +435,7 @@ export const RootNavigator: React.FC = () => {
     setSession({ role: null, user: null });
     try {
       await AsyncStorage.removeItem(SESSION_STORAGE_KEY);
-      if (typeof window !== 'undefined' && window.localStorage) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.removeItem(SESSION_STORAGE_KEY);
       }
     } catch (e) {
@@ -447,7 +447,11 @@ export const RootNavigator: React.FC = () => {
     <AuthContext.Provider value={{ session, login, logout }}>
       <RoleProvider role={session.role}>
       <View style={styles.container}>
-        {!session.role && <LoginScreen onSelectRole={login} />}
+        {!session.role && (
+          <ErrorBoundary fallbackTitle="Login Section">
+            <LoginScreen onSelectRole={login} />
+          </ErrorBoundary>
+        )}
         {session.role === 'customer' && (
           <ErrorBoundary fallbackTitle="Customer Section">
             <CustomerStackNavigator />

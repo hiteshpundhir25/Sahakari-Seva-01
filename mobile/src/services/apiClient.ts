@@ -7,7 +7,7 @@
 
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
 import {
   Worker,
   NearbyWorkerResult,
@@ -150,7 +150,7 @@ export class ApiClient {
     try {
       const key = `@sahakari_worker_status_${workerId}`;
       await AsyncStorage.setItem(key, status);
-      if (typeof window !== 'undefined' && window.localStorage) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(key, status);
       }
     } catch (e) {
@@ -162,7 +162,7 @@ export class ApiClient {
     try {
       const key = `@sahakari_worker_status_${workerId}`;
       let val = await AsyncStorage.getItem(key);
-      if (!val && typeof window !== 'undefined' && window.localStorage) {
+      if (!val && Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         val = window.localStorage.getItem(key);
       }
       return val;
@@ -177,7 +177,7 @@ export class ApiClient {
       const key = `@sahakari_booking_${booking.id}`;
       const json = JSON.stringify(booking);
       await AsyncStorage.setItem(key, json);
-      if (typeof window !== 'undefined' && window.localStorage) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(key, json);
       }
     } catch (e) {
@@ -189,7 +189,7 @@ export class ApiClient {
     try {
       const key = `@sahakari_booking_${bookingId}`;
       let val = await AsyncStorage.getItem(key);
-      if (!val && typeof window !== 'undefined' && window.localStorage) {
+      if (!val && Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         val = window.localStorage.getItem(key);
       }
       return val ? JSON.parse(val) : null;
@@ -203,7 +203,7 @@ export class ApiClient {
       const key = `@sahakari_invoice_${invoice.booking_id}`;
       const json = JSON.stringify(invoice);
       await AsyncStorage.setItem(key, json);
-      if (typeof window !== 'undefined' && window.localStorage) {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(key, json);
       }
     } catch (e) {
@@ -215,7 +215,7 @@ export class ApiClient {
     try {
       const key = `@sahakari_invoice_${bookingId}`;
       let val = await AsyncStorage.getItem(key);
-      if (!val && typeof window !== 'undefined' && window.localStorage) {
+      if (!val && Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
         val = window.localStorage.getItem(key);
       }
       return val ? JSON.parse(val) : null;

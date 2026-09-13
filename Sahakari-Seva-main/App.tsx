@@ -18,6 +18,7 @@ import './src/i18n';
 import { RootNavigator, rootNavigationRef } from './src/navigation/RootNavigator';
 import { LanguageSwitchProvider } from './src/animations';
 import { ThemeProvider, useTheme } from './src/theme';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 
 // Ignore normal offline mock database fallback warnings in Expo Go
 LogBox.ignoreLogs([
@@ -59,7 +60,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <LanguageSwitchProvider>
-          <ThemedApp />
+          <ErrorBoundary fallbackTitle="Sahakari Seva">
+            <ThemedApp />
+          </ErrorBoundary>
         </LanguageSwitchProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -18,7 +18,8 @@ import {
   Switch,
   ActivityIndicator,
   Pressable,
-  Linking
+  Linking,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -71,7 +72,7 @@ import { AuthContext, rootNavigationRef } from '../../navigation/RootNavigator';
 // Robust communication helpers for mobile and web
 const openDialer = (phoneNumber: string) => {
   const clean = phoneNumber.replace(/[^0-9+]/g, '');
-  if (typeof window !== 'undefined') {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
     window.location.href = `tel:${clean}`;
   } else {
     Linking.openURL(`tel:${clean}`).catch(err => {
@@ -83,7 +84,7 @@ const openDialer = (phoneNumber: string) => {
 const openSms = (phoneNumber: string, body: string) => {
   const clean = phoneNumber.replace(/[^0-9+]/g, '');
   const url = `sms:${clean}?body=${encodeURIComponent(body)}`;
-  if (typeof window !== 'undefined') {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
     window.location.href = url;
   } else {
     Linking.openURL(url).catch(err => {
@@ -95,7 +96,7 @@ const openSms = (phoneNumber: string, body: string) => {
 const openWhatsApp = (phoneNumber: string, text: string) => {
   const clean = phoneNumber.replace(/[^0-9]/g, '');
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
-  if (typeof window !== 'undefined') {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
     window.open(url, '_blank');
   } else {
     Linking.openURL(url).catch(err => {
@@ -395,7 +396,7 @@ export const CustomerProfileScreen: React.FC = () => {
       statutory_compliance: 'Audited and verified compliant with Section 12 of the Rajasthan Cooperative Societies Act 2026. Zero platform extraction verified.'
     };
     const jsonStr = JSON.stringify(statement, null, 2);
-    if (typeof window !== 'undefined' && window.document) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.document) {
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

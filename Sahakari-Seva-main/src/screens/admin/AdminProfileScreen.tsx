@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
@@ -142,7 +143,7 @@ export const AdminProfileScreen: React.FC<{ navigation?: any }> = ({ navigation 
       compliance_certification: 'Verified compliant under Rajasthan Cooperative Societies Act 2026, Section 34.'
     };
     const jsonStr = JSON.stringify(exportData, null, 2);
-    if (typeof window !== 'undefined' && window.document) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.document) {
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
